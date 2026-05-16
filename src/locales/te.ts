@@ -1,0 +1,68 @@
+export const te = {
+  tabs: {
+    home: 'హోమ్',
+    attendance: 'హాజరు',
+    settings: 'సెట్టింగ్‌లు',
+  },
+  home: {
+    title: 'హోమ్',
+    greeting: 'నమస్కారం, {{name}}',
+    guest: 'స్నేహితుడా',
+  },
+  attendance: {
+    title: 'హాజరు',
+    lead: 'సమయాన్ని ఎలా నమోదు చేయాలో ఎంచుకోండి, తర్వాత మీ రోజుకు పంచ్ ఎంపికలను వాడండి.',
+    statusTitle: 'ఈరోజు',
+    status: {
+      notIn: 'ఇంకా చెక్-ఇన్ లేదు',
+      in: 'చెక్-ఇన్',
+      inSince: 'చెక్-ఇన్ · {{time}} నుండి',
+      break: 'విరామంలో',
+      breakSince: 'విరామం · {{time}} నుండి',
+    },
+    methods: {
+      manual: { label: 'మాన్యువల్', hint: 'ఈ పరికరం నుండి నమోదు' },
+      gps: { label: 'GPS', hint: 'మీ స్థానాన్ని ఉపయోగిస్తుంది' },
+      ip: { label: 'IP', hint: 'ఆఫీస్ నెట్‌వర్క్ ధృవీకరణ' },
+      qr: { label: 'QR కోడ్', hint: 'సైట్ QR స్కాన్ చేయండి' },
+    },
+    punch: {
+      in: { label: 'పంచ్ ఇన్', sublabel: 'పని దినం ప్రారంభం' },
+      breakStart: { label: 'విరామం ప్రారంభం', sublabel: 'పని నుండి దూరంగా' },
+      breakEnd: { label: 'విరామం ముగింపు', sublabel: 'పని కొనసాగించు' },
+      out: { label: 'పంచ్ అవుట్', sublabel: 'పని దినం ముగింపు' },
+    },
+  },
+  settings: {
+    screenTitle: 'సెట్టింగ్‌లు',
+    account: 'ఖాతా',
+    work: 'పని',
+    preferences: 'అభిరుచులు',
+    support: 'మద్దతు',
+    session: 'సెషన్',
+    rows: {
+      profile: { title: 'ప్రొఫైల్', subtitle: 'పేరు, ఇమెయిల్, ఫోన్' },
+      security: { title: 'భద్రత', subtitle: 'పాస్‌వర్డ్ మరియు సైన్-ఇన్' },
+      calendar: { title: 'క్యాలెండర్', subtitle: 'షిఫ్ట్‌లు మరియు షెడ్యూల్' },
+      leaves: { title: 'సెలవులు', subtitle: 'అభ్యర్థనలు మరియు బ్యాలెన్స్' },
+      language: { title: 'భాష', subtitle: 'యాప్ భాష' },
+      notifications: { title: 'నోటిఫికేషన్‌లు', subtitle: 'రిమైండర్‌లు మరియు అలర్ట్‌లు' },
+      help: { title: 'సహాయం', subtitle: 'FAQ మరియు సంప్రదింపు' },
+      about: { title: 'గురించి', subtitle: 'వెర్షన్ మరియు చట్టపరమైన' },
+    },
+    logout: 'సైన్ అవుట్',
+    language: {
+      pickerTitle: 'భాష',
+      cancel: 'రద్దు',
+    },
+    alerts: {
+      comingSoonTitle: 'త్వరలో',
+      comingSoonMessage: 'ఈ విభాగం భవిష్యత్ అప్‌డేట్‌లో అందుబాటులో ఉంటుంది.',
+      ok: 'సరే',
+      signOutTitle: 'సైన్ అవుట్',
+      signOutMessage: 'మీరు ఖచ్చితంగా సైన్ అవుట్ చేయాలనుకుంటున్నారా?',
+      cancel: 'రద్దు',
+      signOutConfirm: 'సైన్ అవుట్',
+    },
+  },
+};

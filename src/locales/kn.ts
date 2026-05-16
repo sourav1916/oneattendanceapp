@@ -1,0 +1,68 @@
+export const kn = {
+  tabs: {
+    home: 'ಹೋಮ್',
+    attendance: 'ಹಾಜರಾತಿ',
+    settings: 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+  },
+  home: {
+    title: 'ಹೋಮ್',
+    greeting: 'ನಮಸ್ಕಾರ, {{name}}',
+    guest: 'ಸ್ನೇಹಿತ',
+  },
+  attendance: {
+    title: 'ಹಾಜರಾತಿ',
+    lead: 'ಸಮಯವನ್ನು ಹೇಗೆ ದಾಖಲಿಸಬೇಕೆಂದು ಆಯ್ಕೆಮಾಡಿ, ನಂತರ ನಿಮ್ಮ ದಿನಕ್ಕಾಗಿ ಪಂಚ್ ಆಯ್ಕೆಗಳನ್ನು ಬಳಸಿ.',
+    statusTitle: 'ಇಂದು',
+    status: {
+      notIn: 'ಇನ್ನೂ ಚೆಕ್-ಇನ್ ಇಲ್ಲ',
+      in: 'ಚೆಕ್-ಇನ್',
+      inSince: 'ಚೆಕ್-ಇನ್ · {{time}} ರಿಂದ',
+      break: 'ವಿರಾಮದಲ್ಲಿ',
+      breakSince: 'ವಿರಾಮ · {{time}} ರಿಂದ',
+    },
+    methods: {
+      manual: { label: 'ಮ್ಯಾನುವಲ್', hint: 'ಈ ಸಾಧನದಿಂದ ದಾಖಲಿಸಿ' },
+      gps: { label: 'GPS', hint: 'ನಿಮ್ಮ ಸ್ಥಳವನ್ನು ಬಳಸುತ್ತದೆ' },
+      ip: { label: 'IP', hint: 'ಕಚೇರಿ ನೆಟ್‌ವರ್ಕ್ ಪರಿಶೀಲನೆ' },
+      qr: { label: 'QR ಕೋಡ್', hint: 'ಸೈಟ್ QR ಸ್ಕ್ಯಾನ್ ಮಾಡಿ' },
+    },
+    punch: {
+      in: { label: 'ಪಂಚ್ ಇನ್', sublabel: 'ಕೆಲಸದ ದಿನ ಪ್ರಾರಂಭ' },
+      breakStart: { label: 'ವಿರಾಮ ಪ್ರಾರಂಭ', sublabel: 'ಕೆಲಸದಿಂದ ದೂರ' },
+      breakEnd: { label: 'ವಿರಾಮ ಅಂತ್ಯ', sublabel: 'ಕೆಲಸ ಮುಂದುವರಿಸಿ' },
+      out: { label: 'ಪಂಚ್ ಔಟ್', sublabel: 'ಕೆಲಸದ ದಿನ ಅಂತ್ಯ' },
+    },
+  },
+  settings: {
+    screenTitle: 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+    account: 'ಖಾತೆ',
+    work: 'ಕೆಲಸ',
+    preferences: 'ಆದ್ಯತೆಗಳು',
+    support: 'ಬೆಂಬಲ',
+    session: 'ಸೆಷನ್',
+    rows: {
+      profile: { title: 'ಪ್ರೊಫೈಲ್', subtitle: 'ಹೆಸರು, ಇಮೇಲ್, ಫೋನ್' },
+      security: { title: 'ಭದ್ರತೆ', subtitle: 'ಪಾಸ್‌ವರ್ಡ್ ಮತ್ತು ಸೈನ್-ಇನ್' },
+      calendar: { title: 'ಕ್ಯಾಲೆಂಡರ್', subtitle: 'ಶಿಫ್ಟ್‌ಗಳು ಮತ್ತು ವೇಳಾಪಟ್ಟಿ' },
+      leaves: { title: 'ರಜೆಗಳು', subtitle: 'ವಿನಂತಿಗಳು ಮತ್ತು ಬ್ಯಾಲೆನ್ಸ್' },
+      language: { title: 'ಭಾಷೆ', subtitle: 'ಅಪ್ ಭಾಷೆ' },
+      notifications: { title: 'ಅಧಿಸೂಚನೆಗಳು', subtitle: 'ಜ್ಞಾಪನೆಗಳು ಮತ್ತು ಎಚ್ಚರಿಕೆಗಳು' },
+      help: { title: 'ಸಹಾಯ', subtitle: 'FAQ ಮತ್ತು ಸಂಪರ್ಕ' },
+      about: { title: 'ಬಗ್ಗೆ', subtitle: 'ಆವೃತ್ತಿ ಮತ್ತು ಕಾನೂನು' },
+    },
+    logout: 'ಸೈನ್ ಔಟ್',
+    language: {
+      pickerTitle: 'ಭಾಷೆ',
+      cancel: 'ರದ್ದು',
+    },
+    alerts: {
+      comingSoonTitle: 'ಶೀಘ್ರದಲ್ಲೇ',
+      comingSoonMessage: 'ಈ ವಿಭಾಗವು ಭವಿಷ್ಯದ ನವೀಕರಣದಲ್ಲಿ ಲಭ್ಯವಾಗುತ್ತದೆ.',
+      ok: 'ಸರಿ',
+      signOutTitle: 'ಸೈನ್ ಔಟ್',
+      signOutMessage: 'ನೀವು ಖಚಿತವಾಗಿ ಸೈನ್ ಔಟ್ ಮಾಡಲು ಬಯಸುವಿರಾ?',
+      cancel: 'ರದ್ದು',
+      signOutConfirm: 'ಸೈನ್ ಔಟ್',
+    },
+  },
+};

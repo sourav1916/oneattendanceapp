@@ -1,0 +1,68 @@
+export const mr = {
+  tabs: {
+    home: 'होम',
+    attendance: 'हजेरी',
+    settings: 'सेटिंग्ज',
+  },
+  home: {
+    title: 'होम',
+    greeting: 'नमस्कार, {{name}}',
+    guest: 'मित्र',
+  },
+  attendance: {
+    title: 'हजेरी',
+    lead: 'वेळ नोंदवण्याची पद्धत निवडा, नंतर आपल्या दिवसासाठी पंच पर्याय वापरा.',
+    statusTitle: 'आज',
+    status: {
+      notIn: 'अद्याप चेक-इन नाही',
+      in: 'चेक-इन',
+      inSince: 'चेक-इन · {{time}} पासून',
+      break: 'ब्रेकवर',
+      breakSince: 'ब्रेक · {{time}} पासून',
+    },
+    methods: {
+      manual: { label: 'मॅनुअल', hint: 'या डिव्हाइसवरून नोंद' },
+      gps: { label: 'GPS', hint: 'तुमचे स्थान वापरते' },
+      ip: { label: 'IP', hint: 'ऑफिस नेटवर्क तपासणी' },
+      qr: { label: 'QR कोड', hint: 'साइट QR स्कॅन करा' },
+    },
+    punch: {
+      in: { label: 'पंच इन', sublabel: 'कामाचा दिवस सुरू' },
+      breakStart: { label: 'ब्रेक सुरू', sublabel: 'कामापासून दूर' },
+      breakEnd: { label: 'ब्रेक संपला', sublabel: 'काम पुन्हा सुरू' },
+      out: { label: 'पंच आउट', sublabel: 'कामाचा दिवस संपला' },
+    },
+  },
+  settings: {
+    screenTitle: 'सेटिंग्ज',
+    account: 'खाते',
+    work: 'काम',
+    preferences: 'प्राधान्ये',
+    support: 'मदत',
+    session: 'सत्र',
+    rows: {
+      profile: { title: 'प्रोफाइल', subtitle: 'नाव, ईमेल, फोन' },
+      security: { title: 'सुरक्षा', subtitle: 'पासवर्ड आणि साइन-इन' },
+      calendar: { title: 'कॅलेंडर', subtitle: 'शिफ्ट आणि वेळापत्रक' },
+      leaves: { title: 'रजा', subtitle: 'विनंती आणि शिल्लक' },
+      language: { title: 'भाषा', subtitle: 'अॅप भाषा' },
+      notifications: { title: 'सूचना', subtitle: 'स्मरणपत्रे आणि अलर्ट' },
+      help: { title: 'मदत', subtitle: 'FAQ आणि संपर्क' },
+      about: { title: 'बद्दल', subtitle: 'आवृत्ती आणि कायदेशीर' },
+    },
+    logout: 'साइन आउट',
+    language: {
+      pickerTitle: 'भाषा',
+      cancel: 'रद्द करा',
+    },
+    alerts: {
+      comingSoonTitle: 'लवकरच येत आहे',
+      comingSoonMessage: 'हा विभाग भविष्यातील अपडेटमध्ये उपलब्ध होईल.',
+      ok: 'ठीक आहे',
+      signOutTitle: 'साइन आउट',
+      signOutMessage: 'तुम्हाला खात्रीने साइन आउट करायचे आहे?',
+      cancel: 'रद्द करा',
+      signOutConfirm: 'साइन आउट',
+    },
+  },
+};

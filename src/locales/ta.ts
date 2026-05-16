@@ -1,0 +1,68 @@
+export const ta = {
+  tabs: {
+    home: 'முகப்பு',
+    attendance: 'வருகை',
+    settings: 'அமைப்புகள்',
+  },
+  home: {
+    title: 'முகப்பு',
+    greeting: 'வணக்கம், {{name}}',
+    guest: 'நண்பரே',
+  },
+  attendance: {
+    title: 'வருகை',
+    lead: 'நேரத்தை பதிவு செய்யும் முறையைத் தேர்ந்தெடுத்து, பின்னர் உங்கள் நாளுக்கான பஞ்ச் விருப்பங்களைப் பயன்படுத்தவும்.',
+    statusTitle: 'இன்று',
+    status: {
+      notIn: 'இன்னும் செக்-இன் இல்லை',
+      in: 'செக்-இன்',
+      inSince: 'செக்-இன் · {{time}} முதல்',
+      break: 'இடைவேளையில்',
+      breakSince: 'இடைவேளை · {{time}} முதல்',
+    },
+    methods: {
+      manual: { label: 'கைமுறை', hint: 'இந்த சாதனத்திலிருந்து பதிவு' },
+      gps: { label: 'GPS', hint: 'உங்கள் இருப்பிடத்தைப் பயன்படுத்துகிறது' },
+      ip: { label: 'IP', hint: 'அலுவலக நெட்வொர்க் சரிபார்ப்பு' },
+      qr: { label: 'QR குறியீடு', hint: 'தள QR ஐ ஸ்கேன் செய்யவும்' },
+    },
+    punch: {
+      in: { label: 'பஞ்ச் இன்', sublabel: 'வேலை நாள் தொடக்கம்' },
+      breakStart: { label: 'இடைவேளை தொடக்கம்', sublabel: 'வேலையிலிருந்து விலகவும்' },
+      breakEnd: { label: 'இடைவேளை முடிவு', sublabel: 'வேலையைத் தொடரவும்' },
+      out: { label: 'பஞ்ச் அவுட்', sublabel: 'வேலை நாள் முடிவு' },
+    },
+  },
+  settings: {
+    screenTitle: 'அமைப்புகள்',
+    account: 'கணக்கு',
+    work: 'வேலை',
+    preferences: 'விருப்பங்கள்',
+    support: 'ஆதரவு',
+    session: 'அமர்வு',
+    rows: {
+      profile: { title: 'சுயவிவரம்', subtitle: 'பெயர், மின்னஞ்சல், தொலைபேசி' },
+      security: { title: 'பாதுகாப்பு', subtitle: 'கடவுச்சொல் மற்றும் உள்நுழைவு' },
+      calendar: { title: 'நாட்காட்டி', subtitle: 'ஷிப்டுகள் மற்றும் அட்டவணை' },
+      leaves: { title: 'விடுப்புகள்', subtitle: 'கோரிக்கைகள் மற்றும் இருப்பு' },
+      language: { title: 'மொழி', subtitle: 'பயன்பாட்டு மொழி' },
+      notifications: { title: 'அறிவிப்புகள்', subtitle: 'நினைவூட்டல்கள் மற்றும் எச்சரிக்கைகள்' },
+      help: { title: 'உதவி', subtitle: 'FAQ மற்றும் தொடர்பு' },
+      about: { title: 'பற்றி', subtitle: 'பதிப்பு மற்றும் சட்டம்' },
+    },
+    logout: 'வெளியேறு',
+    language: {
+      pickerTitle: 'மொழி',
+      cancel: 'ரத்து',
+    },
+    alerts: {
+      comingSoonTitle: 'விரைவில்',
+      comingSoonMessage: 'இப்பகுதி எதிர்கால புதுப்பிப்பில் கிடைக்கும்.',
+      ok: 'சரி',
+      signOutTitle: 'வெளியேறு',
+      signOutMessage: 'நிச்சயமாக வெளியேற விரும்புகிறீர்களா?',
+      cancel: 'ரத்து',
+      signOutConfirm: 'வெளியேறு',
+    },
+  },
+};

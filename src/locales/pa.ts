@@ -1,0 +1,68 @@
+export const pa = {
+  tabs: {
+    home: 'ਘਰ',
+    attendance: 'ਹਾਜ਼ਰੀ',
+    settings: 'ਸੈਟਿੰਗਾਂ',
+  },
+  home: {
+    title: 'ਘਰ',
+    greeting: 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ, {{name}}',
+    guest: 'ਦੋਸਤ',
+  },
+  attendance: {
+    title: 'ਹਾਜ਼ਰੀ',
+    lead: 'ਸਮਾਂ ਰਿਕਾਰਡ ਕਰਨ ਦਾ ਤਰੀਕਾ ਚੁਣੋ, ਫਿਰ ਆਪਣੇ ਦਿਨ ਲਈ ਪੰਚ ਵਿਕਲਪ ਵਰਤੋ।',
+    statusTitle: 'ਅੱਜ',
+    status: {
+      notIn: 'ਹਾਲੇ ਚੈਕ-ਇਨ ਨਹੀਂ',
+      in: 'ਚੈਕ-ਇਨ',
+      inSince: 'ਚੈਕ-ਇਨ · {{time}} ਤੋਂ',
+      break: 'ਬ੍ਰੇਕ ਤੇ',
+      breakSince: 'ਬ੍ਰੇਕ · {{time}} ਤੋਂ',
+    },
+    methods: {
+      manual: { label: 'ਮੈਨੂਅਲ', hint: 'ਇਸ ਡਿਵਾਈਸ ਤੋਂ ਰਿਕਾਰਡ ਕਰੋ' },
+      gps: { label: 'GPS', hint: 'ਤੁਹਾਡੀ ਥਾਂ ਵਰਤਦਾ ਹੈ' },
+      ip: { label: 'IP', hint: 'ਦਫ਼ਤਰ ਨੈੱਟਵਰਕ ਜਾਂਚ' },
+      qr: { label: 'QR ਕੋਡ', hint: 'ਸਾਈਟ QR ਸਕੈਨ ਕਰੋ' },
+    },
+    punch: {
+      in: { label: 'ਪੰਚ ਇਨ', sublabel: 'ਕੰਮ ਦਾ ਦਿਨ ਸ਼ੁਰੂ' },
+      breakStart: { label: 'ਬ੍ਰੇਕ ਸ਼ੁਰੂ', sublabel: 'ਕੰਮ ਤੋਂ ਦੂਰ' },
+      breakEnd: { label: 'ਬ੍ਰੇਕ ਖਤਮ', sublabel: 'ਕੰਮ ਮੁੜ ਸ਼ੁਰੂ' },
+      out: { label: 'ਪੰਚ ਆਉਟ', sublabel: 'ਕੰਮ ਦਾ ਦਿਨ ਖਤਮ' },
+    },
+  },
+  settings: {
+    screenTitle: 'ਸੈਟਿੰਗਾਂ',
+    account: 'ਖਾਤਾ',
+    work: 'ਕੰਮ',
+    preferences: 'ਤਰਜੀਹਾਂ',
+    support: 'ਮਦਦ',
+    session: 'ਸੈਸ਼ਨ',
+    rows: {
+      profile: { title: 'ਪ੍ਰੋਫਾਈਲ', subtitle: 'ਨਾਮ, ਈਮੇਲ, ਫੋਨ' },
+      security: { title: 'ਸੁਰੱਖਿਆ', subtitle: 'ਪਾਸਵਰਡ ਅਤੇ ਸਾਈਨ-ਇਨ' },
+      calendar: { title: 'ਕੈਲੰਡਰ', subtitle: 'ਸ਼ਿਫਟ ਅਤੇ ਸੂਚੀ' },
+      leaves: { title: 'ਛੁੱਟੀਆਂ', subtitle: 'ਬੇਨਤੀ ਅਤੇ ਬਕਾਇਆ' },
+      language: { title: 'ਭਾਸ਼ਾ', subtitle: 'ਐਪ ਭਾਸ਼ਾ' },
+      notifications: { title: 'ਸੂਚਨਾਵਾਂ', subtitle: 'ਯਾਦ ਦਿਹਾਨੀਆਂ ਅਤੇ ਅਲਰਟ' },
+      help: { title: 'ਮਦਦ', subtitle: 'FAQ ਅਤੇ ਸੰਪਰਕ' },
+      about: { title: 'ਬਾਰੇ', subtitle: 'ਵਰਜਨ ਅਤੇ ਕਾਨੂੰਨੀ' },
+    },
+    logout: 'ਸਾਈਨ ਆਉਟ',
+    language: {
+      pickerTitle: 'ਭਾਸ਼ਾ',
+      cancel: 'ਰੱਦ ਕਰੋ',
+    },
+    alerts: {
+      comingSoonTitle: 'ਜਲਦੀ ਆ ਰਿਹਾ ਹੈ',
+      comingSoonMessage: 'ਇਹ ਹਿੱਸਾ ਆਉਣ ਵਾਲੇ ਅੱਪਡੇਟ ਵਿੱਚ ਮਿਲੇਗਾ।',
+      ok: 'ਠੀਕ ਹੈ',
+      signOutTitle: 'ਸਾਈਨ ਆਉਟ',
+      signOutMessage: 'ਕੀ ਤੁਸੀਂ ਯਕੀਨਨ ਸਾਈਨ ਆਉਟ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ?',
+      cancel: 'ਰੱਦ ਕਰੋ',
+      signOutConfirm: 'ਸਾਈਨ ਆਉਟ',
+    },
+  },
+};

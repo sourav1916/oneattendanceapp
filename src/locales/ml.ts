@@ -1,0 +1,68 @@
+export const ml = {
+  tabs: {
+    home: 'ഹോം',
+    attendance: 'ഹാജർ',
+    settings: 'ക്രമീകരണങ്ങൾ',
+  },
+  home: {
+    title: 'ഹോം',
+    greeting: 'നമസ്കാരം, {{name}}',
+    guest: 'സുഹൃത്തേ',
+  },
+  attendance: {
+    title: 'ഹാജർ',
+    lead: 'സമയം എങ്ങനെ രേഖപ്പെടുത്തണമെന്ന് തിരഞ്ഞെടുക്കുക, തുടർന്ന് നിങ്ങളുടെ ദിനത്തിനായി പഞ്ച് ഓപ്ഷനുകൾ ഉപയോഗിക്കുക.',
+    statusTitle: 'ഇന്ന്',
+    status: {
+      notIn: 'ഇതുവരെ ചെക്ക്-ഇൻ ഇല്ല',
+      in: 'ചെക്ക്-ഇൻ',
+      inSince: 'ചെക്ക്-ഇൻ · {{time}} മുതൽ',
+      break: 'ബ്രേക്കിൽ',
+      breakSince: 'ബ്രേക്ക് · {{time}} മുതൽ',
+    },
+    methods: {
+      manual: { label: 'മാനുവൽ', hint: 'ഈ ഉപകരണത്തിൽ നിന്ന് രേഖപ്പെടുത്തുക' },
+      gps: { label: 'GPS', hint: 'നിങ്ങളുടെ സ്ഥാനം ഉപയോഗിക്കുന്നു' },
+      ip: { label: 'IP', hint: 'ഓഫീസ് നെറ്റ്‌വർക്ക് പരിശോധന' },
+      qr: { label: 'QR കോഡ്', hint: 'സൈറ്റ് QR സ്കാൻ ചെയ്യുക' },
+    },
+    punch: {
+      in: { label: 'പഞ്ച് ഇൻ', sublabel: 'ജോലി ദിനം ആരംഭം' },
+      breakStart: { label: 'ബ്രേക്ക് ആരംഭം', sublabel: 'ജോലിയിൽ നിന്ന് അകന്ന്' },
+      breakEnd: { label: 'ബ്രേക്ക് അവസാനം', sublabel: 'ജോലി തുടരുക' },
+      out: { label: 'പഞ്ച് ഔട്ട്', sublabel: 'ജോലി ദിനം അവസാനം' },
+    },
+  },
+  settings: {
+    screenTitle: 'ക്രമീകരണങ്ങൾ',
+    account: 'അക്കൗണ്ട്',
+    work: 'ജോലി',
+    preferences: 'മുൻഗണനകൾ',
+    support: 'പിന്തുണ',
+    session: 'സെഷൻ',
+    rows: {
+      profile: { title: 'പ്രൊഫൈൽ', subtitle: 'പേര്, ഇമെയിൽ, ഫോൺ' },
+      security: { title: 'സുരക്ഷ', subtitle: 'പാസ്‌വേഡും സൈൻ-ഇനും' },
+      calendar: { title: 'കലണ്ടർ', subtitle: 'ഷിഫ്റ്റുകളും ഷെഡ്യൂളും' },
+      leaves: { title: 'അവധികൾ', subtitle: 'അഭ്യർത്ഥനകളും ബാലൻസും' },
+      language: { title: 'ഭാഷ', subtitle: 'ആപ്പ് ഭാഷ' },
+      notifications: { title: 'അറിയിപ്പുകൾ', subtitle: 'ഓർമ്മപ്പെടുത്തലുകളും അലേർട്ടുകളും' },
+      help: { title: 'സഹായം', subtitle: 'FAQയും ബന്ധപ്പെടലും' },
+      about: { title: 'കുറിച്ച്', subtitle: 'പതിപ്പും നിയമപരവും' },
+    },
+    logout: 'സൈൻ ഔട്ട്',
+    language: {
+      pickerTitle: 'ഭാഷ',
+      cancel: 'റദ്ദാക്കുക',
+    },
+    alerts: {
+      comingSoonTitle: 'ഉടൻ വരുന്നു',
+      comingSoonMessage: 'ഈ വിഭാഗം ഭാവി അപ്‌ഡേറ്റിൽ ലഭ്യമാകും.',
+      ok: 'ശരി',
+      signOutTitle: 'സൈൻ ഔട്ട്',
+      signOutMessage: 'നിങ്ങൾക്ക് സൈൻ ഔട്ട് ചെയ്യണമെന്ന് ഉറപ്പാണോ?',
+      cancel: 'റദ്ദാക്കുക',
+      signOutConfirm: 'സൈൻ ഔട്ട്',
+    },
+  },
+};
