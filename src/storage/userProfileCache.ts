@@ -2,8 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { UserProfile } from '@src/api/updateProfile';
 import type { ProfileRoleResponse } from '@src/types/company';
+import type { ProfileRoleUser } from '@src/types/profileRoleUser';
 
 const KEY = '@oneattendance/cachedUserProfileV1';
+const PROFILE_ROLE_USER_KEY = '@oneattendance/profileRoleUserV1';
 
 export type CachedUserProfile = {
   id: number | null;
@@ -80,7 +82,7 @@ export function cachedProfileFromProfileRoleResponse(
 }
 
 export function mergeUserProfileIntoCachedProfile(
-  user: UserProfile,
+  user: Partial<UserProfile>,
   prev: CachedUserProfile | null,
 ): CachedUserProfile {
   const base = prev ?? {
@@ -90,13 +92,31 @@ export function mergeUserProfileIntoCachedProfile(
     phone: '',
     profilePictureUrl: '',
   };
-  const pic = user.profile_picture?.trim() ?? '';
+  const pic =
+    user.profile_picture !== undefined
+      ? (user.profile_picture?.trim() ?? '')
+      : base.profilePictureUrl;
   return {
     id: typeof user.id === 'number' ? user.id : base.id,
-    name: user.name?.trim() ? user.name.trim() : base.name,
-    email: user.email?.trim() ? user.email.trim() : base.email,
-    phone: user.phone != null && user.phone !== '' ? String(user.phone).trim() : base.phone,
-    profilePictureUrl: pic || base.profilePictureUrl,
+    name:
+      user.name !== undefined
+        ? user.name.trim()
+          ? user.name.trim()
+          : base.name
+        : base.name,
+    email:
+      user.email !== undefined
+        ? user.email.trim()
+          ? user.email.trim()
+          : base.email
+        : base.email,
+    phone:
+      user.phone !== undefined
+        ? user.phone != null && user.phone !== ''
+          ? String(user.phone).trim()
+          : ''
+        : base.phone,
+    profilePictureUrl: pic,
   };
 }
 
@@ -136,4 +156,35 @@ export async function loadCachedUserProfile(): Promise<CachedUserProfile | null>
 
 export async function clearCachedUserProfile(): Promise<void> {
   await AsyncStorage.removeItem(KEY);
+  await AsyncStorage.removeItem(PROFILE_ROLE_USER_KEY);
+}
+
+function isProfileRoleUser(value: unknown): value is ProfileRoleUser {
+  return value != null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Persist full `data.user` from profile-role for offline display and future fields. */
+export async function saveProfileRoleUser(user: unknown): Promise<void> {
+  if (!isProfileRoleUser(user)) {
+    await AsyncStorage.removeItem(PROFILE_ROLE_USER_KEY);
+    return;
+  }
+  await AsyncStorage.setItem(PROFILE_ROLE_USER_KEY, JSON.stringify(user));
+}
+
+export async function loadProfileRoleUser(): Promise<ProfileRoleUser | null> {
+  const raw = await AsyncStorage.getItem(PROFILE_ROLE_USER_KEY);
+  if (!raw?.trim()) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return isProfileRoleUser(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearProfileRoleUser(): Promise<void> {
+  await AsyncStorage.removeItem(PROFILE_ROLE_USER_KEY);
 }

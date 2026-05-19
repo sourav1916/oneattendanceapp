@@ -1,6 +1,10 @@
 import { useCallback, useState } from 'react';
 
-import { type UpdateProfileRequestBody, type UserProfile, updateProfile } from '@src/api/updateProfile';
+import {
+  type UpdateProfileRequestBody,
+  type UpdateProfileResult,
+  updateProfile,
+} from '@src/api/updateProfile';
 import { readApiError } from '@src/utils/readApiError';
 
 /**
@@ -16,7 +20,7 @@ export function useUpdateProfile() {
 
   const resetError = useCallback(() => setError(null), []);
 
-  const mutate = useCallback(async (body: UpdateProfileRequestBody): Promise<UserProfile> => {
+  const mutate = useCallback(async (body: UpdateProfileRequestBody): Promise<UpdateProfileResult> => {
     setError(null);
     setLoading(true);
     try {

@@ -56,8 +56,10 @@ export type ConfirmAlertProps = {
     showMessage?: boolean;
     message?: string;
 
-    /** Rendered between title and message (use for inputs, icons, extra copy) */
+    /** Extra content (icons, inputs). Default: between title and message. */
     children?: React.ReactNode;
+    /** Where `children` is rendered relative to title/message */
+    childrenPlacement?: 'aboveTitle' | 'betweenTitleAndMessage' | 'belowMessage';
 
     titleTextStyle?: TextStyle;
     messageTextStyle?: TextStyle;
@@ -267,6 +269,7 @@ export function ConfirmAlert({
     showMessage,
     message,
     children,
+    childrenPlacement = 'betweenTitleAndMessage',
     titleTextStyle,
     messageTextStyle,
     buttons,
@@ -334,6 +337,10 @@ export function ConfirmAlert({
                     style={[sheetStyles.card, { maxWidth: maxDialogWidth }, cardStyle]}
                     pointerEvents="box-none"
                     accessibilityViewIsModal>
+                    {children && childrenPlacement === 'aboveTitle' ? (
+                        <View style={sheetStyles.childrenWrap}>{children}</View>
+                    ) : null}
+
                     {showTitleRow ? (
                         <Text
                             style={[sheetStyles.title, titleTextStyle]}
@@ -342,16 +349,23 @@ export function ConfirmAlert({
                         </Text>
                     ) : null}
 
-                    {children ? <View style={sheetStyles.childrenWrap}>{children}</View> : null}
+                    {children && childrenPlacement === 'betweenTitleAndMessage' ? (
+                        <View style={sheetStyles.childrenWrap}>{children}</View>
+                    ) : null}
 
                     {showMessageRow ? (
                         <ScrollView
                             style={sheetStyles.messageScroll}
                             keyboardShouldPersistTaps="handled"
                             automaticallyAdjustKeyboardInsets
-                            showsVerticalScrollIndicator={false}>
+                            showsVerticalScrollIndicator={false}
+                            showsHorizontalScrollIndicator={false}>
                             <Text style={[sheetStyles.message, messageTextStyle]}>{message!.trim()}</Text>
                         </ScrollView>
+                    ) : null}
+
+                    {children && childrenPlacement === 'belowMessage' ? (
+                        <View style={sheetStyles.childrenWrap}>{children}</View>
                     ) : null}
 
                     <View style={[sheetStyles.btnRow, layout === 'column' && sheetStyles.btnColumnWrap]}>

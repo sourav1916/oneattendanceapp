@@ -1,4 +1,4 @@
-import type { UpdateProfileRequestBody } from '@src/api/updateProfile';
+import type { UpdateProfileRequestBody, UserProfile } from '@src/api/updateProfile';
 
 export type ProfileEditSnapshot = {
   name: string;
@@ -92,4 +92,21 @@ export function validateProfileUpdatePayload(
     }
   }
   return null;
+}
+
+/** Maps PUT body fields into a partial user row when the API returns only `{ success, message }`. */
+export function partialUserFromUpdatePayload(
+  payload: UpdateProfileRequestBody,
+): Partial<UserProfile> {
+  const patch: Partial<UserProfile> = {};
+  if (payload.name !== undefined) {
+    patch.name = payload.name;
+  }
+  if (payload.phone !== undefined) {
+    patch.phone = payload.phone;
+  }
+  if (payload.profile_picture !== undefined) {
+    patch.profile_picture = payload.profile_picture;
+  }
+  return patch;
 }

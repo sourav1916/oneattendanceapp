@@ -30,7 +30,8 @@ export type UserProfile = {
 export type UpdateProfileSuccessResponse = {
   success: true;
   message: string;
-  data: UserProfile;
+  /** Present on some API versions; omitted when only `message` is returned. */
+  data?: UserProfile;
 };
 
 export type UpdateProfileErrorResponse = {
@@ -81,7 +82,13 @@ function throwMappedAxiosError(e: unknown): never {
  * PUT `{API_ENDPOINT}/users/update-profile` — Bearer from {@link authHttpClient}.
  * Sends only provided fields; authenticated session determines the user.
  */
-export async function updateProfile(body: UpdateProfileRequestBody): Promise<UserProfile> {
+export type UpdateProfileResult = {
+  message: string;
+  /** When the API returns `data.user`, otherwise `null` (refresh profile-role for full row). */
+  user: UserProfile | null;
+};
+
+export async function updateProfile(body: UpdateProfileRequestBody): Promise<UpdateProfileResult> {
   const keys = Object.keys(body);
   if (keys.length === 0) {
     throw new UpdateProfileError(400, 'No fields provided for update');
@@ -95,8 +102,12 @@ export async function updateProfile(body: UpdateProfileRequestBody): Promise<Use
     );
 
 
-    if (data && typeof data === 'object' && data.success === true && 'data' in data && data.data != null) {
-      return data.data as UserProfile;
+    if (data && typeof data === 'object' && data.success === true) {
+      const ok = data as UpdateProfileSuccessResponse;
+      return {
+        message: ok.message?.trim() || 'Profile updated successfully.',
+        user: ok.data ?? null,
+      };
     }
 
     const fail = data as UpdateProfileErrorResponse | undefined;

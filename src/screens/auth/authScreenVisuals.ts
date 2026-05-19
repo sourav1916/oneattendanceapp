@@ -1,0 +1,503 @@
+import { Platform, StyleSheet } from 'react-native';
+
+import type { AppThemeColors } from '@src/theme/palettes';
+
+export type AuthVisualScheme = 'light' | 'dark';
+
+export function buildAuthScreenStyles(
+  colors: AppThemeColors,
+  scheme: AuthVisualScheme,
+) {
+  const isDark = scheme === 'dark';
+
+  const accents = {
+    blue: colors.primary,
+    blueSoft: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(37, 99, 235, 0.06)',
+    violet: isDark ? '#94a3b8' : '#64748b',
+    violetSoft: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(241, 245, 249, 0.9)',
+    teal: colors.primary,
+    tealSoft: isDark ? 'rgba(51, 65, 85, 0.45)' : 'rgba(241, 245, 249, 0.95)',
+    inputBg: isDark ? 'rgba(15, 23, 42, 0.35)' : '#f1f5f9',
+    chipTrack: isDark ? 'rgba(30, 41, 59, 0.5)' : '#f1f5f9',
+    chipActiveBg: isDark ? 'rgba(51, 65, 85, 0.7)' : '#ffffff',
+    primaryShadow: isDark ? '#020617' : '#94a3b8',
+  };
+
+  const cardShadow = Platform.select({
+    ios: {
+      shadowColor: '#0f172a',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: isDark ? 0.28 : 0.08,
+      shadowRadius: 20,
+    },
+    android: { elevation: isDark ? 4 : 3 },
+  });
+
+  return {
+    accents,
+    styles: StyleSheet.create({
+      safe: {
+        flex: 1,
+        backgroundColor: colors.background,
+      },
+      flex: { flex: 1 },
+      bgDecor: {
+        ...StyleSheet.absoluteFillObject,
+        overflow: 'hidden',
+        backgroundColor: colors.background,
+      },
+      /** Soft top band — reads as depth without loud color blocks */
+      bgWash: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '48%',
+        backgroundColor: isDark
+          ? 'rgba(30, 41, 59, 0.55)'
+          : 'rgba(255, 255, 255, 0.72)',
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
+      },
+      /** Single brand glow, very low opacity */
+      bgGlow: {
+        position: 'absolute',
+        top: -120,
+        left: -48,
+        right: -48,
+        height: 280,
+        borderRadius: 140,
+        backgroundColor: isDark
+          ? 'rgba(96, 165, 250, 0.08)'
+          : 'rgba(37, 99, 235, 0.06)',
+      },
+      /** Grounds the lower area so content stays readable */
+      bgBase: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        top: '42%',
+        backgroundColor: colors.background,
+      },
+      scroll: {
+        paddingHorizontal: 20,
+        paddingTop: 8,
+        paddingBottom: 16,
+      },
+      hero: {
+        alignItems: 'center',
+        marginBottom: 20,
+        paddingTop: 8,
+      },
+      logoRing: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+        backgroundColor: colors.surface,
+        ...Platform.select({
+          ios: {
+            shadowColor: '#0f172a',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: isDark ? 0.35 : 0.1,
+            shadowRadius: 12,
+          },
+          android: { elevation: 4 },
+        }),
+      },
+      logo: {
+        width: 88,
+        height: 88,
+      },
+      eyebrow: {
+        fontSize: 12,
+        fontWeight: '700',
+        letterSpacing: 1.2,
+        textTransform: 'uppercase',
+        color: colors.primary,
+        marginBottom: 8,
+      },
+      title: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: colors.text,
+        marginBottom: 8,
+        textAlign: 'center',
+        letterSpacing: -0.5,
+      },
+      titleLeft: {
+        textAlign: 'left',
+        alignSelf: 'stretch',
+      },
+      subtitle: {
+        fontSize: 16,
+        color: colors.textMuted,
+        lineHeight: 22,
+        textAlign: 'center',
+        maxWidth: 340,
+      },
+      subtitleLeft: {
+        textAlign: 'left',
+        alignSelf: 'stretch',
+        maxWidth: undefined,
+        marginBottom: 20,
+      },
+      subtitleAccent: {
+        color: accents.blue,
+        fontWeight: '700',
+      },
+      formCard: {
+        backgroundColor: colors.surface,
+        borderRadius: 20,
+        padding: 20,
+        marginBottom: 16,
+        ...cardShadow,
+      },
+      stepRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 18,
+        paddingBottom: 4,
+      },
+      stepDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: isDark ? '#475569' : '#cbd5e1',
+      },
+      stepDotActive: {
+        width: 28,
+        backgroundColor: accents.blue,
+      },
+      stepLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: colors.textMuted,
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+      },
+      field: { marginBottom: 16 },
+      labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+        gap: 12,
+      },
+      label: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.text,
+      },
+      labelStandalone: { marginBottom: 8 },
+      forgotLink: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.primary,
+      },
+      input: {
+        backgroundColor: accents.inputBg,
+        borderRadius: 14,
+        paddingHorizontal: 14,
+        paddingVertical: Platform.OS === 'ios' ? 14 : 10,
+        fontSize: 16,
+        color: colors.text,
+      },
+      passwordField: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: accents.inputBg,
+        borderRadius: 14,
+        paddingLeft: 14,
+        paddingRight: 4,
+        minHeight: Platform.OS === 'ios' ? 50 : 46,
+      },
+      passwordInput: {
+        flex: 1,
+        paddingVertical: Platform.OS === 'ios' ? 14 : 10,
+        paddingRight: 8,
+        fontSize: 16,
+        color: colors.text,
+      },
+      passwordToggle: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 10,
+      },
+      passwordTogglePressed: { opacity: 0.6 },
+      segmentRow: {
+        flexDirection: 'row',
+        marginBottom: 18,
+        padding: 4,
+        borderRadius: 14,
+        backgroundColor: accents.chipTrack,
+        gap: 4,
+      },
+      segmentChip: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 11,
+        alignItems: 'center',
+      },
+      segmentChipActive: {
+        backgroundColor: accents.chipActiveBg,
+        ...Platform.select({
+          ios: {
+            shadowColor: '#0f172a',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: isDark ? 0.2 : 0.06,
+            shadowRadius: 3,
+          },
+          android: { elevation: 1 },
+        }),
+      },
+      segmentChipPressed: { opacity: 0.88 },
+      segmentChipText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: colors.textMuted,
+      },
+      segmentChipTextActive: {
+        color: accents.blue,
+        fontWeight: '700',
+      },
+      primaryBtn: {
+        marginTop: 4,
+        backgroundColor: accents.blue,
+        borderRadius: 14,
+        paddingVertical: 15,
+        alignItems: 'center',
+        ...Platform.select({
+          ios: {
+            shadowColor: accents.primaryShadow,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.35,
+            shadowRadius: 10,
+          },
+          android: { elevation: 4 },
+        }),
+      },
+      primaryBtnPressed: { backgroundColor: colors.primaryPressed },
+      primaryBtnDisabled: { opacity: 0.5 },
+      primaryBtnText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+        letterSpacing: 0.3,
+      },
+      secondaryBtn: {
+        marginTop: 12,
+        backgroundColor: colors.secondaryButton,
+        borderRadius: 14,
+        paddingVertical: 14,
+        alignItems: 'center',
+        minHeight: 50,
+        justifyContent: 'center',
+      },
+      secondaryBtnPressed: {
+        backgroundColor: isDark ? 'rgba(51, 65, 85, 0.65)' : '#e2e8f0',
+      },
+      secondaryBtnDisabled: { opacity: 0.65 },
+      secondaryBtnText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.primary,
+      },
+      secondaryBtnTextDisabled: { color: colors.textMuted },
+      truecallerBtn: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingVertical: 14,
+        borderRadius: 14,
+        backgroundColor: '#0087FF',
+        ...Platform.select({
+          ios: {
+            shadowColor: '#005ecb',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+          },
+          android: { elevation: 3 },
+        }),
+      },
+      truecallerBtnPressed: { opacity: 0.9 },
+      truecallerBtnText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+      },
+      dividerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 22,
+        marginBottom: 16,
+        gap: 12,
+      },
+      dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: isDark ? 'rgba(148, 163, 184, 0.25)' : '#e2e8f0',
+      },
+      dividerText: {
+        fontSize: 13,
+        color: colors.textMuted,
+        fontWeight: '600',
+      },
+      socialRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 10,
+      },
+      socialBtn: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 14,
+        backgroundColor: accents.inputBg,
+      },
+      socialBtnPressed: { opacity: 0.88 },
+      linkWrap: {
+        marginTop: 8,
+        marginBottom: 4,
+        alignSelf: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+      },
+      linkMuted: {
+        fontSize: 15,
+        color: colors.textMuted,
+        textAlign: 'center',
+      },
+      linkAccent: {
+        color: colors.primary,
+        fontWeight: '700',
+      },
+      mobileRow: { flexDirection: 'row', gap: 10 },
+      countrySelectBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+        minWidth: 88,
+        paddingHorizontal: 10,
+        backgroundColor: accents.inputBg,
+      },
+      countrySelectCode: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text,
+      },
+      phoneNumberInput: { flex: 1 },
+      backLink: {
+        alignSelf: 'flex-start',
+        marginBottom: 12,
+        paddingVertical: 4,
+      },
+      backPressed: { opacity: 0.7 },
+      backLinkText: {
+        fontSize: 15,
+        color: colors.primary,
+        fontWeight: '600',
+      },
+      infoCard: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        marginBottom: 18,
+        padding: 14,
+        borderRadius: 14,
+        backgroundColor: isDark ? 'rgba(51, 65, 85, 0.35)' : '#f1f5f9',
+      },
+      infoBadge: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: accents.blue,
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
+      infoBadgeText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '800',
+      },
+      infoBody: { flex: 1 },
+      infoTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: colors.text,
+        marginBottom: 4,
+      },
+      infoMessage: {
+        fontSize: 14,
+        color: colors.textMuted,
+        lineHeight: 20,
+      },
+      otpRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 8,
+        marginBottom: 18,
+      },
+      otpCell: {
+        flex: 1,
+        height: Platform.OS === 'ios' ? 48 : 46,
+        maxWidth: 52,
+        textAlign: 'center',
+        fontSize: 20,
+        fontWeight: '700',
+        color: colors.text,
+        backgroundColor: accents.inputBg,
+        borderRadius: 14,
+        paddingHorizontal: 0,
+        paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+      },
+      requirementsBlock: {
+        marginTop: 14,
+        marginBottom: 2,
+        padding: 12,
+        borderRadius: 14,
+        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.5)' : '#f8fafc',
+      },
+      requirementsTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: colors.text,
+        marginBottom: 10,
+        letterSpacing: 0.2,
+      },
+      ruleRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        marginBottom: 6,
+      },
+      ruleBullet: {
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: '700',
+        width: 18,
+        textAlign: 'center',
+      },
+      ruleLabel: { flex: 1, fontSize: 14, lineHeight: 20 },
+      ruleMet: { color: isDark ? '#86efac' : '#15803d' },
+      ruleNeutral: { color: colors.textMuted },
+      ruleFail: { color: colors.danger },
+      confirmHint: {
+        marginTop: 8,
+        fontSize: 13,
+        lineHeight: 18,
+        color: colors.danger,
+      },
+    }),
+  };
+}

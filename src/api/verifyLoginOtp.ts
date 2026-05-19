@@ -1,32 +1,40 @@
 import axios from 'axios';
 
+import type { LoginType, VerifyLoginOtpBody } from '@src/types/loginAuth';
+import type { AuthContinuePlatform } from '@src/utils/authPlatform';
 import { API_ENDPOINT } from '../utils/config';
 
-export type VerifyLoginOtpPayload = {
-  email: string;
+export type VerifyLoginOtpParams = {
+  loginType: LoginType;
+  password: string;
   otp: string;
-  latitude?: number;
-  longitude?: number;
+  platform: AuthContinuePlatform;
+  latitude: number;
+  longitude: number;
+  email?: string;
+  phone?: string;
 };
 
 /**
- * POST `/auth/login/verify-otp` — `latitude` / `longitude` only when available.
+ * POST `/auth/login/verify-otp` — location and platform are required.
  * Uses plain `axios` (not `authHttpClient`) so a 401 never triggers session teardown.
  */
-export function verifyLoginOtp(payload: VerifyLoginOtpPayload) {
-  const data: Record<string, string | number> = {
-    email: payload.email,
-    otp: payload.otp,
+export function verifyLoginOtp(params: VerifyLoginOtpParams) {
+  const data: VerifyLoginOtpBody = {
+    login_type: params.loginType,
+    password: params.password,
+    otp: params.otp,
+    platform: params.platform,
+    latitude: params.latitude,
+    longitude: params.longitude,
   };
-  if (
-    typeof payload.latitude === 'number' &&
-    typeof payload.longitude === 'number' &&
-    Number.isFinite(payload.latitude) &&
-    Number.isFinite(payload.longitude)
-  ) {
-    data.latitude = payload.latitude;
-    data.longitude = payload.longitude;
+
+  if (params.loginType === 'email') {
+    data.email = params.email;
+  } else {
+    data.phone = params.phone;
   }
+
   return axios.request({
     method: 'post',
     maxBodyLength: Infinity,

@@ -1,0 +1,43 @@
+{
+  "_comment": "Rename to google-services.json after downloading from Firebase, or create matching OAuth clients in Google Cloud Console.",
+  "project_info": {
+    "project_number": "1099166791217",
+    "project_id": "project-28ae857c-dd8c-48c3-bc6",
+    "storage_bucket": "project-28ae857c-dd8c-48c3-bc6.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1099166791217:android:YOUR_APP_HASH",
+        "android_client_info": {
+          "package_name": "in.onesaas.attendance"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1099166791217-gv208acpiqat45qg263n6jhuifu7vvji.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.onesaas.attendance",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "1099166791217-gv208acpiqat45qg263n6jhuifu7vvji.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "YOUR_FIREBASE_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

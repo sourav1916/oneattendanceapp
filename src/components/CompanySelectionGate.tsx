@@ -66,7 +66,8 @@ export function CompanySelectionGate({ children }: Props) {
     (!selectedCompany ||
       !eligibleCompanies.some(c => c.id === selectedCompany.id));
 
-  const showBlockingLoader = hydrated && profileRoleLoading;
+  const showBlockingLoader =
+    hydrated && profileRoleLoading && (profileRole == null || needsPicker);
   const showPicker = hydrated && !profileRoleLoading && needsPicker;
 
   return (

@@ -2,6 +2,25 @@
 
 This folder (`context/`) holds **documentation for AI and humans**, not runtime code. App source lives under `src/`. React app contexts live under `src/context/` (different path).
 
+**Prompt usage:** Attach **`context/Main.md`** first for the project overview, then attach any linked topic files below for deeper detail.
+
+### Context index (all docs in this folder)
+
+| Doc | Use when |
+|------|----------|
+| [**Main.md**](./Main.md) | Overview, boot flow, repo layout, API patterns, commands (this file) |
+| [**SHA.md**](./SHA.md) | Android signing, SHA-1/SHA-256 fingerprints, Firebase / Google APIs |
+| [**truecaller.md**](./truecaller.md) | Truecaller OAuth on login, client ID, Android manifest |
+| [**google-signin.md**](./google-signin.md) | Google Sign-In, DEVELOPER_ERROR, SHA-1 / OAuth setup |
+| [**language.md**](./language.md) | i18n, locales, language picker, `t()` keys |
+| [**theme-api.md**](./theme-api.md) | Light/dark theme, palettes, `authHttpClient`, API rules |
+| [**navigation.md**](./navigation.md) | Navigators, route types, tabs vs stacks, headers |
+| [**my-calendar.md**](./my-calendar.md) | Employee attendance calendar, `/shifts/my-calendar`, `Calendar.tsx` |
+| [**modals.md**](./modals.md) | Modal layout, language/theme/company pickers, sheet patterns |
+| [**company.md**](./company.md) | Company list, create company modal, staff screens, `/company/*` APIs |
+| [**alerts.md**](./alerts.md) | `ConfirmAlert`, `StatusAlert`, confirms and success/error popups |
+| [**profile.md**](./profile.md) | Profile screen, avatar upload, update-profile, profile-role cache sync |
+
 ---
 
 ## 1. What this project is
@@ -45,7 +64,7 @@ App/
 │   ├── i18n/               # i18n init, languages list
 │   ├── locales/            # Per-language translation objects (en, hi, …)
 │   ├── navigation/         # AuthNavigator, MainNavigator, SettingsNavigator, types
-│   ├── screens/            # auth/, home/, attendance/, settings/
+│   ├── screens/            # auth/, home/, attendance/, settings/, report/, company/, profile/
 │   ├── storage/            # AsyncStorage helpers (auth, company, language, theme)
 │   ├── theme/              # lightTheme / darkTheme palettes
 │   ├── types/              # Shared TS types for API responses
@@ -54,7 +73,7 @@ App/
 └── ios/
 ```
 
-**Note**: `HomeScreen` is **`HomeScreen.js`** (JS); most other screens are **`.tsx`**.
+**Note**: Most screens are **`.tsx`** under `src/screens/`.
 
 ---
 
@@ -76,7 +95,7 @@ App/
 
 ## 5. Authentication flow
 
-- **`src/context/AuthContext.tsx`**: Single source of truth for `token`, `email`, `name`, `selectedCompany`, `profileRole`, `hydrated`, `signIn`, `signOut`, `refreshProfileRole`, `selectCompany`.
+- **`src/context/AuthContext.tsx`**: Single source of truth for `token`, `email`, `name`, `selectedCompany`, `profileRole`, `cachedUserProfile`, `profileRoleUser`, `hydrated`, `signIn`, `signOut`, `refreshProfileRole`, `applySessionFromProfileUpdate`, `selectCompany`.
 - **`src/storage/authStorage.ts`**: Persist session fields after login.
 - **`configureAuthHttpClient`**: Injects Bearer token; on **401** runs **`signOut`** (clears storage + state).
 - **Public auth requests** (OTP, etc.) must **not** use `authHttpClient` if a 401 should not wipe the session — see comments in `authHttpClient.ts`.
@@ -100,9 +119,10 @@ App/
 
 | Area | Path | Notes |
 |------|------|--------|
-| Home | `src/screens/home/HomeScreen.js` | Welcome card + 3-column action grid; Attendance tab jump; other tiles → coming soon |
+| Home | `src/screens/home/HomeScreen.tsx` | Welcome card + 3-column action grid; Attendance tab; Calendar → **My Calendar**; **Company** → list/create; staff / leave sub-screens |
 | Attendance | `src/screens/attendance/AttendanceScreen.tsx` | Punch / methods UI |
-| Settings | `src/screens/settings/SettingsScreen.tsx` | Menu sections → profile, sessions, language, theme, sign out |
+| **My Calendar** | `src/screens/report/Calendar.tsx` | Monthly attendance grid, `/shifts/my-calendar`; see [**my-calendar.md**](./my-calendar.md) |
+| Settings | `src/screens/settings/SettingsScreen.tsx` | Menu sections → profile, sessions, **calendar**, language, theme, sign out |
 | Sessions | `src/screens/settings/SessionScreen.tsx` | Custom compact header (no native stack header gap); active sessions, Nominatim geocode, logout one / logout others |
 
 ---
@@ -110,7 +130,8 @@ App/
 ## 8. API layer (`src/api/`)
 
 - **`authHttpClient.ts`**: Axios instance with `baseURL: API_ENDPOINT`, Bearer from `AuthContext` ref, 401 handler.
-- Examples: `requestLoginOtp`, `verifyLoginOtp`, `fetchProfileRole`, `fetchActiveSessions`, `logoutSession`, `logoutAllOtherSessions`, `nominatimReverseGeocode` (external OSM; User-Agent + rate limit).
+- Examples: `requestLoginOtp`, `verifyLoginOtp`, `fetchProfileRole`, `fetchMyCalendar`, `fetchMyLeaveBalance`, `fetchCompanyList`, `createCompany`, `fetchActiveSessions`, `logoutSession`, `logoutAllOtherSessions`, `nominatimReverseGeocode` (external OSM; User-Agent + rate limit).
+- **Company header**: many routes send **`company: String(companyId)`** for the **selected** workspace — see [**theme-api.md**](./theme-api.md). **`GET /company/list`** and **`POST /company/create`** use Bearer only (no `company` header). Details: [**company.md**](./company.md).
 
 Types for responses live in **`src/types/`**.
 
@@ -121,7 +142,8 @@ Types for responses live in **`src/types/`**.
 - **Strings**: Prefer **`useTranslation()`** + keys under `src/locales/en.ts` (and mirror in `hi.ts` etc.).
 - **Colors**: **`useThemeColors()`** or **`useAppTheme()`** when you need `resolvedScheme` (e.g. subtle surfaces).
 - **Errors from axios**: **`readApiError`** (`src/utils/readApiError.ts`).
-- **Confirm / alert UI**: **`useConfirmAlert` + `<ConfirmAlert {...props} />`** — see `context/alerts.md` and `context/modals.md`.
+- **Confirm / alert UI**: **`useConfirmAlert`** / **`useStatusAlert`** — see [**alerts.md**](./alerts.md) and [**modals.md**](./modals.md).
+- **Profile edit & cache**: [**profile.md**](./profile.md).
 
 ---
 
@@ -129,28 +151,17 @@ Types for responses live in **`src/types/`**.
 
 - **Android**: `react-native-vector-icons` — `fonts.gradle` + `iconFontNames: ['MaterialCommunityIcons.ttf']` in `android/app/build.gradle`.
 - **iOS**: `UIAppFonts` includes `MaterialCommunityIcons.ttf` in `Info.plist`; run **`pod install`** after dependency changes.
+- **Signing / Firebase**: Package `in.onesaas.attendance`, debug keystore fingerprints — [**SHA.md**](./SHA.md).
 
 ---
 
-## 11. Companion context files (attach in chats)
-
-| File | Use when |
-|------|----------|
-| `context/language.md` | i18n, locales, language picker |
-| `context/theme-api.md` | Theme, palettes, API client rules |
-| `context/navigation.md` | Navigators, types, tab vs stack |
-| `context/modals.md` | Modal components, layout conventions |
-| `context/alerts.md` | ConfirmAlert / `useConfirmAlert` API |
-
----
-
-## 12. Commands
+## 11. Commands
 
 - `npm start` — Metro  
 - `npm run android` / `npm run ios` — run app  
-- `npx tsc --noEmit` — Typecheck (JS files like `HomeScreen.js` are looser)  
+- `npx tsc --noEmit` — Typecheck  
 - `npm run lint` — ESLint  
 
 ---
 
-*Last aligned with codebase structure: monorepo-style single app under `APP/`, React Native 0.85.*
+*Last aligned with codebase structure: monorepo-style single app under `APP/`, React Native 0.85. Context index includes [SHA.md](./SHA.md).*

@@ -224,6 +224,7 @@ export function SessionDetails({ visible, session, onDismiss }: Props) {
                             keyboardShouldPersistTaps="handled"
                             automaticallyAdjustKeyboardInsets
                             showsVerticalScrollIndicator={false}
+                            showsHorizontalScrollIndicator={false}
                             bounces={false}>
                             <View style={styles.row}>
                                 <Text style={styles.label}>{t('settings.sessions.ip')}</Text>

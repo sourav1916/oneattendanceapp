@@ -12,15 +12,16 @@ import {
   Text,
   type PressableProps,
 } from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { CompanySelectionGate } from '@src/components/CompanySelectionGate';
 import { useThemeColors } from '@src/context/ThemeContext';
-import type { MainTabParamList } from '@src/navigation/types';
 import { HomeNavigator } from '@src/navigation/HomeNavigator';
-import { AttendanceScreen } from '@src/screens/attendance/AttendanceScreen';
 import { SettingsNavigator } from '@src/navigation/SettingsNavigator';
+import { TabSlideTransition } from '@src/navigation/tabSlideTransition';
+import type { MainTabParamList } from '@src/navigation/types';
+import { AttendanceScreen } from '@src/screens/attendance/AttendanceScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -140,6 +141,29 @@ function tabBarLabelRenderer(props: {
   return <TabBarLiftedLabel {...props} />;
 }
 
+type TabStackNavigation = {
+  getState: () => {
+    routes: Array<{ name: string; state?: { index?: number } }>;
+  };
+  navigate: (tab: keyof MainTabParamList, params: { screen: string }) => void;
+};
+
+/**
+ * When the user returns to a tab, pop its nested stack to root if they had opened a sub-screen.
+ * Must run on **focus**, not blur: `navigate(tab, …)` on blur re-activates that tab and blocks switching to Attendance/Home.
+ */
+function nestedStackResetOnTabFocus(tabName: keyof MainTabParamList, rootScreen: string) {
+  return ({ navigation }: { navigation: TabStackNavigation }) => ({
+    focus: () => {
+      const tabRoute = navigation.getState().routes.find(r => r.name === tabName);
+      const nestedIndex = tabRoute?.state?.index ?? 0;
+      if (nestedIndex > 0) {
+        navigation.navigate(tabName, { screen: rootScreen });
+      }
+    },
+  });
+}
+
 function MainTabNavigator() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -149,6 +173,7 @@ function MainTabNavigator() {
     const paddingTop = Platform.OS === 'ios' ? 8 : 6;
     const height = TAB_BAR_CONTENT_MIN + paddingTop + paddingBottom;
     return {
+      ...TabSlideTransition,
       headerShown: false,
       tabBarHideOnKeyboard: true,
       tabBarActiveTintColor: colors.primary,
@@ -172,6 +197,7 @@ function MainTabNavigator() {
       <Tab.Screen
         name="Home"
         component={HomeNavigator}
+        listeners={nestedStackResetOnTabFocus('Home', 'HomeMain')}
         options={{
           title: t('tabs.home'),
           tabBarIcon: tabBarIconMci('home-outline', 'home'),
@@ -188,6 +214,7 @@ function MainTabNavigator() {
       <Tab.Screen
         name="Settings"
         component={SettingsNavigator}
+        listeners={nestedStackResetOnTabFocus('Settings', 'SettingsHome')}
         options={{
           title: t('tabs.settings'),
           tabBarIcon: tabBarIconMci('cog-outline', 'cog'),

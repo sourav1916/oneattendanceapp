@@ -166,6 +166,8 @@ export function CompanyPicker({ visible, companies, onSelectCompany }: Props) {
             keyExtractor={item => `company-${item.id}-${item.relation}`}
             style={ms.list}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
             renderItem={({ item }) => (
               <Pressable
                 accessibilityRole="button"

@@ -175,6 +175,7 @@ export function LanguagePicker({
               keyboardShouldPersistTaps="handled"
               automaticallyAdjustKeyboardInsets
               showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
               bounces={false}>
               {rows.map((pair, rowIndex) => (
                 <View key={`row-${rowIndex}`} style={styles.row}>

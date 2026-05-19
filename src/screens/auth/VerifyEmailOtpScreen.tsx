@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ActivityIndicator,
-  Alert,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -16,11 +14,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import type { StoredAuthSession } from '../../storage/authStorage';
 
 import { requestLoginOtp } from '../../api/requestLoginOtp';
 import { verifyLoginOtp } from '../../api/verifyLoginOtp';
 import type { AuthStackParamList } from '../../navigation/types';
+import { getAuthContinuePlatform } from '@src/utils/authPlatform';
+import { showLocationRequiredAlert } from '@src/utils/locationPermissionAlert';
+import { parseAuthSessionResponse } from '../../utils/parseAuthSessionResponse';
 import { readApiError } from '../../utils/readApiError';
 
 import { useThemeColors } from '@src/context/ThemeContext';
@@ -175,46 +175,12 @@ function buildVerifyStyles(colors: AppThemeColors) {
   });
 }
 
-function parseVerifyLoginResponse(
-  body: unknown,
-  fallbackEmail: string,
-): StoredAuthSession | null {
-  if (!body || typeof body !== 'object') {
-    return null;
-  }
-  const o = body as { token?: unknown; tooken?: unknown; user?: unknown };
-  const rawToken =
-    typeof o.token === 'string' && o.token.trim()
-      ? o.token.trim()
-      : typeof o.tooken === 'string' && o.tooken.trim()
-        ? o.tooken.trim()
-        : null;
-  if (!rawToken) {
-    return null;
-  }
-  let userEmail = fallbackEmail.trim();
-  let userName = '';
-  if (o.user && typeof o.user === 'object') {
-    const u = o.user as { email?: unknown; name?: unknown };
-    if (typeof u.email === 'string' && u.email.trim()) {
-      userEmail = u.email.trim();
-    }
-    if (typeof u.name === 'string') {
-      userName = u.name;
-    }
-  }
-  return {
-    token: rawToken,
-    email: userEmail,
-    name: userName,
-  };
-}
-
 export function VerifyEmailOtpScreen({ navigation, route }: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => buildVerifyStyles(colors), [colors]);
   const { signIn } = useAuth();
-  const { email, password } = route.params;
+  const { loginType, identifier, password } = route.params;
+  const isEmailLogin = loginType === 'email';
   const [digits, setDigits] = useState<string[]>(() =>
     Array(OTP_LENGTH).fill(''),
   );
@@ -323,7 +289,11 @@ export function VerifyEmailOtpScreen({ navigation, route }: Props) {
     setResendError(null);
     setResendLoading(true);
     try {
-      const response = await requestLoginOtp(email.trim(), password);
+      const response = await requestLoginOtp(
+        isEmailLogin
+          ? { loginType: 'email', password, email: identifier.trim() }
+          : { loginType: 'phone', password, phone: identifier },
+      );
       if (response.status === 200) {
         setDigits(Array(OTP_LENGTH).fill(''));
         startCooldownTimer();
@@ -350,42 +320,37 @@ export function VerifyEmailOtpScreen({ navigation, route }: Props) {
     try {
       const location = await ensureLocationForVerify();
       if (!location.ok) {
-        const openAppSettings = () => {
-          Linking.openSettings().catch(() => {
-            /* noop */
-          });
-        };
-        if (location.kind === 'permission') {
-          Alert.alert(
-            'Location required',
-            'Sign-in verification needs your location. Open Settings, allow Location for One Attendance, then return and tap Verify.',
-            [
-              { text: 'Not now', style: 'cancel' },
-              { text: 'Open Settings', onPress: openAppSettings },
-            ],
-          );
-        } else {
-          Alert.alert(
-            "Can't read location",
-            'Make sure Location services are on and try again. You can open Settings to enable access for this app.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: openAppSettings },
-            ],
-          );
-        }
+        await showLocationRequiredAlert(location.kind);
         return;
       }
 
-      const response = await verifyLoginOtp({
-        email: email.trim(),
-        otp,
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
+      const response = await verifyLoginOtp(
+        isEmailLogin
+          ? {
+              loginType: 'email',
+              email: identifier.trim(),
+              password,
+              otp,
+              platform: getAuthContinuePlatform(),
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            }
+          : {
+              loginType: 'phone',
+              phone: identifier,
+              password,
+              otp,
+              platform: getAuthContinuePlatform(),
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            },
+      );
       console.log(JSON.stringify(response.data));
       if (response.status >= 200 && response.status < 300) {
-        const session = parseVerifyLoginResponse(response.data, email);
+        const session = parseAuthSessionResponse(
+          response.data,
+          isEmailLogin ? identifier : '',
+        );
         if (!session) {
           setVerifyError('Sign-in incomplete: missing token in response.');
           return;
@@ -428,13 +393,15 @@ export function VerifyEmailOtpScreen({ navigation, route }: Props) {
             <Text style={styles.backLinkText}>← Sign in</Text>
           </Pressable>
 
-          <Text style={styles.title}>Verify your email</Text>
+          <Text style={styles.title}>
+            {isEmailLogin ? 'Verify your email' : 'Verify your phone'}
+          </Text>
           <Text style={styles.subtitle}>
             We sent a 6-digit code to{' '}
-            <Text style={styles.subtitleAccent}>{email}</Text>. Enter it below
+            <Text style={styles.subtitleAccent}>{identifier}</Text>. Enter it below
             to continue.{' '}
             <Text style={styles.subtitleEmphasis}>
-              Location access is required when you verify.
+              Location permission is required to verify OTP.
             </Text>
           </Text>
 
@@ -522,11 +489,16 @@ export function VerifyEmailOtpScreen({ navigation, route }: Props) {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Wrong email, go back to sign in"
+            accessibilityLabel={
+              isEmailLogin
+                ? 'Wrong email, go back to sign in'
+                : 'Wrong phone number, go back to sign in'
+            }
             style={styles.goBackWrap}
             onPress={() => navigation.navigate('Login')}>
             <Text style={styles.goBackText}>
-              Wrong email? <Text style={styles.goBackAccent}>Go back</Text>
+              {isEmailLogin ? 'Wrong email?' : 'Wrong number?'}{' '}
+              <Text style={styles.goBackAccent}>Go back</Text>
             </Text>
           </Pressable>
         </ScrollView>

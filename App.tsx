@@ -23,6 +23,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@src/context/AuthContext';
 import { ThemeProvider, useAppTheme } from '@src/context/ThemeContext';
 import { hydrateLanguageFromPreference } from '@src/i18n';
+import { configureGoogleSignIn } from '@src/utils/googleSignIn';
 import { AuthNavigator } from '@src/navigation/AuthNavigator';
 import { MainNavigator } from '@src/navigation/MainNavigator';
 
@@ -84,6 +85,7 @@ function AppBody() {
 
   useEffect(() => {
     void hydrateLanguageFromPreference();
+    configureGoogleSignIn();
   }, []);
 
   return (

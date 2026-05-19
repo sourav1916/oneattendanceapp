@@ -338,6 +338,7 @@ export function ApplyLeave({
                             keyboardShouldPersistTaps="handled"
                             automaticallyAdjustKeyboardInsets
                             showsVerticalScrollIndicator={false}
+                            showsHorizontalScrollIndicator={false}
                             bounces={false}>
                             <Text style={styles.title} accessibilityRole="header">
                                 {t('home.leaveRequest.applyModal.title')}

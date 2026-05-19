@@ -9,7 +9,8 @@ Attach when changing **routes**, **headers**, **tabs**, or **deep linking**.
 **`src/navigation/types.ts`**
 
 - **`AuthStackParamList`**: `Login`, `Register`, `ForgotPassword`, `VerifyEmailOtp` (+ params where needed).
-- **`SettingsStackParamList`**: `SettingsHome`, `Sessions`.
+- **`SettingsStackParamList`**: `SettingsHome`, `Profile`, `Sessions`, `ChangePassword`, **`MyCalendar`**.
+- **`HomeStackParamList`**: `HomeMain`, `LeaveRequest`, **`MyCalendar`**, **`CompanyList`**, `StaffManagement`, `StaffList`.
 - **`MainTabParamList`**: `Home`, `Attendance`, `Settings`.
 
 Use these with `NativeStackScreenProps<..., 'RouteName'>` etc.
@@ -27,14 +28,24 @@ Use these with `NativeStackScreenProps<..., 'RouteName'>` etc.
 
 - **`createBottomTabNavigator`**
 - **Global `screenOptions`**: `headerShown: true`, **`header: () => <MainTopBar />`** (custom top bar for all tabs).
-- **Tabs**: `Home` → `HomeScreen.js`; `Attendance` → `AttendanceScreen.tsx`; `Settings` → **`SettingsNavigator`** (nested stack).
+- **Tabs**: `Home` → **`HomeNavigator`** (nested stack); `Attendance` → `AttendanceScreen.tsx`; `Settings` → **`SettingsNavigator`** (nested stack).
 - **Tab bar**: custom pressable (no ripple), lifted icon/label animation, **MaterialCommunityIcons** for tab icons.
+- **Home** / **Settings** tabs use **`Tab.Screen` `listeners.focus`** → **`navigation.navigate(tab, { screen: root })`** when nested `state.index &gt; 0` (reset when **returning** to the tab). Do **not** use **blur** — `navigate('Settings', …)` on blur re-selects Settings and breaks switching to Attendance.
+
+### `HomeNavigator` (`src/navigation/HomeNavigator.tsx`)
+
+- **Native stack**, **`headerShown: false`**.
+- **`HomeMain`**: dashboard grid (`HomeScreen.tsx`).
+- **`LeaveRequest`**, **`CompanyList`**, **`StaffManagement`**, **`StaffList`**: sub-screens from home tiles.
+- **`MyCalendar`**: **`MyCalendarScreen`** from `src/screens/report/Calendar.tsx` (same component as Settings route).
 
 ### `SettingsNavigator` (`src/navigation/SettingsNavigator.tsx`)
 
 - **Native stack**, default **`headerShown: false`** on the stack (individual screens opt in).
 - **`SettingsHome`**: main settings menu.
+- **`Profile`**, **`EditProfile`**, **`ChangePassword`**: account screens — profile UX/API/cache: [**profile.md**](./profile.md).
 - **`Sessions`**: **`SessionScreen`** — uses **in-screen** compact header + `goBack()` (native stack header disabled to avoid double safe-area height under `MainTopBar`).
+- **`MyCalendar`**: attendance calendar (Settings → Work → Calendar row).
 
 ---
 
@@ -42,7 +53,8 @@ Use these with `NativeStackScreenProps<..., 'RouteName'>` etc.
 
 - From a screen inside tabs: **`navigation.navigate('Attendance')`**, **`navigation.navigate('Settings')`**.
 - From Settings stack to Sessions: **`navigation.navigate('Sessions')`** (as used in `SettingsScreen`).
-- Back from Sessions: **`navigation.goBack()`** on custom header.
+- From Home or Settings to calendar: **`navigation.navigate('MyCalendar')`**.
+- Back from sub-screens (Sessions, My Calendar, etc.): **`navigation.goBack()`** on custom header.
 
 ---
 

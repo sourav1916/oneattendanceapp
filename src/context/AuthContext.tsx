@@ -29,10 +29,22 @@ import {
   cachedProfileFromProfileRoleResponse,
   clearCachedUserProfile,
   loadCachedUserProfile,
+  loadProfileRoleUser,
   mergeUserProfileIntoCachedProfile,
   saveCachedUserProfile,
+  saveProfileRoleUser,
 } from '@src/storage/userProfileCache';
+import type { ProfileRoleUser } from '@src/types/profileRoleUser';
 import type { ProfileRoleResponse, StoredSelectedCompany } from '@src/types/company';
+import {
+  companiesFromProfileRole,
+  companiesListEqual,
+} from '@src/utils/companiesFromProfileRole';
+
+export type RefreshProfileRoleOptions = {
+  /** Skip `profileRoleLoading` so {@link CompanySelectionGate} does not block the app. */
+  silent?: boolean;
+};
 
 type AuthContextValue = {
   /** `true` once AsyncStorage has been read at launch. */
@@ -46,14 +58,16 @@ type AuthContextValue = {
   profileRoleLoading: boolean;
   /** Last persisted user summary (from profile-role); for UI when API not refetched. */
   cachedUserProfile: CachedUserProfile | null;
+  /** Full `data.user` from last profile-role (persisted + in memory after fetch). */
+  profileRoleUser: ProfileRoleUser | null;
   signIn: (session: StoredAuthSession) => Promise<void>;
   signOut: () => Promise<void>;
   /** Refetch profile/companies with the current access token. Returns the fetched payload when successful. */
-  refreshProfileRole: () => Promise<ProfileRoleResponse | null>;
+  refreshProfileRole: (options?: RefreshProfileRoleOptions) => Promise<ProfileRoleResponse | null>;
   /** Persist and reflect name/email in session after a successful profile update. */
   applySessionDisplayFromProfile: (updates: { name?: string; email?: string }) => Promise<void>;
   /** Merge full user row from PUT `/users/update-profile` into session + profile-role cache. */
-  applySessionFromProfileUpdate: (user: UserProfile) => Promise<void>;
+  applySessionFromProfileUpdate: (user: Partial<UserProfile>) => Promise<void>;
   selectCompany: (company: StoredSelectedCompany) => Promise<void>;
 };
 
@@ -69,33 +83,92 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileRole, setProfileRole] = useState<ProfileRoleResponse | null>(null);
   const [profileRoleLoading, setProfileRoleLoading] = useState(false);
   const [cachedUserProfile, setCachedUserProfile] = useState<CachedUserProfile | null>(null);
+  const [profileRoleUser, setProfileRoleUser] = useState<ProfileRoleUser | null>(null);
 
   /** Same value as `token` state; updated synchronously before any auth API call. */
   const tokenRef = useRef<string | null>(null);
 
-  const loadProfileForToken = useCallback(async (): Promise<ProfileRoleResponse | null> => {
-    const t = tokenRef.current?.trim();
-    if (!t) {
-      setProfileRole(null);
-      return null;
+  const applyProfileRoleUserToSession = useCallback((snap: CachedUserProfile | null) => {
+    if (!snap) {
+      return;
     }
-    setProfileRoleLoading(true);
-    try {
-      const data = await fetchProfileRole();
-      setProfileRole(data);
+    const n = snap.name.trim();
+    const e = snap.email.trim();
+    if (n) {
+      setName(n);
+    }
+    if (e) {
+      setEmail(e);
+    }
+  }, []);
+
+  const persistProfileRolePayload = useCallback(
+    async (data: ProfileRoleResponse | null) => {
+      if (data?.data?.user != null) {
+        await saveProfileRoleUser(data.data.user);
+        setProfileRoleUser(data.data.user as ProfileRoleUser);
+      }
       const snap = cachedProfileFromProfileRoleResponse(data);
       if (snap) {
         await saveCachedUserProfile(snap);
         setCachedUserProfile(snap);
+        applyProfileRoleUserToSession(snap);
       }
-      return data;
-    } catch {
-      setProfileRole(null);
-      return null;
-    } finally {
-      setProfileRoleLoading(false);
-    }
-  }, []);
+    },
+    [applyProfileRoleUserToSession],
+  );
+
+  const loadProfileForToken = useCallback(
+    async (options?: RefreshProfileRoleOptions): Promise<ProfileRoleResponse | null> => {
+      const silent = options?.silent === true;
+      const t = tokenRef.current?.trim();
+      if (!t) {
+        setProfileRole(null);
+        return null;
+      }
+      if (!silent) {
+        setProfileRoleLoading(true);
+      }
+      try {
+        const data = await fetchProfileRole();
+        await persistProfileRolePayload(data);
+
+        setProfileRole(prev => {
+          if (!data) {
+            return data;
+          }
+          const prevCompanies = companiesFromProfileRole(prev?.data?.companies ?? {});
+          const nextCompanies = companiesFromProfileRole(data.data?.companies ?? {});
+          if (silent && prev != null && companiesListEqual(prevCompanies, nextCompanies)) {
+            const nextUser = data.data?.user;
+            if (nextUser == null || prev.data?.user === nextUser) {
+              return prev;
+            }
+            return {
+              ...prev,
+              data: {
+                ...prev.data,
+                user: nextUser,
+              },
+            };
+          }
+          return data;
+        });
+
+        return data;
+      } catch {
+        if (!silent) {
+          setProfileRole(null);
+        }
+        return null;
+      } finally {
+        if (!silent) {
+          setProfileRoleLoading(false);
+        }
+      }
+    },
+    [persistProfileRolePayload],
+  );
 
   const signOut = useCallback(async () => {
     tokenRef.current = null;
@@ -108,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSelectedCompany(null);
     setProfileRole(null);
     setCachedUserProfile(null);
+    setProfileRoleUser(null);
   }, []);
 
   const signOutRef = useRef(signOut);
@@ -129,8 +203,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([loadAuthSession(), loadSelectedCompany(), loadCachedUserProfile()]).then(
-      ([s, company, cached]) => {
+    Promise.all([
+      loadAuthSession(),
+      loadSelectedCompany(),
+      loadCachedUserProfile(),
+      loadProfileRoleUser(),
+    ]).then(([s, company, cached, storedUser]) => {
         if (cancelled) {
           return;
         }
@@ -139,14 +217,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setEmail(s.email);
         setName(s.name);
         setSelectedCompany(company);
-        setCachedUserProfile(cached);
+        const cachedFromDisk =
+          cached ?? (storedUser ? cachedProfileFromProfileRoleResponse({ data: { user: storedUser } }) : null);
+        setCachedUserProfile(cachedFromDisk);
+        setProfileRoleUser(storedUser);
+        if (cachedFromDisk) {
+          if (!s.name?.trim() && cachedFromDisk.name.trim()) {
+            setName(cachedFromDisk.name.trim());
+          }
+          if (!s.email?.trim() && cachedFromDisk.email.trim()) {
+            setEmail(cachedFromDisk.email.trim());
+          }
+        }
         setHydrated(true);
 
         if (s.token?.trim()) {
           loadProfileForToken().catch(() => {});
         }
-      },
-    );
+      });
 
     return () => {
       cancelled = true;
@@ -165,7 +253,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [loadProfileForToken],
   );
 
-  const refreshProfileRole = useCallback(async () => loadProfileForToken(), [loadProfileForToken]);
+  const refreshProfileRole = useCallback(
+    async (options?: RefreshProfileRoleOptions) => loadProfileForToken(options),
+    [loadProfileForToken],
+  );
 
   const applySessionDisplayFromProfile = useCallback(
     async (updates: { name?: string; email?: string }) => {
@@ -190,13 +281,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const applySessionFromProfileUpdate = useCallback(async (user: UserProfile) => {
-    await updateStoredAuthDisplayFields({
-      name: user.name,
-      email: user.email,
-    });
-    setName(user.name?.trim() ? user.name.trim() : null);
-    setEmail(user.email?.trim() ? user.email.trim() : null);
+  const applySessionFromProfileUpdate = useCallback(async (user: Partial<UserProfile>) => {
+    const displayPatch: { name?: string | null; email?: string | null } = {};
+    if (user.name !== undefined) {
+      displayPatch.name = user.name;
+    }
+    if (user.email !== undefined) {
+      displayPatch.email = user.email;
+    }
+    if (Object.keys(displayPatch).length > 0) {
+      await updateStoredAuthDisplayFields(displayPatch);
+    }
+    if (user.name !== undefined) {
+      setName(user.name?.trim() ? user.name.trim() : null);
+    }
+    if (user.email !== undefined) {
+      setEmail(user.email?.trim() ? user.email.trim() : null);
+    }
     setProfileRole(prev => {
       if (!prev?.data) {
         return prev;
@@ -205,20 +306,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         prev.data.user && typeof prev.data.user === 'object'
           ? (prev.data.user as Record<string, unknown>)
           : {};
+      const mergedUser = { ...prevUser, ...user };
+      void saveProfileRoleUser(mergedUser);
+      setProfileRoleUser(mergedUser as ProfileRoleUser);
       return {
         ...prev,
         data: {
           ...prev.data,
-          user: { ...prevUser, ...user },
+          user: mergedUser,
         },
       };
     });
     setCachedUserProfile(prev => {
       const next = mergeUserProfileIntoCachedProfile(user, prev);
       void saveCachedUserProfile(next);
+      applyProfileRoleUserToSession(next);
       return next;
     });
-  }, []);
+  }, [applyProfileRoleUserToSession]);
 
   const selectCompany = useCallback(async (company: StoredSelectedCompany) => {
     await saveSelectedCompany(company);
@@ -235,6 +340,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileRole,
       profileRoleLoading,
       cachedUserProfile,
+      profileRoleUser,
       signIn,
       signOut,
       refreshProfileRole,
@@ -251,6 +357,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileRole,
       profileRoleLoading,
       cachedUserProfile,
+      profileRoleUser,
       signIn,
       signOut,
       refreshProfileRole,

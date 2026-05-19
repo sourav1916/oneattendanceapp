@@ -161,8 +161,9 @@ export function MainTopBar() {
     [colors, resolvedScheme],
   );
   const navigation = useNavigation<TabNav>();
-  const { name, email, profileRole, selectedCompany, selectCompany } = useAuth();
+  const { name, email, profileRole, selectedCompany, selectCompany, refreshProfileRole } = useAuth();
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [switcherRefreshing, setSwitcherRefreshing] = useState(false);
 
   const eligibleCompanies = useMemo(
     () => companiesFromProfileRole(profileRole?.data?.companies ?? {}),
@@ -175,6 +176,23 @@ export function MainTopBar() {
       setSwitcherOpen(false);
     }
   }, [showCompanySwitcher, switcherOpen]);
+
+  useEffect(() => {
+    if (!switcherOpen) {
+      setSwitcherRefreshing(false);
+      return;
+    }
+    let cancelled = false;
+    setSwitcherRefreshing(true);
+    void refreshProfileRole({ silent: true }).finally(() => {
+      if (!cancelled) {
+        setSwitcherRefreshing(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [switcherOpen, refreshProfileRole]);
 
   const displayName = selectedCompany?.name ?? COMPANY_DISPLAY_NAME;
   const letter = displayName.trim()[0]?.toUpperCase() ?? '?';
@@ -249,6 +267,7 @@ export function MainTopBar() {
         visible={switcherOpen}
         companies={eligibleCompanies}
         selectedId={selectedCompany?.id ?? null}
+        refreshing={switcherRefreshing}
         onClose={() => setSwitcherOpen(false)}
         onSelectCompany={c => {
           void selectCompany(c);

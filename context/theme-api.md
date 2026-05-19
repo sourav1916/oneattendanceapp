@@ -45,6 +45,24 @@ Attach when working on **light/dark mode**, **colors**, or **authenticated HTTP*
 - Use **`authHttpClient`** for routes that require login and where **401 means “session invalid”**.
 - Use **plain `axios`** (or a separate client) for **login / OTP / register** so a stray 401 does not clear storage mid-flow (see file comment).
 
+### Company header pattern
+
+Many authenticated routes pass the selected company as:
+
+```ts
+headers: { company: String(companyId) }
+```
+
+Examples: `fetchMyLeaveBalance`, `getCurrentAttendanceStatus`, `fetchEmployeeList`, **`fetchMyCalendar`** (`GET /shifts/my-calendar`). Value comes from **`useAuth().selectedCompany.id`**.
+
+**Exceptions** (Bearer only, no `company` header): **`fetchCompanyList`** (`GET /company/list`), **`createCompany`** (`POST /company/create`). See [**company.md**](./company.md).
+
+### File upload (logos, profile photos)
+
+- **`src/utils/FileUpload.ts`**: `uploadFileToOneSaas` → `https://upload.onesaas.in/api/upload` (multipart `file`, header `key: onedevelopers`). Returns public `url` used in API bodies (e.g. `logo_url`, profile picture).
+
 ### Related
 
 - **`src/utils/readApiError.ts`**: normalize thrown axios errors for user-visible messages.
+- **`context/my-calendar.md`**: employee self-calendar feature and API details.
+- **`context/company.md`**: company list, create company, staff screens.

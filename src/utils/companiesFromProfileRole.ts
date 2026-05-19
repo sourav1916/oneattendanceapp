@@ -56,3 +56,26 @@ export function companiesFromProfileRole(payload: {
 
   return Array.from(byId.values());
 }
+
+/** Stable compare for profile-role company lists (order-independent). */
+export function companiesListEqual(
+  a: readonly StoredSelectedCompany[],
+  b: readonly StoredSelectedCompany[],
+): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  const sortKey = (c: StoredSelectedCompany) => `${c.id}:${c.relation}`;
+  const sortedA = [...a].sort((x, y) => sortKey(x).localeCompare(sortKey(y)));
+  const sortedB = [...b].sort((x, y) => sortKey(x).localeCompare(sortKey(y)));
+  return sortedA.every((item, i) => {
+    const other = sortedB[i]!;
+    return (
+      item.id === other.id &&
+      item.name === other.name &&
+      item.relation === other.relation &&
+      (item.logo_url ?? null) === (other.logo_url ?? null) &&
+      (item.role ?? '') === (other.role ?? '')
+    );
+  });
+}

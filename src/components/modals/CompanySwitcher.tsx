@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -9,11 +11,14 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { StoredSelectedCompany } from '@src/types/company';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const SHEET_MAX_HEIGHT = Math.min(SCREEN_HEIGHT * 0.78, 560);
 
 function CompanyLogoChip({
   company,
@@ -41,46 +46,58 @@ function CompanyLogoChip({
 
 function buildSwitcherStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   return StyleSheet.create({
-    overlay: {
+    safe: {
       flex: 1,
-      justifyContent: 'flex-start',
-      paddingTop: 56,
       backgroundColor: colors.overlay,
-      paddingHorizontal: 12,
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFill,
+    },
+    sheetWrap: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: 16,
     },
     sheet: {
-      zIndex: 1,
-      borderRadius: 14,
+      alignSelf: 'center',
+      width: '100%',
+      maxWidth: 400,
+      maxHeight: SHEET_MAX_HEIGHT,
       backgroundColor: colors.surface,
-      paddingVertical: 14,
-      paddingHorizontal: 12,
-      maxHeight: '72%',
-      ...Platform.select({
-        ios: {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
-        },
-        android: { elevation: 10 },
-      }),
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 14,
+      paddingTop: 16,
+      paddingBottom: 12,
+      overflow: 'hidden',
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+      paddingHorizontal: 2,
+      gap: 8,
     },
     title: {
+      flex: 1,
       fontSize: 18,
       fontWeight: '700',
       color: colors.text,
-      marginBottom: 4,
-      paddingHorizontal: 6,
     },
     subtitle: {
       fontSize: 13,
       color: colors.textMuted,
       lineHeight: 18,
       marginBottom: 12,
-      paddingHorizontal: 6,
+      paddingHorizontal: 2,
     },
     list: {
       flexGrow: 0,
+    },
+    listContent: {
+      paddingBottom: 4,
     },
     row: {
       flexDirection: 'row',
@@ -118,6 +135,7 @@ function buildSwitcherStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     },
     rowText: {
       flex: 1,
+      minWidth: 0,
     },
     rowTitle: {
       fontSize: 15,
@@ -142,16 +160,16 @@ function buildSwitcherStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       color: colors.primary,
       marginRight: 6,
     },
-    closeBtn: {
+    cancelBtn: {
       marginTop: 8,
-      alignSelf: 'center',
-      paddingVertical: 10,
-      paddingHorizontal: 24,
+      paddingVertical: 14,
+      alignItems: 'center',
+      borderRadius: 12,
     },
-    closeBtnPressed: {
-      opacity: 0.7,
+    cancelBtnPressed: {
+      backgroundColor: colors.secondaryButton,
     },
-    closeBtnText: {
+    cancelText: {
       fontSize: 16,
       fontWeight: '600',
       color: colors.primary,
@@ -161,8 +179,10 @@ function buildSwitcherStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
 
 type Props = {
   visible: boolean;
+  /** Current list from auth state (last profile-role / storage-hydrated session). */
   companies: StoredSelectedCompany[];
   selectedId: number | null;
+  refreshing?: boolean;
   onSelectCompany: (company: StoredSelectedCompany) => void;
   onClose: () => void;
 };
@@ -171,13 +191,22 @@ export function CompanySwitcher({
   visible,
   companies,
   selectedId,
+  refreshing = false,
   onSelectCompany,
   onClose,
 }: Props) {
-  const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
   const ms = useMemo(() => buildSwitcherStyles(colors, resolvedScheme), [colors, resolvedScheme]);
+
+  const [displayCompanies, setDisplayCompanies] = useState(companies);
+
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+    setDisplayCompanies(companies);
+  }, [visible, companies]);
 
   return (
     <Modal
@@ -186,65 +215,77 @@ export function CompanySwitcher({
       statusBarTranslucent
       visible={visible}
       onRequestClose={onClose}>
-      <View style={[ms.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <SafeAreaView style={ms.safe} edges={['top', 'right', 'left', 'bottom']}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close company list"
-          style={StyleSheet.absoluteFill}
+          style={ms.backdrop}
           onPress={onClose}
         />
-        <View style={ms.sheet}>
-          <Text style={ms.title}>Your companies</Text>
-          <Text style={ms.subtitle}>Tap one to switch the active workspace.</Text>
-          <FlatList
-            data={companies}
-            keyExtractor={item => `switch-${item.id}-${item.relation}`}
-            style={ms.list}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => {
-              const selected = item.id === selectedId;
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`${selected ? 'Selected, ' : ''}Company ${item.name}`}
-                  onPress={() => {
-                    onSelectCompany(item);
-                    onClose();
-                  }}
-                  style={({ pressed }) => [
-                    ms.row,
-                    selected && ms.rowSelected,
-                    pressed && ms.rowPressed,
-                  ]}>
-                  <CompanyLogoChip company={item} ms={ms} />
-                  <View style={ms.rowText}>
-                    <Text style={ms.rowTitle} numberOfLines={2}>
-                      {item.name}
-                    </Text>
-                    <Text style={ms.rowHint} numberOfLines={1}>
-                      {item.relation === 'owned' ? 'Owner' : 'Employee'}
-                      {item.role ? ` • ${item.role}` : ''}
-                    </Text>
-                  </View>
-                  {selected ? (
-                    <Text style={ms.check}>✓</Text>
-                  ) : (
-                    <Text style={ms.rowChevron}>›</Text>
-                  )}
-                </Pressable>
-              );
-            }}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Close"
-            onPress={onClose}
-            style={({ pressed }) => [ms.closeBtn, pressed && ms.closeBtnPressed]}>
-            <Text style={ms.closeBtnText}>Close</Text>
-          </Pressable>
+        <View style={ms.sheetWrap} pointerEvents="box-none">
+          <View style={ms.sheet}>
+            <View style={ms.titleRow}>
+              <Text style={ms.title} accessibilityRole="header">
+                Your companies
+              </Text>
+              {refreshing ? (
+                <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Updating companies" />
+              ) : null}
+            </View>
+            <Text style={ms.subtitle}>Tap one to switch the active workspace.</Text>
+            <FlatList
+              data={displayCompanies}
+              keyExtractor={item => `switch-${item.id}-${item.relation}`}
+              style={ms.list}
+              contentContainerStyle={ms.listContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const selected = item.id === selectedId;
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${selected ? 'Selected, ' : ''}Company ${item.name}`}
+                    onPress={() => {
+                      onSelectCompany(item);
+                      onClose();
+                    }}
+                    style={({ pressed }) => [
+                      ms.row,
+                      selected && ms.rowSelected,
+                      pressed && ms.rowPressed,
+                    ]}>
+                    <CompanyLogoChip company={item} ms={ms} />
+                    <View style={ms.rowText}>
+                      <Text style={ms.rowTitle} numberOfLines={2}>
+                        {item.name}
+                      </Text>
+                      <Text style={ms.rowHint} numberOfLines={1}>
+                        {item.relation === 'owned' ? 'Owner' : 'Employee'}
+                        {item.role ? ` • ${item.role}` : ''}
+                      </Text>
+                    </View>
+                    {selected ? (
+                      <Text style={ms.check}>✓</Text>
+                    ) : (
+                      <Text style={ms.rowChevron}>›</Text>
+                    )}
+                  </Pressable>
+                );
+              }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              onPress={onClose}
+              style={({ pressed }) => [ms.cancelBtn, pressed && ms.cancelBtnPressed]}>
+              <Text style={ms.cancelText}>Close</Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }

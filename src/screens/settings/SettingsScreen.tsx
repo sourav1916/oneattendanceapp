@@ -3,6 +3,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import type { IconProps } from 'react-native-vector-icons/Icon';
 
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
 import { LanguagePicker } from '@src/components/modals/LanguagePicker';
@@ -15,11 +17,49 @@ import type { AppThemeColors } from '@src/theme/palettes';
 
 type SettingsScreenProps = NativeStackScreenProps<SettingsStackParamList, 'SettingsHome'>;
 
+type MenuRowIcon = {
+  name: IconProps['name'];
+  color: string;
+  backgroundColor: string;
+};
+
 type MenuRow = {
   id: string;
   title: string;
   subtitle?: string;
+  icon: MenuRowIcon;
 };
+
+const MENU_ROW_ICONS: Record<string, MenuRowIcon> = {
+  profile: { name: 'account-circle-outline', color: '#2563eb', backgroundColor: '#dbeafe' },
+  sessions: { name: 'cellphone-link', color: '#7c3aed', backgroundColor: '#ede9fe' },
+  security: { name: 'shield-lock-outline', color: '#059669', backgroundColor: '#d1fae5' },
+  calendar: { name: 'calendar-month-outline', color: '#ea580c', backgroundColor: '#ffedd5' },
+  leaves: { name: 'clipboard-list-outline', color: '#0891b2', backgroundColor: '#cffafe' },
+  theme: { name: 'theme-light-dark', color: '#6366f1', backgroundColor: '#e0e7ff' },
+  language: { name: 'translate', color: '#db2777', backgroundColor: '#fce7f3' },
+  notifications: { name: 'bell-outline', color: '#ca8a04', backgroundColor: '#fef9c3' },
+  help: { name: 'lifebuoy', color: '#4f46e5', backgroundColor: '#e0e7ff' },
+  about: { name: 'information-outline', color: '#64748b', backgroundColor: '#f1f5f9' },
+  logout: { name: 'logout', color: '#dc2626', backgroundColor: '#fee2e2' },
+};
+
+function menuRowWithIcon(
+  id: string,
+  title: string,
+  subtitle?: string,
+): MenuRow {
+  return {
+    id,
+    title,
+    subtitle,
+    icon: MENU_ROW_ICONS[id] ?? {
+      name: 'cog-outline',
+      color: '#64748b',
+      backgroundColor: '#f1f5f9',
+    },
+  };
+}
 
 type MenuSection = {
   title: string;
@@ -108,9 +148,17 @@ function buildSettingsStyles(colors: AppThemeColors) {
     menuRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      minHeight: 52,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      minHeight: 56,
+      gap: 12,
+    },
+    menuRowIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     menuRowFirst: {},
     menuRowLast: {},
@@ -140,11 +188,6 @@ function buildSettingsStyles(colors: AppThemeColors) {
       color: colors.textMuted,
       lineHeight: 18,
     },
-    menuChevron: {
-      fontSize: 22,
-      color: colors.textMuted,
-      fontWeight: '300',
-    },
   });
 }
 
@@ -154,12 +197,14 @@ function SettingsMenuRow({
   isLast,
   onPress,
   ms,
+  colors,
 }: {
   row: MenuRow;
   isFirst: boolean;
   isLast: boolean;
   onPress: (id: string) => void;
   ms: ReturnType<typeof buildSettingsStyles>;
+  colors: AppThemeColors;
 }) {
   return (
     <Pressable
@@ -173,6 +218,9 @@ function SettingsMenuRow({
         isLast && ms.menuRowLast,
         pressed && ms.menuRowPressed,
       ]}>
+      <View style={[ms.menuRowIconWrap, { backgroundColor: row.icon.backgroundColor }]}>
+        <MaterialCommunityIcons name={row.icon.name} size={22} color={row.icon.color} />
+      </View>
       <View style={ms.menuRowText}>
         <Text style={ms.menuRowTitle} numberOfLines={1}>
           {row.title}
@@ -183,9 +231,12 @@ function SettingsMenuRow({
           </Text>
         ) : null}
       </View>
-      <Text style={ms.menuChevron} accessibilityElementsHidden>
-        ›
-      </Text>
+      <MaterialCommunityIcons
+        name="chevron-right"
+        size={22}
+        color={colors.textMuted}
+        accessibilityElementsHidden
+      />
     </Pressable>
   );
 }
@@ -212,71 +263,67 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       {
         title: t('settings.account'),
         rows: [
-          {
-            id: 'profile',
-            title: t('settings.rows.profile.title'),
-            subtitle: t('settings.rows.profile.subtitle'),
-          },
-          {
-            id: 'sessions',
-            title: t('settings.rows.sessions.title'),
-            subtitle: t('settings.rows.sessions.subtitle'),
-          },
-          {
-            id: 'security',
-            title: t('settings.rows.security.title'),
-            subtitle: t('settings.rows.security.subtitle'),
-          },
+          menuRowWithIcon(
+            'profile',
+            t('settings.rows.profile.title'),
+            t('settings.rows.profile.subtitle'),
+          ),
+          menuRowWithIcon(
+            'sessions',
+            t('settings.rows.sessions.title'),
+            t('settings.rows.sessions.subtitle'),
+          ),
+          menuRowWithIcon(
+            'security',
+            t('settings.rows.security.title'),
+            t('settings.rows.security.subtitle'),
+          ),
         ],
       },
       {
         title: t('settings.work'),
         rows: [
-          {
-            id: 'calendar',
-            title: t('settings.rows.calendar.title'),
-            subtitle: t('settings.rows.calendar.subtitle'),
-          },
-          {
-            id: 'leaves',
-            title: t('settings.rows.leaves.title'),
-            subtitle: t('settings.rows.leaves.subtitle'),
-          },
+          menuRowWithIcon(
+            'calendar',
+            t('settings.rows.calendar.title'),
+            t('settings.rows.calendar.subtitle'),
+          ),
+          menuRowWithIcon(
+            'leaves',
+            t('settings.rows.leaves.title'),
+            t('settings.rows.leaves.subtitle'),
+          ),
         ],
       },
       {
         title: t('settings.preferences'),
         rows: [
-          {
-            id: 'theme',
-            title: t('settings.rows.theme.title'),
-            subtitle: themeSubtitle,
-          },
-          {
-            id: 'language',
-            title: t('settings.rows.language.title'),
-            subtitle: t('settings.rows.language.subtitle'),
-          },
-          {
-            id: 'notifications',
-            title: t('settings.rows.notifications.title'),
-            subtitle: t('settings.rows.notifications.subtitle'),
-          },
+          menuRowWithIcon('theme', t('settings.rows.theme.title'), themeSubtitle),
+          menuRowWithIcon(
+            'language',
+            t('settings.rows.language.title'),
+            t('settings.rows.language.subtitle'),
+          ),
+          menuRowWithIcon(
+            'notifications',
+            t('settings.rows.notifications.title'),
+            t('settings.rows.notifications.subtitle'),
+          ),
         ],
       },
       {
         title: t('settings.support'),
         rows: [
-          {
-            id: 'help',
-            title: t('settings.rows.help.title'),
-            subtitle: t('settings.rows.help.subtitle'),
-          },
-          {
-            id: 'about',
-            title: t('settings.rows.about.title'),
-            subtitle: t('settings.rows.about.subtitle'),
-          },
+          menuRowWithIcon(
+            'help',
+            t('settings.rows.help.title'),
+            t('settings.rows.help.subtitle'),
+          ),
+          menuRowWithIcon(
+            'about',
+            t('settings.rows.about.title'),
+            t('settings.rows.about.subtitle'),
+          ),
         ],
       },
     ],
@@ -303,6 +350,14 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       }
       if (id === 'security') {
         navigation.navigate('ChangePassword');
+        return;
+      }
+      if (id === 'calendar') {
+        navigation.navigate('MyCalendar');
+        return;
+      }
+      if (id === 'help') {
+        navigation.navigate('Support');
         return;
       }
       present({
@@ -380,6 +435,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                     isLast={index === section.rows.length - 1}
                     onPress={handleRowPress}
                     ms={ms}
+                    colors={colors}
                   />
                 ))}
               </View>
@@ -399,9 +455,22 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
                   ms.menuRowLast,
                   pressed && ms.menuRowPressed,
                 ]}>
-                <Text style={[ms.menuRowTitle, ms.menuRowTitleDanger]}>
-                  {t('settings.logout')}
-                </Text>
+                <View
+                  style={[
+                    ms.menuRowIconWrap,
+                    { backgroundColor: MENU_ROW_ICONS.logout.backgroundColor },
+                  ]}>
+                  <MaterialCommunityIcons
+                    name={MENU_ROW_ICONS.logout.name}
+                    size={22}
+                    color={MENU_ROW_ICONS.logout.color}
+                  />
+                </View>
+                <View style={ms.menuRowText}>
+                  <Text style={[ms.menuRowTitle, ms.menuRowTitleDanger]}>
+                    {t('settings.logout')}
+                  </Text>
+                </View>
               </Pressable>
             </View>
           </View>

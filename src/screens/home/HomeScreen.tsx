@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -26,6 +27,12 @@ import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import type { HomeStackParamList, MainTabParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
+import {
+  displayEmailFromSources,
+  displayNameFromSources,
+  initialsFromDisplayName,
+  profilePictureFromSources,
+} from '@src/utils/userDisplay';
 
 const H_PAD = 20;
 const GRID_GAP = 10;
@@ -36,17 +43,45 @@ type HomeMainNavigation = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList>
 >;
 
+type ActionCardIcon = {
+  name: IconProps['name'];
+  color: string;
+  backgroundColor: string;
+};
+
 type ActionCard = {
   id: string;
-  iconName: IconProps['name'];
+  icon: ActionCardIcon;
   title: string;
   onPress: () => void;
 };
 
+const HOME_MENU_ICONS: Record<string, ActionCardIcon> = {
+  attendance: { name: 'calendar-clock-outline', color: '#059669', backgroundColor: '#d1fae5' },
+  calendar: { name: 'calendar-month-outline', color: '#ea580c', backgroundColor: '#ffedd5' },
+  company: { name: 'office-building-outline', color: '#0d9488', backgroundColor: '#ccfbf1' },
+  staff: { name: 'account-group-outline', color: '#2563eb', backgroundColor: '#dbeafe' },
+  leaveReq: { name: 'file-document-edit-outline', color: '#7c3aed', backgroundColor: '#ede9fe' },
+  leaveMgmt: { name: 'clipboard-list-outline', color: '#0891b2', backgroundColor: '#cffafe' },
+};
+
+function actionCardWithIcon(id: string, title: string, onPress: () => void): ActionCard {
+  return {
+    id,
+    title,
+    onPress,
+    icon: HOME_MENU_ICONS[id] ?? {
+      name: 'apps',
+      color: '#64748b',
+      backgroundColor: '#f1f5f9',
+    },
+  };
+}
+
 export function HomeScreen(): React.JSX.Element {
   const { t } = useTranslation();
   const navigation = useNavigation<HomeMainNavigation>();
-  const { name, email } = useAuth();
+  const { name, email, cachedUserProfile, profileRoleUser } = useAuth();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
   const styles = useMemo(
@@ -63,7 +98,22 @@ export function HomeScreen(): React.JSX.Element {
     return (inner - gaps) / GRID_COLS;
   }, [windowWidth]);
 
-  const initials = useMemo(() => getInitials(name, email), [name, email]);
+  const displayName = useMemo(
+    () => displayNameFromSources(name, email, cachedUserProfile, profileRoleUser),
+    [name, email, cachedUserProfile, profileRoleUser],
+  );
+  const displayEmail = useMemo(
+    () => displayEmailFromSources(email, cachedUserProfile, profileRoleUser),
+    [email, cachedUserProfile, profileRoleUser],
+  );
+  const profilePhotoUrl = useMemo(
+    () => profilePictureFromSources(cachedUserProfile, profileRoleUser),
+    [cachedUserProfile, profileRoleUser],
+  );
+  const initials = useMemo(
+    () => initialsFromDisplayName(displayName, displayEmail),
+    [displayName, displayEmail],
+  );
 
   const openComingSoon = useCallback(() => {
     present({
@@ -75,36 +125,32 @@ export function HomeScreen(): React.JSX.Element {
 
   const actionCards = useMemo<ActionCard[]>(
     () => [
-      {
-        id: 'attendance',
-        iconName: 'calendar-clock-outline',
-        title: t('home.menu.attendance'),
-        onPress: () => navigation.navigate('Attendance'),
-      },
-      {
-        id: 'calendar',
-        iconName: 'calendar-month-outline',
-        title: t('home.menu.calendar'),
-        onPress: openComingSoon,
-      },
-      {
-        id: 'staff',
-        iconName: 'account-group-outline',
-        title: t('home.menu.staffManagement'),
-        onPress: () => navigation.navigate('StaffManagement'),
-      },
-      {
-        id: 'leaveReq',
-        iconName: 'file-document-edit-outline',
-        title: t('home.menu.leaveRequest'),
-        onPress: () => navigation.navigate('LeaveRequest'),
-      },
-      {
-        id: 'leaveMgmt',
-        iconName: 'clipboard-list-outline',
-        title: t('home.menu.leaveManagement'),
-        onPress: openComingSoon,
-      },
+      actionCardWithIcon(
+        'attendance',
+        t('home.menu.attendance'),
+        () => navigation.navigate('Attendance'),
+      ),
+      actionCardWithIcon(
+        'calendar',
+        t('home.menu.calendar'),
+        () => navigation.navigate('MyCalendar'),
+      ),
+      actionCardWithIcon(
+        'company',
+        t('home.menu.company'),
+        () => navigation.navigate('CompanyList'),
+      ),
+      actionCardWithIcon(
+        'staff',
+        t('home.menu.staffManagement'),
+        () => navigation.navigate('StaffManagement'),
+      ),
+      actionCardWithIcon(
+        'leaveReq',
+        t('home.menu.leaveRequest'),
+        () => navigation.navigate('LeaveRequest'),
+      ),
+      actionCardWithIcon('leaveMgmt', t('home.menu.leaveManagement'), openComingSoon),
     ],
     [navigation, openComingSoon, t],
   );
@@ -125,16 +171,25 @@ export function HomeScreen(): React.JSX.Element {
           <View style={styles.welcomeCard}>
             <View style={styles.welcomeAccent} />
             <View style={styles.welcomeAvatar}>
-              <Text style={styles.welcomeAvatarText}>{initials}</Text>
+              {profilePhotoUrl ? (
+                <Image
+                  source={{ uri: profilePhotoUrl }}
+                  style={styles.welcomeAvatarImage}
+                  resizeMode="cover"
+                  accessibilityIgnoresInvertColors
+                />
+              ) : (
+                <Text style={styles.welcomeAvatarText}>{initials}</Text>
+              )}
             </View>
             <View style={styles.welcomeTextCol}>
               <Text style={styles.welcomeEyebrow}>{t('home.welcomeEyebrow')}</Text>
               <Text style={styles.welcomeGreeting} numberOfLines={2}>
-                {t('home.greeting', { name: name || t('home.guest') })}
+                {t('home.greeting', { name: displayName || t('home.guest') })}
               </Text>
-              {email ? (
+              {displayEmail ? (
                 <Text style={styles.welcomeEmail} numberOfLines={2}>
-                  {email}
+                  {displayEmail}
                 </Text>
               ) : null}
             </View>
@@ -152,11 +207,15 @@ export function HomeScreen(): React.JSX.Element {
                   { width: cardWidth },
                   pressed && styles.optionCardPressed,
                 ]}>
-                <View style={styles.iconBubble}>
+                <View
+                  style={[
+                    styles.iconBubble,
+                    { backgroundColor: item.icon.backgroundColor },
+                  ]}>
                   <MaterialCommunityIcons
-                    name={item.iconName}
+                    name={item.icon.name}
                     size={22}
-                    color={colors.primary}
+                    color={item.icon.color}
                     accessibilityElementsHidden
                   />
                 </View>
@@ -171,27 +230,6 @@ export function HomeScreen(): React.JSX.Element {
       </SafeAreaView>
     </View>
   );
-}
-
-function getInitials(displayName: string | null, emailFallback: string | null): string {
-  const fromName = displayName?.trim();
-  if (fromName) {
-    const parts = fromName.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      const a = parts[0]?.[0];
-      const b = parts[parts.length - 1]?.[0];
-      if (a && b) {
-        return `${a}${b}`.toUpperCase();
-      }
-    }
-    const ch = fromName[0];
-    return ch ? ch.toUpperCase() : '?';
-  }
-  const e = emailFallback?.trim();
-  if (e && e.length > 0) {
-    return e[0]!.toUpperCase();
-  }
-  return '?';
 }
 
 function buildHomeStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
@@ -260,10 +298,15 @@ function buildHomeStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       marginLeft: 4,
       borderWidth: 2,
       borderColor: colors.surface,
+      overflow: 'hidden',
       ...Platform.select({
         android: { elevation: 1 },
         ios: {},
       }),
+    },
+    welcomeAvatarImage: {
+      width: '100%',
+      height: '100%',
     },
     welcomeAvatarText: {
       fontSize: 20,
@@ -319,9 +362,6 @@ function buildHomeStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       width: 44,
       height: 44,
       borderRadius: 12,
-      backgroundColor: scheme === 'dark' ? '#334155' : colors.secondaryButton,
-      borderWidth: 1,
-      borderColor: colors.border,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 8,

@@ -1,4 +1,4 @@
-package com.oneattendance
+package `in`.onesaas.attendance
 
 import android.app.Application
 import com.facebook.react.PackageList

@@ -1,4 +1,4 @@
-package com.oneattendance
+package `in`.onesaas.attendance
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

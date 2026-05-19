@@ -35,6 +35,10 @@ local.properties
 !debug.keystore
 .kotlin/
 
+# Google OAuth secrets (keep client IDs in src/utils/config.ts only)
+client_secret*.json
+**/client_secret_*.json
+
 # node.js
 #
 node_modules/

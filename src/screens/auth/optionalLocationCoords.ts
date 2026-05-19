@@ -27,6 +27,10 @@ export async function ensureLocationForVerify(): Promise<EnsureLocationForVerify
           return { ok: false, kind: 'permission' };
         }
       }
+      const stillFine = await PermissionsAndroid.check(fine);
+      if (!stillFine) {
+        return { ok: false, kind: 'permission' };
+      }
     } else {
       return { ok: false, kind: 'permission' };
     }
@@ -57,4 +61,10 @@ export async function ensureLocationForVerify(): Promise<EnsureLocationForVerify
   } catch {
     return { ok: false, kind: 'position' };
   }
+}
+
+/** Best-effort location for optional auth payloads; returns `null` if unavailable. */
+export async function tryOptionalLocationCoords(): Promise<LatLng | null> {
+  const result = await ensureLocationForVerify();
+  return result.ok ? result.coords : null;
 }
