@@ -1,0 +1,39 @@
+---
+description: Theme system and styling patterns for React Native components
+globs: "**/*.tsx"
+alwaysApply: false
+---
+
+# Theming & Styles
+
+## Color System
+
+Access via hooks — never hardcode theme colors:
+
+```tsx
+const colors = useThemeColors();        // → AppThemeColors
+const { resolvedScheme } = useAppTheme(); // → 'light' | 'dark'
+```
+
+**AppThemeColors** properties: `background`, `surface`, `text`, `textMuted`, `primary`, `primaryPressed`, `border`, `danger`, `secondaryButton`, `overlay`.
+
+## buildStyles Pattern
+
+Every component that needs theming uses a `buildStyles` factory:
+
+```tsx
+function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
+  return StyleSheet.create({ /* ... */ });
+}
+
+// In component:
+const styles = useMemo(() => buildStyles(colors, resolvedScheme), [colors, resolvedScheme]);
+```
+
+## Rules
+
+- Use `scheme` for conditional colors (e.g., dark-mode-specific rgba overlays)
+- Use `Platform.select({ ios: {...}, android: {...} })` for shadow/elevation
+- Avoid inline styles — extract to `buildStyles`. ESLint enforces `react-native/no-inline-styles`
+- Use `StyleSheet.hairlineWidth` for thin borders, not `0.5`
+- Use `StyleSheet.absoluteFill` (not `absoluteFillObject`)

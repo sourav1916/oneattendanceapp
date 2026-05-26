@@ -1,0 +1,53 @@
+---
+description: Screen component patterns — navigation, layout, data loading
+globs: "src/screens/**"
+alwaysApply: false
+---
+
+# Screen Patterns
+
+## Navigation Typing
+
+Screens receive typed navigation props from React Navigation:
+
+```tsx
+type Props = NativeStackScreenProps<HomeStackParamList, 'AttendanceManagement'>;
+export function AttendanceManagementScreen({ navigation }: Props) { ... }
+```
+
+Route types defined in `src/navigation/types.ts`.
+
+## Standard Screen Layout
+
+```tsx
+<SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+  <View style={styles.stackHeader}>
+    <HeaderBackButton onPress={() => navigation.goBack()} tintColor={colors.primary} />
+    <Text style={styles.stackHeaderTitle}>{t('...')}</Text>
+  </View>
+  {/* Fixed header filters (date, search, chips, stats) */}
+  <FlatList ... />  {/* Scrollable content */}
+  {/* Floating action bar (conditional) */}
+  {/* Modals (StatusAlert, ConfirmAlert, DatePicker, etc.) */}
+</SafeAreaView>
+```
+
+## Data Loading Pattern
+
+Use custom hooks for paginated API data:
+
+```tsx
+const { employees, counts, loading, refreshing, error, refresh, loadMore, retry } =
+  useAttendanceList({ companyId, fromDate, toDate, dayStatus, search, limit, onError });
+```
+
+- `loading` — initial load; `loadingMore` — pagination; `refreshing` — pull-to-refresh
+- Pass `onError` callback for error display via `presentError()`
+- Guard against `companyId == null` (show "select company" message)
+
+## Authentication Context
+
+```tsx
+const { selectedCompany } = useAuth();
+const companyId = selectedCompany?.id ?? null;
+```

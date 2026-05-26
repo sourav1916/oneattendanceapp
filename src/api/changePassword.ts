@@ -2,15 +2,14 @@ import { authHttpClient } from '@src/api/authHttpClient';
 import type { ChangePasswordResponse } from '@src/types/changePassword';
 
 export type ChangePasswordBody = {
-  current_password: string;
+  old_password: string;
   new_password: string;
-  /** When `true`, other devices stay signed in; when `false`, other sessions are ended. */
-  keep_other_sessions: boolean;
+  /** When `true`, keep the current session signed in (and typically other devices per backend policy). */
+  keep_login: boolean;
 };
 
 /**
- * POST `/auth/change-password` — authenticated; body matches typical backend shape.
- * Adjust path/body keys if your API differs.
+ * POST `/auth/change-password` — authenticated.
  */
 export async function changePassword(body: ChangePasswordBody): Promise<ChangePasswordResponse> {
   const { data } = await authHttpClient.post<ChangePasswordResponse>(

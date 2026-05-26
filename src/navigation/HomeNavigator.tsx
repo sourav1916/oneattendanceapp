@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import type { HomeStackParamList } from '@src/navigation/types';
+import { AttendanceManagementScreen } from '@src/screens/company/AttendanceManagement';
 import { CompanyListScreen } from '@src/screens/company/CompanyList';
 import { StaffListScreen } from '@src/screens/company/StaffList';
 import { StaffManagementScreen } from '@src/screens/company/StaffManagement';
@@ -17,6 +18,10 @@ export function HomeNavigator() {
       <Stack.Screen name="LeaveRequest" component={LeaveRequestScreen} />
       <Stack.Screen name="MyCalendar" component={MyCalendarScreen} />
       <Stack.Screen name="CompanyList" component={CompanyListScreen} />
+      <Stack.Screen
+        name="AttendanceManagement"
+        component={AttendanceManagementScreen}
+      />
       <Stack.Screen name="StaffManagement" component={StaffManagementScreen} />
       <Stack.Screen name="StaffList" component={StaffListScreen} />
     </Stack.Navigator>

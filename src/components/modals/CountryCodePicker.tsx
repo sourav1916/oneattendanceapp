@@ -12,6 +12,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeColors } from '@src/context/ThemeContext';
@@ -25,8 +26,8 @@ const MIN_LIST_HEIGHT = 96;
 
 type Props = {
   visible: boolean;
-  title: string;
-  cancelLabel: string;
+  title?: string;
+  cancelLabel?: string;
   searchPlaceholder?: string;
   selectedCountryCode: string;
   onDismiss: () => void;
@@ -205,11 +206,16 @@ export function CountryCodePicker({
   visible,
   title,
   cancelLabel,
-  searchPlaceholder = 'Search country or code',
+  searchPlaceholder,
   selectedCountryCode,
   onDismiss,
   onSelectCountry,
 }: Props) {
+  const { t } = useTranslation();
+  const resolvedTitle = title ?? t('modals.countryCode.title');
+  const resolvedCancelLabel = cancelLabel ?? t('modals.countryCode.cancel');
+  const resolvedSearchPlaceholder =
+    searchPlaceholder ?? t('modals.countryCode.searchPlaceholder');
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -275,7 +281,10 @@ export function CountryCodePicker({
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ selected }}
-          accessibilityLabel={`${item.name}, ${item.dialCode}`}
+          accessibilityLabel={t('modals.countryCode.countryOption', {
+            name: item.name,
+            dialCode: item.dialCode,
+          })}
           onPress={() => onSelectCountry(item)}
           style={({ pressed }) => [
             styles.option,
@@ -289,7 +298,7 @@ export function CountryCodePicker({
         </Pressable>
       );
     },
-    [onSelectCountry, selectedCountryCode, styles],
+    [onSelectCountry, selectedCountryCode, styles, t],
   );
 
   return (
@@ -303,24 +312,24 @@ export function CountryCodePicker({
         <Pressable
           style={styles.backdrop}
           accessibilityRole="button"
-          accessibilityLabel="Close country picker"
+          accessibilityLabel={t('modals.countryCode.closePicker')}
           onPress={onDismiss}
         />
         <View style={[styles.sheetWrap, layout.wrapStyle]} pointerEvents="box-none">
           <View style={styles.sheet} pointerEvents="auto">
-            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.title}>{resolvedTitle}</Text>
             <TextInput
               ref={searchInputRef}
               value={searchQuery}
               onChangeText={handleSearchChange}
-              placeholder={searchPlaceholder}
+              placeholder={resolvedSearchPlaceholder}
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"
               clearButtonMode={Platform.OS === 'ios' ? 'while-editing' : undefined}
               style={styles.searchInput}
-              accessibilityLabel="Search countries"
+              accessibilityLabel={t('modals.countryCode.searchCountries')}
             />
             <FlatList
               data={filteredCountries}
@@ -335,14 +344,14 @@ export function CountryCodePicker({
               showsHorizontalScrollIndicator={false}
               extraData={`${searchQuery}-${selectedCountryCode}-${keyboardHeight}`}
               ListEmptyComponent={
-                <Text style={styles.emptyText}>No countries match your search.</Text>
+                <Text style={styles.emptyText}>{t('modals.countryCode.emptySearch')}</Text>
               }
             />
             <Pressable
               accessibilityRole="button"
               onPress={onDismiss}
               style={({ pressed }) => [styles.cancelBtn, pressed && styles.cancelBtnPressed]}>
-              <Text style={styles.cancelLabel}>{cancelLabel}</Text>
+              <Text style={styles.cancelLabel}>{resolvedCancelLabel}</Text>
             </Pressable>
           </View>
         </View>

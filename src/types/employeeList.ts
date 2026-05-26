@@ -16,19 +16,24 @@ export type EmployeeListAttendanceMethod = {
   is_auto: boolean;
 };
 
+export type LabeledValue = {
+  value: string;
+  label: string;
+} | string | null;
+
 export type EmployeeListItem = {
   id: number;
   company_id: number;
   user_id: number;
   permission_package_id: number;
   employee_code: string;
-  designation: string;
-  salary_type: string;
+  designation: LabeledValue;
+  salary_type: LabeledValue;
   face_enrolled: boolean;
   fingerprint_mapped: boolean;
   joining_date: string;
   status: string;
-  employment_type: string;
+  employment_type: LabeledValue;
   weekends: EmployeeListWeekend[];
   shift_start: string | null;
   shift_end: string | null;

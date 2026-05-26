@@ -17,16 +17,23 @@ export type CalendarLogType =
   | 'BREAK_END'
   | 'day_status';
 
+export type CalendarCreatedBy = {
+  name: string;
+  role: string;
+};
+
 export type CalendarActivity = {
   type: CalendarActivityType;
   time: string;
   attendance_method: string;
+  created_by?: CalendarCreatedBy;
 };
 
 export type CalendarBreak = {
   type: CalendarBreakType;
   time: string;
   attendance_method: string;
+  created_by?: CalendarCreatedBy;
 };
 
 export type CalendarLog = {
@@ -34,6 +41,7 @@ export type CalendarLog = {
   time: string;
   attendance_method?: string;
   day_status?: CalendarDayStatus;
+  created_by?: CalendarCreatedBy;
 };
 
 export type CalendarHolidayDetails = {
@@ -48,12 +56,19 @@ export type CalendarLeaveDetails = {
   half_day_type: string | null;
 };
 
+export type CalendarVerifiedBy = {
+  name: string;
+  role: string;
+};
+
 export type CalendarDayInfo = {
   day_status: CalendarDayStatus;
   is_approved?: boolean;
+  verified_by?: CalendarVerifiedBy | null;
   is_deductible?: boolean;
-  activities?: CalendarActivity[][];
-  breaks?: CalendarBreak[][];
+  is_overtime?: boolean;
+  activities?: CalendarActivity[];
+  breaks?: CalendarBreak[];
   logs?: CalendarLog[];
   is_holiday?: CalendarHolidayDetails;
   is_leave?: CalendarLeaveDetails;
@@ -66,37 +81,13 @@ export type CalendarShift = {
   break_minutes: number;
 };
 
-export type CalendarStatistics = {
-  expected_work_minutes: number;
-  worked_minutes: number;
-  expected_break_minutes: number;
-  break_minutes: number;
-  overtime_minutes: number;
-};
-
-export type CalendarMeta = {
-  year: number;
-  month: number;
-  total_days: number;
-  present: number;
-  absent: number;
-  leave: number;
-  holiday: number;
-  weekend: number;
-  half_day: number;
-  not_joined: number;
-  upcoming: number;
-};
-
 export type MyCalendarData = {
   shift?: CalendarShift | null;
   days: Record<string, CalendarDayInfo>;
-  statistics?: CalendarStatistics | null;
 };
 
 export type MyCalendarResponse = {
   success: boolean;
   message: string;
   data: MyCalendarData | null;
-  meta?: CalendarMeta | null;
 };

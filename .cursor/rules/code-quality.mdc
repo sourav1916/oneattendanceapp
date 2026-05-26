@@ -1,0 +1,34 @@
+---
+description: Code quality rules — ESLint, formatting, no-inline-styles
+alwaysApply: true
+---
+
+# Code Quality
+
+## ESLint
+
+Run lint: `.\node_modules\.bin\eslint.cmd <files>` (Windows).
+Key rules enforced:
+- `react-native/no-inline-styles` — extract all styles to `StyleSheet.create`
+- `react-hooks/exhaustive-deps` — correct dependency arrays
+- `no-void` — don't use `void` for floating promises; use `.catch(() => {})` instead
+- Unused variables/imports are flagged
+
+## Formatting Rules
+
+- Use `Platform.OS === 'ios' ? ... : ...` for platform differences
+- Prefer `useMemo`/`useCallback` for derived data and callbacks passed as props
+- Use `type` imports: `import type { Foo } from '...'`
+- Named exports (not default) for components: `export function MyScreen() {}`
+
+## Comments
+
+- Do NOT add comments that narrate what code does
+- Only comment non-obvious logic, trade-offs, or API constraints
+- Never use comments as a thinking scratchpad
+
+## Performance
+
+- `FlatList` with `keyExtractor`, `getItemLayout` when item height is fixed
+- Memoize `renderItem` with `useCallback`
+- Use `React.memo` sparingly — only when profiling shows re-render issues

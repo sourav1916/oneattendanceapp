@@ -19,7 +19,8 @@ This folder (`context/`) holds **documentation for AI and humans**, not runtime 
 | [**modals.md**](./modals.md) | Modal layout, language/theme/company pickers, sheet patterns |
 | [**company.md**](./company.md) | Company list, create company modal, staff screens, `/company/*` APIs |
 | [**alerts.md**](./alerts.md) | `ConfirmAlert`, `StatusAlert`, confirms and success/error popups |
-| [**profile.md**](./profile.md) | Profile screen, avatar upload, update-profile, profile-role cache sync |
+| [**profile.md**](./profile.md) | Profile / EditProfile, avatar upload, update-profile, profile-role cache |
+| [**home.md**](./home.md) | HomeScreen, MainTopBar, company switcher arrow, pull-to-refresh |
 
 ---
 
@@ -107,7 +108,7 @@ App/
 ## 6. Logged-in shell (`MainNavigator.tsx`)
 
 - **Bottom tabs**: `Home` | `Attendance` | `Settings`.
-- **Header**: Custom **`MainTopBar`** for every tab (company name/logo, company switcher if allowed, avatar → navigates to **Settings** tab).
+- **Header**: Custom **`MainTopBar`** for every tab — company name (or “One Attendance”), ▼ opens **`CompanySwitcher`** (including when user has **no** companies yet), profile photo from cache — see [**home.md**](./home.md).
 - **Tab icons**: `MaterialCommunityIcons` (outline when inactive, solid when focused) + animated vertical lift.
 - **`Settings` tab** is not a single screen: it is **`SettingsNavigator`** (native stack: `SettingsHome` → `Sessions`, etc.).
 
@@ -119,7 +120,7 @@ App/
 
 | Area | Path | Notes |
 |------|------|--------|
-| Home | `src/screens/home/HomeScreen.tsx` | Welcome card + 3-column action grid; Attendance tab; Calendar → **My Calendar**; **Company** → list/create; staff / leave sub-screens |
+| Home | `src/screens/home/HomeScreen.tsx` | Welcome card + menu grid; pull-to-refresh → `refreshProfileRole`; no “Home” title in body — [**home.md**](./home.md) |
 | Attendance | `src/screens/attendance/AttendanceScreen.tsx` | Punch / methods UI |
 | **My Calendar** | `src/screens/report/Calendar.tsx` | Monthly attendance grid, `/shifts/my-calendar`; see [**my-calendar.md**](./my-calendar.md) |
 | Settings | `src/screens/settings/SettingsScreen.tsx` | Menu sections → profile, sessions, **calendar**, language, theme, sign out |
@@ -144,6 +145,7 @@ Types for responses live in **`src/types/`**.
 - **Errors from axios**: **`readApiError`** (`src/utils/readApiError.ts`).
 - **Confirm / alert UI**: **`useConfirmAlert`** / **`useStatusAlert`** — see [**alerts.md**](./alerts.md) and [**modals.md**](./modals.md).
 - **Profile edit & cache**: [**profile.md**](./profile.md).
+- **User/company display helpers**: `src/utils/userDisplay.ts`, `src/utils/profileDisplay.ts`, `src/utils/resolveMediaUrl.ts`.
 
 ---
 

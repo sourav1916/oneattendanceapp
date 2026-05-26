@@ -31,6 +31,7 @@ export type HomeStackParamList = {
   LeaveRequest: undefined;
   MyCalendar: undefined;
   CompanyList: undefined;
+  AttendanceManagement: undefined;
   StaffManagement: undefined;
   StaffList: undefined;
 };

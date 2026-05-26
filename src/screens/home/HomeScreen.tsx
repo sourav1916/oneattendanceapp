@@ -5,12 +5,13 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Image,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -58,6 +59,11 @@ type ActionCard = {
 
 const HOME_MENU_ICONS: Record<string, ActionCardIcon> = {
   attendance: { name: 'calendar-clock-outline', color: '#059669', backgroundColor: '#d1fae5' },
+  attendanceMgmt: {
+    name: 'clipboard-text-clock-outline',
+    color: '#0f766e',
+    backgroundColor: '#ccfbf1',
+  },
   calendar: { name: 'calendar-month-outline', color: '#ea580c', backgroundColor: '#ffedd5' },
   company: { name: 'office-building-outline', color: '#0d9488', backgroundColor: '#ccfbf1' },
   staff: { name: 'account-group-outline', color: '#2563eb', backgroundColor: '#dbeafe' },
@@ -81,7 +87,8 @@ function actionCardWithIcon(id: string, title: string, onPress: () => void): Act
 export function HomeScreen(): React.JSX.Element {
   const { t } = useTranslation();
   const navigation = useNavigation<HomeMainNavigation>();
-  const { name, email, cachedUserProfile, profileRoleUser } = useAuth();
+  const { name, email, cachedUserProfile, profileRoleUser, refreshProfileRole } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
   const styles = useMemo(
@@ -115,6 +122,17 @@ export function HomeScreen(): React.JSX.Element {
     [displayName, displayEmail],
   );
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshProfileRole({ silent: true });
+    } catch {
+      // Pull-to-refresh: keep existing profile data on failure.
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshProfileRole]);
+
   const openComingSoon = useCallback(() => {
     present({
       title: t('settings.alerts.comingSoonTitle'),
@@ -141,6 +159,11 @@ export function HomeScreen(): React.JSX.Element {
         () => navigation.navigate('CompanyList'),
       ),
       actionCardWithIcon(
+        'attendanceMgmt',
+        t('home.menu.attendanceManagement'),
+        () => navigation.navigate('AttendanceManagement'),
+      ),
+      actionCardWithIcon(
         'staff',
         t('home.menu.staffManagement'),
         () => navigation.navigate('StaffManagement'),
@@ -163,11 +186,17 @@ export function HomeScreen(): React.JSX.Element {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
-          showsVerticalScrollIndicator={false}>
-          <Text style={styles.pageTitle} accessibilityRole="header">
-            {t('home.title')}
-          </Text>
-
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                void onRefresh();
+              }}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }>
           <View style={styles.welcomeCard}>
             <View style={styles.welcomeAccent} />
             <View style={styles.welcomeAvatar}>
@@ -246,15 +275,6 @@ function buildHomeStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       paddingHorizontal: H_PAD,
       paddingTop: 12,
       paddingBottom: 32,
-    },
-    pageTitle: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 1.2,
-      marginBottom: 12,
-      marginLeft: 2,
     },
     welcomeCard: {
       flexDirection: 'row',

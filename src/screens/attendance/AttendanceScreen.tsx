@@ -28,7 +28,7 @@ import {
   AttendanceSwipeConfirmModal,
   type AttendanceMutationEndpoint,
 } from '@src/components/modals/AttendanceSwipeConfirmModal';
-import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
+import { StatusAlert, useStatusAlert } from '@src/components/modals/StatusAlert';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import { ensureLocationForVerify } from '@src/screens/auth/optionalLocationCoords';
@@ -1204,7 +1204,7 @@ export function AttendanceScreen() {
     [colors, resolvedScheme],
   );
   const { selectedCompany } = useAuth();
-  const { props: confirmProps, present } = useConfirmAlert();
+  const { props: statusAlertProps, presentError, presentSuccess } = useStatusAlert();
   const companyId = selectedCompany?.id ?? null;
 
   const [method, setMethod] = useState<AttendanceMethod>('manual');
@@ -1253,18 +1253,16 @@ export function AttendanceScreen() {
         return { ok: false };
       }
       if (method === 'qr') {
-        present({
+        presentError({
           title: t('attendance.punch.errorTitle'),
           message: t('attendance.errors.qrNotSupported'),
-          buttons: [{ text: t('settings.alerts.ok'), variant: 'primary' }],
         });
         return { ok: false };
       }
       if (!isAttendanceMethodAllowed(statusData, method)) {
-        present({
+        presentError({
           title: t('attendance.punch.errorTitle'),
           message: t('attendance.errors.methodNotAllowed'),
-          buttons: [{ text: t('settings.alerts.ok'), variant: 'primary' }],
         });
         return { ok: false };
       }
@@ -1277,13 +1275,12 @@ export function AttendanceScreen() {
       if (method === 'gps') {
         const loc = await ensureLocationForVerify();
         if (!loc.ok) {
-          present({
+          presentError({
             title: t('attendance.punch.errorTitle'),
             message:
               loc.kind === 'permission'
                 ? t('attendance.errors.locationPermission')
                 : t('attendance.errors.locationFailed'),
-            buttons: [{ text: t('settings.alerts.ok'), variant: 'primary' }],
           });
           return { ok: false };
         }
@@ -1307,27 +1304,29 @@ export function AttendanceScreen() {
           res = await postBreakOut(companyId, payload);
         }
         if (!res.success) {
-          present({
+          presentError({
             title: t('attendance.punch.errorTitle'),
             message: res.message?.trim() || t('attendance.errors.punchGeneric'),
-            buttons: [{ text: t('settings.alerts.ok'), variant: 'primary' }],
           });
           return { ok: false };
         }
+        presentSuccess({
+          title: t('attendance.punch.successTitle'),
+          message: res.message?.trim() || t('attendance.punch.successMessage'),
+        });
         await load('refresh');
         return { ok: true };
       } catch (e) {
-        present({
+        presentError({
           title: t('attendance.punch.errorTitle'),
           message: readApiError(e),
-          buttons: [{ text: t('settings.alerts.ok'), variant: 'primary' }],
         });
         return { ok: false };
       } finally {
         setActionBusy(false);
       }
     },
-    [companyId, method, present, t, load, statusData],
+    [companyId, load, method, presentError, presentSuccess, statusData, t],
   );
 
   const visiblePunchRows = useMemo((): PunchRowSpec[] => {
@@ -1725,7 +1724,7 @@ export function AttendanceScreen() {
         onDismiss={() => setPendingEndpoint(null)}
         onConfirmSwipe={handleConfirmSwipe}
       />
-      <ConfirmAlert {...confirmProps} />
+      <StatusAlert {...statusAlertProps} />
     </SafeAreaView>
   );
 }

@@ -1,0 +1,39 @@
+---
+description: i18next translation patterns — key structure, adding new strings
+globs: "src/locales/**"
+alwaysApply: false
+---
+
+# Translations (i18next)
+
+## Setup
+
+- Config: `src/i18n/index.ts`
+- Locale files: `src/locales/{en,hi,ta,te,kn,ml,mr,gu}.ts`
+- Each locale exports a flat nested object — **en.ts** is the source of truth
+
+## Using Translations
+
+```tsx
+const { t } = useTranslation();
+t('home.attendanceManagement.mark.title')
+t('modals.timePicker.rangeError', { min: '9:00 AM', max: '6:00 PM' }) // interpolation
+```
+
+## Key Naming Convention
+
+Hierarchical, dot-separated, matching feature area:
+
+```
+home.attendanceManagement.title          // screen title
+home.attendanceManagement.mark.statuses.present  // nested feature
+modals.timePicker.am                     // modal-level
+settings.alerts.ok                       // settings area
+```
+
+## Adding New Keys
+
+1. Add keys to `src/locales/en.ts` first (English is the base)
+2. Add matching keys to other locale files when translations are available
+3. Group under the feature namespace (e.g., `home.attendanceManagement.bulk.*`)
+4. Use interpolation `{{var}}` for dynamic values, not string concatenation

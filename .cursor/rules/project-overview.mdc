@@ -1,0 +1,41 @@
+---
+description: OneAttendance project overview — architecture, stack, and key conventions
+alwaysApply: true
+---
+
+# OneAttendance — React Native Project
+
+**App**: Employee attendance management (punch in/out, leave, admin management).
+**Stack**: React Native 0.85, React 19, TypeScript, React Navigation 7, Axios, i18next.
+
+## Directory Structure
+
+```
+src/
+├── api/            # API functions (authHttpClient + endpoint wrappers)
+├── components/     # Shared components (modals/, icons/, MainTopBar)
+├── context/        # AuthContext, ThemeContext
+├── hooks/          # Custom hooks (useAttendanceList, useUpdateProfile, etc.)
+├── i18n/           # i18next setup
+├── locales/        # Translation files (en.ts, hi.ts, ta.ts, te.ts, etc.)
+├── navigation/     # Navigators + route type definitions
+├── screens/        # Screen components grouped by feature
+├── storage/        # AsyncStorage wrappers (auth, theme, language)
+├── theme/          # palettes.ts (AppThemeColors: light + dark)
+├── types/          # TypeScript type definitions per domain
+└── utils/          # Pure utility/helper functions
+```
+
+## Import Alias
+
+Use `@src/` for all project imports: `import { foo } from '@src/api/attendanceApi'`
+Configured via `tsconfig.json` paths + `babel.config.js` module-resolver.
+
+## Key Conventions
+
+- Functional components only — no class components
+- `StyleSheet.create()` via a `buildStyles(colors, scheme)` factory
+- All text user-facing → i18next translation keys
+- API calls through `authHttpClient` (Axios instance with Bearer token)
+- Company-scoped endpoints send `company: <id>` custom header
+- Types in `src/types/`, one file per domain

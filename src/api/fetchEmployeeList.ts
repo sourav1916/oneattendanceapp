@@ -28,5 +28,6 @@ export async function fetchEmployeeList(
       ...(search.length > 0 ? { search } : {}),
     },
   });
+
   return data;
 }

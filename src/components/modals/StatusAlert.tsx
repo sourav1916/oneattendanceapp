@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import i18n from 'i18next';
 import type { IconProps } from 'react-native-vector-icons/Icon';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -119,9 +120,9 @@ function buildStatusPayload(
     message,
     showMessage = true,
     buttons,
-    buttonText = 'OK',
+    buttonText = i18n.t('settings.alerts.ok'),
     dismissOnIconPress = true,
-    dismissIconA11y = 'Dismiss',
+    dismissIconA11y = i18n.t('modals.common.dismiss'),
     onAfterDismiss,
     ...rest
   } = config;

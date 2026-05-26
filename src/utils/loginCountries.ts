@@ -63,3 +63,38 @@ export function filterLoginCountries(query: string): LoginCountry[] {
     return false;
   });
 }
+
+/** E.164-style digits without `+` (country code + national). */
+export function combinePhoneDigits(country: LoginCountry, nationalDigits: string): string {
+  const code = country.dialCode.replace(/\D/g, '');
+  const nat = nationalDigits.replace(/\D/g, '');
+  return `${code}${nat}`;
+}
+
+/** Split stored phone digits into country + national (longest dial-code match). */
+export function resolveCountryAndNationalFromDigits(
+  fullDigits: string,
+  fallback: LoginCountry = DEFAULT_LOGIN_COUNTRY,
+): { country: LoginCountry; national: string } {
+  const d = fullDigits.replace(/\D/g, '');
+  if (!d) {
+    return { country: fallback, national: '' };
+  }
+
+  const byDialLength = [...LOGIN_COUNTRIES].sort(
+    (a, b) => b.dialCode.replace(/\D/g, '').length - a.dialCode.replace(/\D/g, '').length,
+  );
+  for (const country of byDialLength) {
+    const codeDigits = country.dialCode.replace(/\D/g, '');
+    if (codeDigits.length > 0 && d.startsWith(codeDigits) && d.length > codeDigits.length) {
+      return { country, national: d.slice(codeDigits.length) };
+    }
+  }
+
+  return { country: fallback, national: d };
+}
+
+export function formatPhoneDisplay(country: LoginCountry, nationalDigits: string): string {
+  const nat = nationalDigits.replace(/\D/g, '');
+  return nat ? `${country.dialCode} ${nat}` : country.dialCode;
+}

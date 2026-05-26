@@ -63,7 +63,7 @@ showsHorizontalScrollIndicator={false}
 |-----------|---------|
 | **`LanguagePicker.tsx`** | Pick app language from `SUPPORTED_LANGUAGES`; persists + `i18n.changeLanguage`. |
 | **`ThemePicker.tsx`** | Pick light / dark / system theme; layout aligned with `LanguagePicker`. |
-| **`CompanySwitcher.tsx`** | Modal listing companies (used from `MainTopBar`). |
+| **`CompanySwitcher.tsx`** | Company list from profile-role ( **`MainTopBar`** ); empty state + **Create company** — see below. |
 | **`CompanyPicker.tsx`** | Full-screen style picker used by **`CompanySelectionGate`**. |
 | **`CountryCodePicker.tsx`** | Login/register country dial code; search + keyboard-aware sheet. |
 | **`ApplyLeave.tsx`** | Leave application form (from leave balance screen). |
@@ -72,6 +72,39 @@ showsHorizontalScrollIndicator={false}
 | **`AttendanceSwipeConfirmModal.tsx`** | Swipe-to-confirm punch actions. |
 | **`ConfirmAlert.tsx`** | Generic confirm / alert dialog — see [**alerts.md**](./alerts.md). |
 | **`StatusAlert.tsx`** | Success / error / warning / info with themed icon header — see [**alerts.md**](./alerts.md). |
+
+---
+
+## `CompanySwitcher` + create company
+
+**`src/components/modals/CompanySwitcher.tsx`** — opened from **`MainTopBar`** (▼ next to company / “One Attendance” title).
+
+### When it opens
+
+- **`refreshProfileRole({ silent: true })`** while visible (spinner in title row).
+- Companies from **`companiesFromProfileRole(profileRole?.data?.companies)`**.
+
+### With companies
+
+- Subtitle: “Tap one to switch the active workspace.”
+- Tap row → **`onSelectCompany`** + close.
+
+### Empty list (no companies on profile-role)
+
+- Short copy only: **`home.companySwitcher.emptyTitle`** (“No companies yet”).
+- **Create company** button — no long hint paragraphs.
+- **Do not** reset **`createOpen`** when switcher `visible` becomes `false` (that prevented **`CreateCompany`** from opening). Only clear **`createOpen`** on **`CreateCompany` `onDismiss`**.
+
+### Create company flow
+
+1. User taps **Create company** → `setCreateOpen(true)` then **`onClose()`** (switcher closes).
+2. **`CreateCompany`** modal opens (sibling modal in same component).
+3. On submit: **`createCompany`** → **`refreshProfileRole({ silent: true })`** → auto-**`onSelectCompany`** (match by name / first owned) → **`StatusAlert` `presentSuccess`** with API message.
+4. Errors: **`StatusAlert` `presentError`**; **`CreateCompany`** stays open for retry.
+
+Also available from **`CompanyList`** header (separate `createOpen` state there).
+
+See [**home.md**](./home.md), [**company.md**](./company.md).
 
 ---
 

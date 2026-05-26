@@ -9,7 +9,7 @@ Attach when changing **routes**, **headers**, **tabs**, or **deep linking**.
 **`src/navigation/types.ts`**
 
 - **`AuthStackParamList`**: `Login`, `Register`, `ForgotPassword`, `VerifyEmailOtp` (+ params where needed).
-- **`SettingsStackParamList`**: `SettingsHome`, `Profile`, `Sessions`, `ChangePassword`, **`MyCalendar`**.
+- **`SettingsStackParamList`**: `SettingsHome`, `Profile`, **`EditProfile`**, `Sessions`, `ChangePassword`, **`MyCalendar`**.
 - **`HomeStackParamList`**: `HomeMain`, `LeaveRequest`, **`MyCalendar`**, **`CompanyList`**, `StaffManagement`, `StaffList`.
 - **`MainTabParamList`**: `Home`, `Attendance`, `Settings`.
 

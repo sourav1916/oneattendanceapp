@@ -132,7 +132,7 @@ export function formatStatusLabel(status: string): string {
     .join(' ');
 }
 
-/** Whether a day has modal content beyond a bare status (e.g. planned leave on upcoming days). */
+/** Whether a day has modal content beyond a bare status. */
 export function hasCalendarDayDetails(dayInfo: CalendarDayInfo | null | undefined): boolean {
   if (!dayInfo) {
     return false;
@@ -144,11 +144,13 @@ export function hasCalendarDayDetails(dayInfo: CalendarDayInfo | null | undefine
       dayInfo.is_holiday ||
       dayInfo.is_leave ||
       dayInfo.is_approved != null ||
-      dayInfo.is_deductible != null,
+      dayInfo.is_deductible != null ||
+      dayInfo.is_overtime != null ||
+      dayInfo.verified_by != null,
   );
 }
 
-/** e.g. 8400 → "140h 0m", 120 → "2h 0m" */
+/** e.g. 480 → "8h 0m" */
 export function formatMinutesToDuration(minutes: number): string {
   const safe = Math.max(0, Math.round(minutes));
   const h = Math.floor(safe / 60);
@@ -183,4 +185,50 @@ export function shiftMonth(year: number, month: number, delta: number): { year: 
     nextYear += 1;
   }
   return { year: nextYear, month: nextMonth };
+}
+
+export type CalendarDaySummary = {
+  present: number;
+  absent: number;
+  leave: number;
+  holiday: number;
+  weekend: number;
+  half_day: number;
+  not_joined: number;
+  upcoming: number;
+};
+
+/** Compute summary counts from the days map. */
+export function computeCalendarSummary(
+  days: Record<string, CalendarDayInfo> | undefined | null,
+): CalendarDaySummary {
+  const summary: CalendarDaySummary = {
+    present: 0,
+    absent: 0,
+    leave: 0,
+    holiday: 0,
+    weekend: 0,
+    half_day: 0,
+    not_joined: 0,
+    upcoming: 0,
+  };
+  if (!days) {
+    return summary;
+  }
+  for (const key of Object.keys(days)) {
+    const status = days[key]?.day_status;
+    if (status && status in summary) {
+      summary[status as keyof CalendarDaySummary] += 1;
+    }
+  }
+  return summary;
+}
+
+export function formatCreatedByLabel(name: string, role: string): string {
+  const roleLabel = role
+    .split('_')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+  return `${name} (${roleLabel})`;
 }

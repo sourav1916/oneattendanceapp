@@ -6,12 +6,13 @@ Attach when working on **company list**, **create company**, **staff management*
 
 ## Overview
 
-Users can browse companies they have access to, create new companies, and manage staff from the **Home** tab. Company **selection** for the active workspace (top bar) is separate: see **`CompanyPicker`** / **`CompanySwitcher`** in [**modals.md**](./modals.md) and **`CompanySelectionGate`**.
+Users can browse companies they have access to, create new companies, and manage staff from the **Home** tab. Company **selection** for the active workspace uses **`CompanyPicker`** (gate), **`CompanySwitcher`** (top bar), and **`CompanySelectionGate`** — see [**modals.md**](./modals.md), [**home.md**](./home.md).
 
 | Feature | Screen / UI | API |
 |---------|-------------|-----|
 | List + search | `CompanyList.tsx` | `GET /company/list` |
 | Create | `CreateCompany` modal | `POST /company/create` |
+| Create (no companies yet) | **`CompanySwitcher`** empty state → `CreateCompany` | Same API + `refreshProfileRole` |
 | Staff hub | `StaffManagement.tsx` | (sub-routes) |
 | Staff list | `StaffList.tsx` | `GET /employees/list` (+ `company` header) |
 
@@ -127,9 +128,19 @@ src/
 
 ---
 
+## Company switcher vs company list
+
+| Entry | When | After create |
+|-------|------|----------------|
+| **CompanyList** | Home → Company tile | `loadFirst()` refreshes paginated list; `ConfirmAlert` success |
+| **CompanySwitcher** | MainTopBar ▼ (especially zero companies) | `refreshProfileRole`; `selectCompany`; `StatusAlert` success |
+
+---
+
 ## Related context
 
-- [**modals.md**](./modals.md) — sheet patterns, scroll indicators, keyboard-aware forms.
-- [**alerts.md**](./alerts.md) — `ConfirmAlert` after successful create.
+- [**home.md**](./home.md) — MainTopBar, pull-to-refresh
+- [**modals.md**](./modals.md) — `CompanySwitcher`, `CreateCompany`, sheet patterns
+- [**alerts.md**](./alerts.md) — `StatusAlert` / `ConfirmAlert` after create
 - [**navigation.md**](./navigation.md) — `HomeStackParamList`.
 - [**theme-api.md**](./theme-api.md) — `authHttpClient`, `company` header on employee routes.

@@ -567,10 +567,7 @@ export function LoginScreen({ navigation }: Props) {
 
       <CountryCodePicker
         visible={countryPickerOpen}
-        title="Select country"
-        cancelLabel="Cancel"
         selectedCountryCode={selectedCountry.code}
-        searchPlaceholder="Search country or dial code"
         onDismiss={() => setCountryPickerOpen(false)}
         onSelectCountry={country => {
           setSelectedCountry(country);

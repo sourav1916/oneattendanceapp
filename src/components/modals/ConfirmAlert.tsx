@@ -10,6 +10,7 @@ import {
     View,
     type ViewStyle,
 } from 'react-native';
+import i18n from 'i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useThemeColors } from '@src/context/ThemeContext';
@@ -277,7 +278,7 @@ export function ConfirmAlert({
     overlayStyle,
     cardStyle,
     maxDialogWidth = 340,
-    backdropAccessibilityLabel = 'Close dialog',
+    backdropAccessibilityLabel = i18n.t('modals.common.closeDialog'),
 }: ConfirmAlertProps) {
     const insets = useSafeAreaInsets();
     const colors = useThemeColors();
@@ -300,7 +301,10 @@ export function ConfirmAlert({
         return buttons.length > 2 ? 'column' : 'row';
     }, [buttonLayout, buttons.length]);
 
-    const safeButtons = buttons.length > 0 ? buttons : [{ text: 'OK', variant: 'primary' as const }];
+    const safeButtons =
+        buttons.length > 0
+            ? buttons
+            : [{ text: i18n.t('settings.alerts.ok'), variant: 'primary' as const }];
 
     return (
         <Modal
@@ -423,7 +427,7 @@ export function useConfirmAlert() {
     const [visible, setVisible] = useState(false);
     const afterDismissRef = useRef<(() => void) | undefined>(undefined);
     const [payload, setPayload] = useState<Omit<ConfirmAlertPresentConfig, 'onAfterDismiss'>>({
-        buttons: [{ text: 'OK', variant: 'primary' }],
+        buttons: [{ text: i18n.t('settings.alerts.ok'), variant: 'primary' }],
     });
 
     const dismiss = useCallback(() => {
@@ -441,7 +445,9 @@ export function useConfirmAlert() {
         setPayload({
             ...defaultPresentFields,
             ...rest,
-            buttons: rest.buttons?.length ? rest.buttons : [{ text: 'OK', variant: 'primary' }],
+            buttons: rest.buttons?.length
+                ? rest.buttons
+                : [{ text: i18n.t('settings.alerts.ok'), variant: 'primary' }],
         });
         setVisible(true);
     }, []);
@@ -451,7 +457,7 @@ export function useConfirmAlert() {
         const buttons =
             rawButtons && rawButtons.length > 0
                 ? rawButtons
-                : [{ text: 'OK', variant: 'primary' as const }];
+                : [{ text: i18n.t('settings.alerts.ok'), variant: 'primary' as const }];
         return {
             visible,
             onDismiss: dismiss,

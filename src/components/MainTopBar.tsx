@@ -1,6 +1,7 @@
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Image,
   Platform,
@@ -18,27 +19,13 @@ import type { MainTabParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import { COMPANY_DISPLAY_NAME } from '@src/utils/config';
 import { companiesFromProfileRole } from '@src/utils/companiesFromProfileRole';
-
-function userInitials(displayName: string | null, emailFallback: string | null) {
-  const fromName = displayName?.trim();
-  if (fromName) {
-    const parts = fromName.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      const a = parts[0]?.[0];
-      const b = parts[parts.length - 1]?.[0];
-      if (a && b) {
-        return `${a}${b}`.toUpperCase();
-      }
-    }
-    const ch = fromName[0];
-    return ch ? ch.toUpperCase() : '?';
-  }
-  const e = emailFallback?.trim();
-  if (e && e.length > 0) {
-    return e[0]!.toUpperCase();
-  }
-  return '?';
-}
+import { resolveMediaUrl } from '@src/utils/resolveMediaUrl';
+import {
+  displayEmailFromSources,
+  displayNameFromSources,
+  initialsFromDisplayName,
+  profilePictureFromSources,
+} from '@src/utils/userDisplay';
 
 type TabNav = BottomTabNavigationProp<MainTabParamList>;
 
@@ -139,10 +126,15 @@ function buildMainTopBarStyles(colors: AppThemeColors, scheme: 'light' | 'dark')
       justifyContent: 'center',
       borderWidth: 2,
       borderColor: colors.surface,
+      overflow: 'hidden',
       ...Platform.select({
         android: { elevation: 1 },
         ios: {},
       }),
+    },
+    avatarImage: {
+      width: '100%',
+      height: '100%',
     },
     avatarText: {
       fontSize: 15,
@@ -153,6 +145,7 @@ function buildMainTopBarStyles(colors: AppThemeColors, scheme: 'light' | 'dark')
 }
 
 export function MainTopBar() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
@@ -161,7 +154,16 @@ export function MainTopBar() {
     [colors, resolvedScheme],
   );
   const navigation = useNavigation<TabNav>();
-  const { name, email, profileRole, selectedCompany, selectCompany, refreshProfileRole } = useAuth();
+  const {
+    name,
+    email,
+    profileRole,
+    cachedUserProfile,
+    profileRoleUser,
+    selectedCompany,
+    selectCompany,
+    refreshProfileRole,
+  } = useAuth();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [switcherRefreshing, setSwitcherRefreshing] = useState(false);
 
@@ -170,12 +172,9 @@ export function MainTopBar() {
     [profileRole],
   );
 
-  const showCompanySwitcher = eligibleCompanies.length > 0;
-  useEffect(() => {
-    if (!showCompanySwitcher && switcherOpen) {
-      setSwitcherOpen(false);
-    }
-  }, [showCompanySwitcher, switcherOpen]);
+  const hasCompanies = eligibleCompanies.length > 0;
+  /** Arrow when user has companies, or when profile-role loaded with none (refresh to pick up new/joined companies). */
+  const showCompanyArrow = hasCompanies || profileRole != null;
 
   useEffect(() => {
     if (!switcherOpen) {
@@ -197,7 +196,22 @@ export function MainTopBar() {
   const displayName = selectedCompany?.name ?? COMPANY_DISPLAY_NAME;
   const letter = displayName.trim()[0]?.toUpperCase() ?? '?';
 
-  const initials = userInitials(name, email);
+  const userDisplayName = useMemo(
+    () => displayNameFromSources(name, email, cachedUserProfile, profileRoleUser),
+    [name, email, cachedUserProfile, profileRoleUser],
+  );
+  const userEmail = useMemo(
+    () => displayEmailFromSources(email, cachedUserProfile, profileRoleUser),
+    [email, cachedUserProfile, profileRoleUser],
+  );
+  const profilePhotoUrl = useMemo(() => {
+    const raw = profilePictureFromSources(cachedUserProfile, profileRoleUser);
+    return raw ? resolveMediaUrl(raw) : '';
+  }, [cachedUserProfile, profileRoleUser]);
+  const profileInitials = useMemo(
+    () => initialsFromDisplayName(userDisplayName, userEmail),
+    [userDisplayName, userEmail],
+  );
 
   return (
     <View
@@ -233,10 +247,10 @@ export function MainTopBar() {
             <Text style={styles.company} numberOfLines={1}>
               {displayName}
             </Text>
-            {showCompanySwitcher ? (
+            {showCompanyArrow ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Show companies"
+                accessibilityLabel={t('home.companySwitcher.showCompanies')}
                 accessibilityState={{ expanded: switcherOpen }}
                 hitSlop={10}
                 onPress={() => setSwitcherOpen(true)}
@@ -258,7 +272,16 @@ export function MainTopBar() {
           onPress={() => navigation.navigate('Settings')}
           style={({ pressed }) => [styles.profileHit, pressed && styles.profileHitPressed]}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+            {profilePhotoUrl ? (
+              <Image
+                source={{ uri: profilePhotoUrl }}
+                style={styles.avatarImage}
+                resizeMode="cover"
+                accessibilityIgnoresInvertColors
+              />
+            ) : (
+              <Text style={styles.avatarText}>{profileInitials}</Text>
+            )}
           </View>
         </Pressable>
       </View>

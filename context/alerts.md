@@ -13,7 +13,7 @@ Attach when implementing **confirmation dialogs**, **success/error feedback**, o
 | OS permissions | System APIs |
 | Lightweight transient toast | Not a shared primitive yet |
 
-Many screens mount **both** when they need confirms and status feedback (e.g. **Profile** — see [**profile.md**](./profile.md)).
+Many screens mount **both** when they need confirms and status feedback.
 
 ---
 
@@ -21,52 +21,12 @@ Many screens mount **both** when they need confirms and status feedback (e.g. **
 
 **`src/components/modals/ConfirmAlert.tsx`**
 
-- Modal card: title, optional **`children`**, message, buttons.
+- Modal card: title, message, buttons.
 - **`childrenPlacement`**: `'aboveTitle'` \| `'betweenTitleAndMessage'` (default) \| `'belowMessage'`.
-- Props: `visible`, `onDismiss`, `buttons[]`, variants (`primary`, `secondary`, `danger`, `outline`, `ghost`), backdrop/hardware dismiss, `buttonLayout`, etc.
-- Types: **`ConfirmAlertProps`**, **`ConfirmAlertButton`**.
+- Hook: **`useConfirmAlert`** → `<ConfirmAlert {...confirmProps} />`.
+- **`present(config)`** — `buttons`, optional `onAfterDismiss`, `closeOnPress` per button.
 
-### Hook: `useConfirmAlert`
-
-```tsx
-const { props: confirmProps, present, dismiss, visible } = useConfirmAlert();
-
-<ConfirmAlert {...confirmProps} />
-```
-
-#### `present(config)`
-
-- **`ConfirmAlertPresentConfig`**: merges defaults (`dismissOnBackdropPress: true`, etc.).
-- **`buttons`**: `{ text, variant?, onPress?, key?, closeOnPress?, ... }`.
-- Optional: **`title`**, **`message`**, **`children`**, **`onAfterDismiss`**.
-- Button **`onPress`** runs first; dialog closes when **`closeOnPress !== false`** (default).
-
-#### Typical patterns
-
-**Single OK**
-
-```ts
-present({
-  title: t('settings.alerts.comingSoonTitle'),
-  message: t('settings.alerts.comingSoonMessage'),
-  buttons: [{ text: t('settings.alerts.ok'), variant: 'primary' }],
-});
-```
-
-**Cancel + confirm**
-
-```ts
-present({
-  title: '…',
-  message: '…',
-  buttons: [
-    { key: 'cancel', text: t('settings.alerts.cancel'), variant: 'secondary' },
-    { key: 'ok', text: t('settings.alerts.ok'), variant: 'primary', onPress: () => { void doWork(); } },
-  ],
-});
-```
-
-Nested **`present()`** after async work is used in **`SessionScreen`** (logout flows).
+Nested **`present()`** after async work: **`SessionScreen`** (logout).
 
 ---
 
@@ -74,81 +34,56 @@ Nested **`present()`** after async work is used in **`SessionScreen`** (logout f
 
 **`src/components/modals/StatusAlert.tsx`**
 
-Built on **`ConfirmAlert`** with a themed **MaterialCommunityIcons** header (icon above title).
+Built on **`ConfirmAlert`** with themed **MaterialCommunityIcons** above the title.
 
 ### Tones
 
-| Tone | Icon | Button variant |
-|------|------|----------------|
-| `success` | `check-circle` | `primary` (green ring/glyph) |
+| Tone | Icon | Button |
+|------|------|--------|
+| `success` | `check-circle` | `primary` (green) |
 | `error` | `close-circle` | `danger` (red) |
 | `warning` | `alert-circle` | `primary` (amber) |
 | `info` | `information` | `primary` (blue) |
 
-Ring/glyph colors adapt to **`resolvedScheme`** (light/dark).
-
-### Hook: `useStatusAlert`
+### Hook
 
 ```tsx
-const { props: statusProps, presentSuccess, presentError, presentWarning, presentInfo, present, dismiss } =
+const { props: statusAlertProps, presentSuccess, presentError, present, dismiss } =
   useStatusAlert();
 
-<StatusAlert {...statusProps} />
+<StatusAlert {...statusAlertProps} />
 ```
 
-#### Helpers
+- **`presentSuccess` / `presentError`** — omit `tone`; pass **`message`** from API when available.
+- **`dismissOnIconPress`** (default `true`) — tap icon to dismiss.
+- **`onAfterDismiss`** — e.g. `navigation.goBack()` after profile save.
 
-```ts
-presentSuccess({
-  title: 'Profile updated',
-  message: 'Your profile details were updated successfully.',
-  buttonText: 'Done',
-  dismissIconA11y: 'Dismiss success message',
-});
+### Usage map
 
-presentError({
-  title: 'Upload failed',
-  message: apiMessage,
-  buttonText: 'Done',
-  dismissIconA11y: 'Dismiss upload error',
-});
-```
+| Location | Event | Alert |
+|----------|-------|--------|
+| `EditProfile.tsx` | Save OK | `presentSuccess` (API `message`) |
+| `EditProfile.tsx` | Upload fail | `presentError` |
+| `EditProfile.tsx` | Remove photo | `ConfirmAlert` |
+| `CompanySwitcher.tsx` | Create company OK / fail | `presentSuccess` / `presentError` |
+| `CompanyList.tsx` | Create OK | `ConfirmAlert` (legacy) |
+| `SettingsScreen.tsx` | Coming soon, sign out | `ConfirmAlert` |
 
-- **`present(config)`** — full config with required **`tone`**.
-- **`dismissOnIconPress`** (default `true`): tapping the icon calls **`dismiss`**.
-- Optional **`buttons`** override; otherwise single button from **`buttonText`** (default `'OK'`).
-- Optional screen-level defaults: `useStatusAlert({ buttonText: t('…') })`.
+Prefer **`StatusAlert`** for new one-button success/error feedback.
 
-### Reference: Profile screen
-
-| Event | Alert |
-|-------|--------|
-| Photo upload success | *(none — silent)* |
-| Photo upload failure | `presentError` |
-| Profile save success | `presentSuccess` |
-| Remove photo | `ConfirmAlert` confirm |
-
-Details: [**profile.md**](./profile.md).
+Details: [**profile.md**](./profile.md), [**modals.md**](./modals.md) (`CompanySwitcher`).
 
 ---
 
 ## i18n
 
-- Generic copy: **`settings.alerts.*`** (`ok`, `cancel`, coming soon, sign out).
-- Feature-specific: **`settings.profile.*`**, **`settings.sessions.*`**, etc.
-- Mirror keys in `hi.ts`, `gu.ts`, `bn.ts` when adding new user-facing strings.
+- Generic: **`settings.alerts.*`**
+- Profile: **`settings.profile.*`**
+- Company switcher empty/create: **`home.companySwitcher.*`**
 
 ---
 
-## Screens using alerts (non-exhaustive)
+## Related
 
-| Screen | Confirm | Status |
-|--------|---------|--------|
-| `Profile.tsx` | remove photo | save success, upload error |
-| `SettingsScreen.tsx` | sign out, coming soon | — |
-| `SessionScreen.tsx` | logout flows | nested success/error |
-| `CompanyList.tsx` | — | create success (Confirm today) |
-| `ChangePassword.tsx` | — | success via Confirm |
-| `AttendanceScreen.tsx` | punch confirms | errors |
-
-Prefer **`StatusAlert`** for new success/error one-button feedback.
+- [**modals.md**](./modals.md) — modal layout patterns
+- [**profile.md**](./profile.md) — edit profile flows

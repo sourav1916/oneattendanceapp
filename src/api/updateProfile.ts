@@ -3,11 +3,12 @@ import axios from 'axios';
 import { authHttpClient } from '@src/api/authHttpClient';
 import { readApiError } from '@src/utils/readApiError';
 
-/** JSON body for PUT `/users/update-profile` — include only fields being changed. */
+/** JSON body for PUT `/users/update-profile` — `name` is required when sending an update. */
 export type UpdateProfileRequestBody = {
-  name?: string;
-  phone?: string;
+  name: string;
   profile_picture?: string | null;
+  whatsapp?: string;
+  profession?: string;
 };
 
 /** `data` object on 200 success (booleans coerced server-side). */
@@ -16,6 +17,8 @@ export type UserProfile = {
   name: string;
   email: string;
   phone: string | null;
+  profession?: string | null;
+  whatsapp?: string | null;
   profile_picture: string | null;
   is_active: boolean;
   is_system_admin: boolean;

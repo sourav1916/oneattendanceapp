@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -16,13 +15,13 @@ import {
   View,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { updateProfile } from '@src/api/updateProfile';
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
 import { StatusAlert, useStatusAlert } from '@src/components/modals/StatusAlert';
 import { useAuth } from '@src/context/AuthContext';
-import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { useThemeColors } from '@src/context/ThemeContext';
 import type { SettingsStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { UploadableFile } from '@src/utils/FileUpload';
@@ -37,17 +36,16 @@ import {
   buildChangedProfileUpdatePayload,
   onlyDigits,
   partialUserFromUpdatePayload,
+  validateProfileUpdatePayload,
   type PictureSubmitState,
   type ProfileEditSnapshot,
-  validateProfilePhoneChange,
-  validateProfileUpdatePayload,
 } from '@src/utils/profileEditForm';
 import { readApiError } from '@src/utils/readApiError';
 import { resolveMediaUrl } from '@src/utils/resolveMediaUrl';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'EditProfile'>;
 
-function buildEditStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
+function buildEditStyles(colors: AppThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
     fill: { flex: 1 },
@@ -113,15 +111,6 @@ function buildEditStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       fontSize: 15,
       color: colors.text,
     },
-    errorBanner: {
-      marginBottom: 12,
-      padding: 12,
-      borderRadius: 10,
-      backgroundColor: scheme === 'dark' ? '#450a0a' : '#fef2f2',
-      borderWidth: 1,
-      borderColor: scheme === 'dark' ? '#7f1d1d' : '#fecaca',
-    },
-    errorText: { fontSize: 14, color: colors.danger, lineHeight: 20 },
     saveBtn: {
       marginTop: 8,
       minHeight: 48,
@@ -149,10 +138,23 @@ export function EditProfileScreen({ navigation }: Props) {
     applySessionFromProfileUpdate,
   } = useAuth();
   const colors = useThemeColors();
-  const { resolvedScheme } = useAppTheme();
-  const es = useMemo(() => buildEditStyles(colors, resolvedScheme), [colors, resolvedScheme]);
+  const insets = useSafeAreaInsets();
+  const es = useMemo(() => buildEditStyles(colors), [colors]);
   const { props: confirmProps, present } = useConfirmAlert();
   const { props: statusAlertProps, presentError, presentSuccess } = useStatusAlert();
+
+  const showProfileAlertError = useCallback(
+    (message: string, title = t('settings.profile.errorTitle')) => {
+      presentError({
+        title,
+        message,
+        showMessage: true,
+        buttonText: t('settings.alerts.ok'),
+        dismissIconA11y: t('settings.profile.errorDismissA11y'),
+      });
+    },
+    [presentError, t],
+  );
 
   const showProfileUpdateSuccess = useCallback(
     (apiMessage: string) => {
@@ -179,6 +181,8 @@ export function EditProfileScreen({ navigation }: Props) {
       mobile: fetched.mobile || cached?.phone?.trim() || '',
       profilePictureUrl:
         fetched.profilePictureUrl || cached?.profilePictureUrl?.trim() || '',
+      profession: fetched.profession,
+      whatsapp: fetched.whatsapp,
     };
   }, [authEmail, authName, cachedUserProfile, profileRole?.data?.user, profileRoleUser]);
 
@@ -193,7 +197,6 @@ export function EditProfileScreen({ navigation }: Props) {
   /** Prevents `useFocusEffect` reset while the image library is open or upload is in flight. */
   const photoSessionActiveRef = useRef(false);
   const [wantsRemovePhoto, setWantsRemovePhoto] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const resetForm = useCallback(() => {
@@ -205,7 +208,6 @@ export function EditProfileScreen({ navigation }: Props) {
     setAvatarUploading(false);
     avatarPickSeqRef.current += 1;
     setWantsRemovePhoto(false);
-    setFormError(null);
     setSaving(false);
   }, [displayProfile]);
 
@@ -229,7 +231,6 @@ export function EditProfileScreen({ navigation }: Props) {
           text: t('settings.profile.removePhotoConfirmAction'),
           variant: 'danger',
           onPress: () => {
-            setFormError(null);
             avatarPickSeqRef.current += 1;
             setPendingAvatarFile(null);
             setPendingAvatarUploadedUrl(null);
@@ -261,7 +262,6 @@ export function EditProfileScreen({ navigation }: Props) {
   ]);
 
   const choosePhoto = useCallback(async () => {
-    setFormError(null);
     photoSessionActiveRef.current = true;
     let pickerResult;
     try {
@@ -302,30 +302,17 @@ export function EditProfileScreen({ navigation }: Props) {
         return;
       }
       const errMsg = readApiError(err);
-      setFormError(errMsg);
-      presentError({
-        title: t('settings.profile.uploadErrorTitle'),
-        message: errMsg,
-        buttonText: t('settings.profile.successButton'),
-        dismissIconA11y: t('settings.profile.uploadErrorDismissA11y'),
-      });
+      showProfileAlertError(errMsg, t('settings.profile.uploadErrorTitle'));
     } finally {
       photoSessionActiveRef.current = false;
       if (avatarPickSeqRef.current === seq) {
         setAvatarUploading(false);
       }
     }
-  }, [presentError, t]);
+  }, [showProfileAlertError, t]);
 
   const handleSave = useCallback(async () => {
     const initial = editInitialRef.current;
-    setFormError(null);
-
-    const phoneErr = validateProfilePhoneChange(initial, draft);
-    if (phoneErr) {
-      setFormError(phoneErr);
-      return;
-    }
 
     setSaving(true);
     try {
@@ -338,11 +325,11 @@ export function EditProfileScreen({ navigation }: Props) {
       const payload = buildChangedProfileUpdatePayload(initial, draft, picture);
       const validationErr = validateProfileUpdatePayload(draft, payload);
       if (validationErr) {
-        setFormError(validationErr);
+        showProfileAlertError(validationErr);
         return;
       }
       if (!payload) {
-        setFormError(t('settings.profile.errors.noChanges'));
+        showProfileAlertError(t('settings.profile.errors.noChanges'));
         return;
       }
 
@@ -355,7 +342,7 @@ export function EditProfileScreen({ navigation }: Props) {
       }
       showProfileUpdateSuccess(message);
     } catch (err) {
-      setFormError(readApiError(err));
+      showProfileAlertError(readApiError(err));
     } finally {
       setSaving(false);
     }
@@ -365,6 +352,7 @@ export function EditProfileScreen({ navigation }: Props) {
     navigation,
     pendingAvatarUploadedUrl,
     refreshProfileRole,
+    showProfileAlertError,
     showProfileUpdateSuccess,
     t,
     wantsRemovePhoto,
@@ -376,7 +364,8 @@ export function EditProfileScreen({ navigation }: Props) {
     Boolean(pendingAvatarFile);
   const otherFieldsDirty =
     draft.name.trim() !== editInitialRef.current.name.trim() ||
-    onlyDigits(draft.phoneRaw) !== editInitialRef.current.phoneDigits;
+    draft.profession.trim() !== editInitialRef.current.profession.trim() ||
+    onlyDigits(draft.whatsappRaw) !== editInitialRef.current.whatsappDigits;
   const draftDirty = otherFieldsDirty || avatarPhotoDirty;
   const saveBlockedByAvatar =
     avatarUploading ||
@@ -398,125 +387,117 @@ export function EditProfileScreen({ navigation }: Props) {
             <Text style={es.stackHeaderTitle}>{t('settings.profile.modalTitle')}</Text>
           </View>
 
-          <KeyboardAvoidingView
+          <ScrollView
             style={es.fill}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <ScrollView
-              contentContainerStyle={es.body}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}>
-              {formError ? (
-                <View style={es.errorBanner}>
-                  <Text style={es.errorText}>{formError}</Text>
-                </View>
-              ) : null}
-
-              <View style={es.photoRow}>
-                <View style={es.photoPreview}>
-                  {previewUri ? (
-                    <Image
-                      key={previewUri}
-                      source={{ uri: previewUri }}
-                      style={es.photoPreviewImg}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <Text style={es.photoPreviewLetter}>
-                      {(
-                        draft.name.trim()[0] ||
-                        displayProfile.email.trim()[0] ||
-                        '?'
-                      ).toUpperCase()}
-                    </Text>
-                  )}
-                </View>
-                <View style={es.photoActions}>
+            contentContainerStyle={[
+              es.body,
+              { paddingBottom: Math.max(36, insets.bottom) },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
+            showsVerticalScrollIndicator={false}>
+            <View style={es.photoRow}>
+              <View style={es.photoPreview}>
+                {previewUri ? (
+                  <Image
+                    key={previewUri}
+                    source={{ uri: previewUri }}
+                    style={es.photoPreviewImg}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={es.photoPreviewLetter}>
+                    {(
+                      draft.name.trim()[0] ||
+                      displayProfile.email.trim()[0] ||
+                      '?'
+                    ).toUpperCase()}
+                  </Text>
+                )}
+              </View>
+              <View style={es.photoActions}>
+                <Pressable
+                  onPress={() => {
+                    choosePhoto().catch(() => { });
+                  }}
+                  style={es.secondaryBtn}
+                  disabled={avatarUploading}
+                  accessibilityRole="button">
+                  <Text style={es.secondaryBtnLabel}>
+                    {avatarUploading
+                      ? t('settings.profile.uploadingPhoto')
+                      : t('settings.profile.choosePhoto')}
+                  </Text>
+                </Pressable>
+                {(editInitialRef.current.profilePictureUrl ||
+                  pendingAvatarFile ||
+                  pendingAvatarUploadedUrl) &&
+                  !wantsRemovePhoto ? (
                   <Pressable
-                    onPress={() => {
-                      choosePhoto().catch(() => {});
-                    }}
-                    style={es.secondaryBtn}
-                    disabled={avatarUploading}
+                    onPress={confirmRemovePhoto}
+                    style={[es.secondaryBtn, es.dangerOutlineBtn]}
                     accessibilityRole="button">
-                    <Text style={es.secondaryBtnLabel}>
-                      {avatarUploading
-                        ? t('settings.profile.uploadingPhoto')
-                        : t('settings.profile.choosePhoto')}
+                    <Text style={[es.secondaryBtnLabel, es.dangerOutlineLabel]}>
+                      {t('settings.profile.removePhoto')}
                     </Text>
                   </Pressable>
-                  {(editInitialRef.current.profilePictureUrl ||
-                    pendingAvatarFile ||
-                    pendingAvatarUploadedUrl) &&
-                  !wantsRemovePhoto ? (
-                    <Pressable
-                      onPress={confirmRemovePhoto}
-                      style={[es.secondaryBtn, es.dangerOutlineBtn]}
-                      accessibilityRole="button">
-                      <Text style={[es.secondaryBtnLabel, es.dangerOutlineLabel]}>
-                        {t('settings.profile.removePhoto')}
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                </View>
+                ) : null}
               </View>
+            </View>
 
-              <View style={es.fieldBlock}>
-                <Text style={es.label}>{t('settings.profile.nameLabel')}</Text>
-                <TextInput
-                  style={es.input}
-                  value={draft.name}
-                  onChangeText={v => {
-                    setFormError(null);
-                    setDraft(d => ({ ...d, name: v }));
-                  }}
-                  placeholder={t('settings.profile.namePlaceholder')}
-                  placeholderTextColor={colors.textMuted}
-                />
-              </View>
+            <View style={es.fieldBlock}>
+              <Text style={es.label}>{t('settings.profile.nameLabel')}</Text>
+              <TextInput
+                style={es.input}
+                value={draft.name}
+                  onChangeText={v => setDraft(d => ({ ...d, name: v }))}
+                placeholder={t('settings.profile.namePlaceholder')}
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
 
-              <View style={es.fieldBlock}>
-                <Text style={es.label}>{t('settings.profile.emailLabel')}</Text>
-                <TextInput
-                  style={[es.input, { opacity: 0.85 }]}
-                  value={displayProfile.email}
-                  editable={false}
-                  placeholder={t('settings.profile.emailPlaceholder')}
-                  placeholderTextColor={colors.textMuted}
-                />
-              </View>
+            <View style={es.fieldBlock}>
+              <Text style={es.label}>{t('settings.profile.whatsappLabel')}</Text>
+              <TextInput
+                style={es.input}
+                value={draft.whatsappRaw}
+                  onChangeText={v =>
+                    setDraft(d => ({ ...d, whatsappRaw: onlyDigits(v) }))
+                  }
+                placeholder={t('settings.profile.whatsappPlaceholder')}
+                placeholderTextColor={colors.textMuted}
+                keyboardType="number-pad"
+              />
+            </View>
 
-              <View style={es.fieldBlock}>
-                <Text style={es.label}>{t('settings.profile.phoneLabel')}</Text>
-                <TextInput
-                  style={es.input}
-                  value={draft.phoneRaw}
-                  onChangeText={v => {
-                    setFormError(null);
-                    setDraft(d => ({ ...d, phoneRaw: onlyDigits(v) }));
-                  }}
-                  placeholder={t('settings.profile.phonePlaceholder')}
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="number-pad"
-                />
-              </View>
+            <View style={es.fieldBlock}>
+              <Text style={es.label}>{t('settings.profile.professionLabel')}</Text>
+              <TextInput
+                style={es.input}
+                value={draft.profession}
+                  onChangeText={v => setDraft(d => ({ ...d, profession: v }))}
+                placeholder={t('settings.profile.professionPlaceholder')}
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="words"
+              />
+            </View>
 
-              <Pressable
-                onPress={() => {
-                  handleSave().catch(() => {});
-                }}
-                style={[
-                  es.saveBtn,
-                  (!draftDirty || saving || saveBlockedByAvatar) && es.saveBtnDisabled,
-                ]}
-                disabled={!draftDirty || saving || saveBlockedByAvatar}
-                accessibilityRole="button">
-                {saving ? <ActivityIndicator color="#fff" /> : null}
-                <Text style={es.saveBtnLabel}>
-                  {saving ? t('settings.profile.saving') : t('settings.profile.save')}
-                </Text>
-              </Pressable>
-            </ScrollView>
-          </KeyboardAvoidingView>
+            <Pressable
+              onPress={() => {
+                handleSave().catch(() => { });
+              }}
+              style={[
+                es.saveBtn,
+                (!draftDirty || saving || saveBlockedByAvatar) && es.saveBtnDisabled,
+              ]}
+              disabled={!draftDirty || saving || saveBlockedByAvatar}
+              accessibilityRole="button">
+              {saving ? <ActivityIndicator color="#fff" /> : null}
+              <Text style={es.saveBtnLabel}>
+                {saving ? t('settings.profile.saving') : t('settings.profile.save')}
+              </Text>
+            </Pressable>
+          </ScrollView>
         </View>
       </SafeAreaView>
 

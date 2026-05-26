@@ -17,22 +17,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { IconProps } from 'react-native-vector-icons/Icon';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
+import { ChangeEmailModal } from '@src/components/modals/ChangeEmailModal';
+import { ChangePhoneModal } from '@src/components/modals/ChangePhoneModal';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import type { SettingsStackParamList } from '@src/navigation/types';
+import type { AppThemeColors } from '@src/theme/palettes';
 import { readProfileData } from '@src/utils/profileDisplay';
 import { onlyDigits } from '@src/utils/profileEditForm';
 import { resolveMediaUrl } from '@src/utils/resolveMediaUrl';
-import type { SettingsStackParamList } from '@src/navigation/types';
-import type { AppThemeColors } from '@src/theme/palettes';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Profile'>;
 
 const CONTACT_ICONS: Record<
-  'email' | 'phone',
+  'email' | 'phone' | 'whatsapp' | 'profession',
   { icon: IconProps['name']; accent: string; tint: string }
 > = {
   email: { icon: 'email-outline', accent: '#2563eb', tint: '#dbeafe' },
   phone: { icon: 'phone-outline', accent: '#059669', tint: '#d1fae5' },
+  whatsapp: { icon: 'whatsapp', accent: '#16a34a', tint: '#dcfce7' },
+  profession: { icon: 'briefcase-outline', accent: '#7c3aed', tint: '#ede9fe' },
 };
 
 function ProfileHeroSkeleton({ colors }: { colors: AppThemeColors }) {
@@ -216,6 +220,16 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     detailBody: { flex: 1, minWidth: 0 },
     detailLabel: { fontSize: 12, fontWeight: '600', color: colors.textMuted, marginBottom: 2 },
     detailValue: { fontSize: 15, fontWeight: '600', color: colors.text },
+    detailChangeBtn: {
+      paddingVertical: 6,
+      paddingHorizontal: 4,
+      marginLeft: 4,
+    },
+    detailChangeLink: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+    },
   });
 }
 
@@ -244,21 +258,27 @@ export function ProfileScreen({ navigation }: Props) {
       mobile: fetched.mobile || cached?.phone?.trim() || '',
       profilePictureUrl:
         fetched.profilePictureUrl || cached?.profilePictureUrl?.trim() || '',
+      profession: fetched.profession,
+      whatsapp: fetched.whatsapp,
     };
   }, [authEmail, authName, cachedUserProfile, profileRole?.data?.user, profileRoleUser]);
 
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [changePhoneOpen, setChangePhoneOpen] = useState(false);
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
 
   const showProfileSkeleton =
     profileRoleLoading && !profileRole?.data?.user && !cachedUserProfile;
 
   useEffect(() => {
-    refreshProfileRole().catch(() => {});
+    refreshProfileRole().catch(() => { });
   }, [refreshProfileRole]);
 
   const displayName = displayProfile.name.trim() || t('settings.profile.title');
   const displayEmail = displayProfile.email.trim();
   const displayPhone = onlyDigits(displayProfile.mobile);
+  const displayWhatsapp = onlyDigits(displayProfile.whatsapp);
+  const displayProfession = displayProfile.profession.trim();
   const initialLetter = (displayName[0] || displayEmail[0] || '?').toUpperCase();
   const heroAvatarUri = resolveMediaUrl(displayProfile.profilePictureUrl);
   const showHeroAvatar = Boolean(heroAvatarUri);
@@ -331,6 +351,11 @@ export function ProfileScreen({ navigation }: Props) {
                   <Text style={ps.heroEmail} numberOfLines={1}>
                     {displayEmail || t('settings.profile.emailPlaceholder')}
                   </Text>
+                  {displayProfession ? (
+                    <Text style={ps.heroPhone} numberOfLines={1}>
+                      {displayProfession}
+                    </Text>
+                  ) : null}
                   {displayPhone ? (
                     <Text style={ps.heroPhone} numberOfLines={1}>
                       {displayPhone}
@@ -371,6 +396,15 @@ export function ProfileScreen({ navigation }: Props) {
                         {displayEmail || '—'}
                       </Text>
                     </View>
+                    <Pressable
+                      onPress={() => setChangeEmailOpen(true)}
+                      style={({ pressed }) => [ps.detailChangeBtn, pressed && { opacity: 0.7 }]}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settings.profile.changeEmailA11y')}>
+                      <Text style={ps.detailChangeLink}>
+                        {t('settings.profile.changeEmailLink')}
+                      </Text>
+                    </Pressable>
                   </View>
                   <View style={[ps.detailRow, ps.detailRowBorder]}>
                     <View
@@ -390,6 +424,71 @@ export function ProfileScreen({ navigation }: Props) {
                         {displayPhone || '—'}
                       </Text>
                     </View>
+                    <Pressable
+                      onPress={() => setChangePhoneOpen(true)}
+                      style={({ pressed }) => [ps.detailChangeBtn, pressed && { opacity: 0.7 }]}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settings.profile.changePhoneA11y')}>
+                      <Text style={ps.detailChangeLink}>
+                        {t('settings.profile.changePhoneLink')}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <View style={[ps.detailRow, ps.detailRowBorder]}>
+                    <View
+                      style={[
+                        ps.detailIcon,
+                        { backgroundColor: CONTACT_ICONS.whatsapp.tint },
+                      ]}>
+                      <MaterialCommunityIcons
+                        name={CONTACT_ICONS.whatsapp.icon}
+                        size={24}
+                        color={CONTACT_ICONS.whatsapp.accent}
+                      />
+                    </View>
+                    <View style={ps.detailBody}>
+                      <Text style={ps.detailLabel}>{t('settings.profile.whatsappLabel')}</Text>
+                      <Text style={ps.detailValue} numberOfLines={1}>
+                        {displayWhatsapp || '—'}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => navigation.navigate('EditProfile')}
+                      style={({ pressed }) => [ps.detailChangeBtn, pressed && { opacity: 0.7 }]}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settings.profile.changeWhatsappA11y')}>
+                      <Text style={ps.detailChangeLink}>
+                        {t('settings.profile.changePhoneLink')}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <View style={[ps.detailRow, ps.detailRowBorder]}>
+                    <View
+                      style={[
+                        ps.detailIcon,
+                        { backgroundColor: CONTACT_ICONS.profession.tint },
+                      ]}>
+                      <MaterialCommunityIcons
+                        name={CONTACT_ICONS.profession.icon}
+                        size={24}
+                        color={CONTACT_ICONS.profession.accent}
+                      />
+                    </View>
+                    <View style={ps.detailBody}>
+                      <Text style={ps.detailLabel}>{t('settings.profile.professionLabel')}</Text>
+                      <Text style={ps.detailValue} numberOfLines={1}>
+                        {displayProfession || '—'}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => navigation.navigate('EditProfile')}
+                      style={({ pressed }) => [ps.detailChangeBtn, pressed && { opacity: 0.7 }]}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settings.profile.changeProfessionA11y')}>
+                      <Text style={ps.detailChangeLink}>
+                        {t('settings.profile.changePhoneLink')}
+                      </Text>
+                    </Pressable>
                   </View>
                 </View>
               </>
@@ -424,6 +523,23 @@ export function ProfileScreen({ navigation }: Props) {
         </Pressable>
       </Modal>
 
+      <ChangeEmailModal
+        visible={changeEmailOpen}
+        currentEmail={displayEmail}
+        registeredPhoneDigits={displayPhone}
+        onDismiss={() => setChangeEmailOpen(false)}
+        onRequestAddPhone={() => {
+          setChangeEmailOpen(false);
+          setChangePhoneOpen(true);
+        }}
+      />
+
+      <ChangePhoneModal
+        visible={changePhoneOpen}
+        currentPhoneDigits={displayPhone}
+        registeredEmail={displayEmail}
+        onDismiss={() => setChangePhoneOpen(false)}
+      />
     </>
   );
 }

@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
+    KeyboardAvoidingView,
     Platform,
     Pressable,
     ScrollView,
@@ -13,7 +14,7 @@ import {
     TextInput,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { changePassword } from '@src/api/changePassword';
 import { SvgEyeOffOutline, SvgEyeOutline } from '@src/components/icons/PasswordVisibilityIcon';
@@ -58,6 +59,8 @@ const PASSWORD_RULE_ROWS: { key: keyof NewPasswordAnalysis; i18nKey: string }[] 
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'ChangePassword'>;
 
+const STACK_HEADER_HEIGHT = 52;
+
 function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     return StyleSheet.create({
         safe: {
@@ -87,7 +90,6 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         scroll: {
             paddingHorizontal: 20,
             paddingTop: 20,
-            paddingBottom: 40,
         },
         heroWrap: {
             marginBottom: 22,
@@ -285,6 +287,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
     const { t } = useTranslation();
     const colors = useThemeColors();
     const { resolvedScheme } = useAppTheme();
+    const insets = useSafeAreaInsets();
     const styles = useMemo(() => buildStyles(colors, resolvedScheme), [colors, resolvedScheme]);
     const { props: confirmProps, present } = useConfirmAlert();
 
@@ -294,7 +297,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
     const [showCurrent, setShowCurrent] = useState(false);
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
-    const [keepOtherSessions, setKeepOtherSessions] = useState(false);
+    const [keepLogin, setKeepLogin] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
 
@@ -365,9 +368,9 @@ export function ChangePasswordScreen({ navigation }: Props) {
         void (async () => {
             try {
                 const res = await changePassword({
-                    current_password: currentPassword.trim(),
+                    old_password: currentPassword.trim(),
                     new_password: newPassword.trim(),
-                    keep_other_sessions: keepOtherSessions,
+                    keep_login: keepLogin,
                 });
                 if (!res.success) {
                     setFormError(res.message?.trim() || t('settings.changePassword.errors.failed'));
@@ -394,7 +397,7 @@ export function ChangePasswordScreen({ navigation }: Props) {
         validate,
         currentPassword,
         newPassword,
-        keepOtherSessions,
+        keepLogin,
         present,
         t,
         navigation,
@@ -412,232 +415,243 @@ export function ChangePasswordScreen({ navigation }: Props) {
         !passwordsMatch,
     );
 
+    const keyboardVerticalOffset = insets.top + STACK_HEADER_HEIGHT;
+
     return (
-        <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-            <View style={styles.stackHeader}>
-                <HeaderBackButton
-                    onPress={() => navigation.goBack()}
-                    tintColor={colors.primary}
-                    displayMode="minimal"
-                    accessibilityLabel={t('settings.changePassword.back')}
-                />
-                <Text style={styles.stackHeaderTitle} numberOfLines={1} accessibilityRole="header">
-                    {t('settings.changePassword.title')}
-                </Text>
-            </View>
-
+        <SafeAreaView style={styles.safe} edges={['top']}>
             <View style={styles.flex}>
-                <ScrollView
-                    contentContainerStyle={styles.scroll}
-                    keyboardShouldPersistTaps="handled"
-                    automaticallyAdjustKeyboardInsets
-                    showsVerticalScrollIndicator={false}>
-                    <View style={styles.heroWrap}>
-                        <Text style={styles.eyebrow}>{t('settings.changePassword.eyebrow')}</Text>
-                        <Text style={styles.heroTitle}>{t('settings.changePassword.heroTitle')}</Text>
-                        <Text style={styles.heroSubtitle}>{t('settings.changePassword.heroSubtitle')}</Text>
-                    </View>
+                <View style={styles.stackHeader}>
+                    <HeaderBackButton
+                        onPress={() => navigation.goBack()}
+                        tintColor={colors.primary}
+                        displayMode="minimal"
+                        accessibilityLabel={t('settings.changePassword.back')}
+                    />
+                    <Text style={styles.stackHeaderTitle} numberOfLines={1} accessibilityRole="header">
+                        {t('settings.changePassword.title')}
+                    </Text>
+                </View>
 
-                    <View style={styles.formCard}>
-                        {formError ? (
-                            <View style={styles.errorBanner}>
-                                <Text style={styles.errorText}>{formError}</Text>
-                            </View>
-                        ) : null}
-
-                        <View style={styles.fieldBlock}>
-                            <Text style={styles.label}>{t('settings.changePassword.currentLabel')}</Text>
-                            <View style={styles.passwordField}>
-                                <TextInput
-                                    value={currentPassword}
-                                    onChangeText={text => {
-                                        setFormError(null);
-                                        setCurrentPassword(text);
-                                    }}
-                                    placeholder={t('settings.changePassword.currentPlaceholder')}
-                                    secureTextEntry={!showCurrent}
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                    autoComplete="password"
-                                    textContentType="password"
-                                    editable={!submitting}
-                                    style={styles.passwordInput}
-                                    placeholderTextColor={colors.textMuted}
-                                />
-                                <Pressable
-                                    accessibilityRole="button"
-                                    accessibilityLabel={
-                                        showCurrent
-                                            ? t('settings.changePassword.hidePassword')
-                                            : t('settings.changePassword.showPassword')
-                                    }
-                                    hitSlop={8}
-                                    onPress={() => setShowCurrent(v => !v)}
-                                    style={({ pressed }) => [
-                                        styles.passwordToggle,
-                                        pressed && styles.passwordTogglePressed,
-                                    ]}>
-                                    {showCurrent ? (
-                                        <SvgEyeOffOutline size={22} color={colors.textMuted} />
-                                    ) : (
-                                        <SvgEyeOutline size={22} color={colors.textMuted} />
-                                    )}
-                                </Pressable>
-                            </View>
+                <KeyboardAvoidingView
+                    style={styles.flex}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={keyboardVerticalOffset}>
+                    <ScrollView
+                        style={styles.flex}
+                        contentContainerStyle={[
+                            styles.scroll,
+                            { paddingBottom: Math.max(16, insets.bottom) },
+                        ]}
+                        keyboardShouldPersistTaps="handled"
+                        automaticallyAdjustKeyboardInsets={Platform.OS === 'android'}
+                        showsVerticalScrollIndicator={false}>
+                        <View style={styles.heroWrap}>
+                            <Text style={styles.eyebrow}>{t('settings.changePassword.eyebrow')}</Text>
+                            <Text style={styles.heroTitle}>{t('settings.changePassword.heroTitle')}</Text>
+                            <Text style={styles.heroSubtitle}>{t('settings.changePassword.heroSubtitle')}</Text>
                         </View>
 
-                        <View style={styles.fieldBlock}>
-                            <Text style={styles.label}>{t('settings.changePassword.newLabel')}</Text>
-                            <View style={styles.passwordField}>
-                                <TextInput
-                                    value={newPassword}
-                                    onChangeText={text => {
-                                        setFormError(null);
-                                        setNewPassword(text);
-                                    }}
-                                    placeholder={t('settings.changePassword.newPlaceholder')}
-                                    secureTextEntry={!showNew}
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                    autoComplete="password-new"
-                                    textContentType="newPassword"
-                                    editable={!submitting}
-                                    style={styles.passwordInput}
-                                    placeholderTextColor={colors.textMuted}
-                                />
-                                <Pressable
-                                    accessibilityRole="button"
-                                    accessibilityLabel={
-                                        showNew
-                                            ? t('settings.changePassword.hidePassword')
-                                            : t('settings.changePassword.showPassword')
-                                    }
-                                    hitSlop={8}
-                                    onPress={() => setShowNew(v => !v)}
-                                    style={({ pressed }) => [
-                                        styles.passwordToggle,
-                                        pressed && styles.passwordTogglePressed,
-                                    ]}>
-                                    {showNew ? (
-                                        <SvgEyeOffOutline size={22} color={colors.textMuted} />
-                                    ) : (
-                                        <SvgEyeOutline size={22} color={colors.textMuted} />
-                                    )}
-                                </Pressable>
-                            </View>
-                        </View>
-
-                        <View style={styles.requirementsBlock}>
-                            <Text style={styles.requirementsTitle}>
-                                {t('settings.changePassword.requirementsTitle')}
-                            </Text>
-                            {PASSWORD_RULE_ROWS.map(({ key, i18nKey }) => {
-                                const ok = newAnalysis[key];
-                                const showFailure = newPassword.trim().length > 0 && !ok;
-                                const status = ruleStatusStyle(ok, showFailure);
-                                return (
-                                    <View key={key} style={styles.ruleRow}>
-                                        <Text style={[styles.ruleBullet, status]}>{ok ? '✓' : '○'}</Text>
-                                        <Text style={[styles.ruleLabel, status]}>{t(i18nKey)}</Text>
-                                    </View>
-                                );
-                            })}
-                            <View style={styles.ruleRow}>
-                                <Text style={[styles.ruleBullet, matchRowStatus]}>
-                                    {passwordsMatch ? '✓' : '○'}
-                                </Text>
-                                <Text style={[styles.ruleLabel, matchRowStatus]}>
-                                    {t('settings.changePassword.ruleMatch')}
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldBlock}>
-                            <Text style={styles.label}>{t('settings.changePassword.confirmLabel')}</Text>
-                            <View style={styles.passwordField}>
-                                <TextInput
-                                    value={confirmPassword}
-                                    onChangeText={text => {
-                                        setFormError(null);
-                                        setConfirmPassword(text);
-                                    }}
-                                    placeholder={t('settings.changePassword.confirmPlaceholder')}
-                                    secureTextEntry={!showConfirm}
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                    autoComplete="password-new"
-                                    textContentType="newPassword"
-                                    editable={!submitting}
-                                    style={styles.passwordInput}
-                                    placeholderTextColor={colors.textMuted}
-                                />
-                                <Pressable
-                                    accessibilityRole="button"
-                                    accessibilityLabel={
-                                        showConfirm
-                                            ? t('settings.changePassword.hidePassword')
-                                            : t('settings.changePassword.showPassword')
-                                    }
-                                    hitSlop={8}
-                                    onPress={() => setShowConfirm(v => !v)}
-                                    style={({ pressed }) => [
-                                        styles.passwordToggle,
-                                        pressed && styles.passwordTogglePressed,
-                                    ]}>
-                                    {showConfirm ? (
-                                        <SvgEyeOffOutline size={22} color={colors.textMuted} />
-                                    ) : (
-                                        <SvgEyeOutline size={22} color={colors.textMuted} />
-                                    )}
-                                </Pressable>
-                            </View>
-                            {confirmPassword.trim().length > 0 &&
-                                newPassword.trim() !== confirmPassword.trim() ? (
-                                <Text style={styles.confirmHint}>
-                                    {t('settings.changePassword.confirmMismatchHint')}
-                                </Text>
-                            ) : null}
-                        </View>
-
-                        <View style={styles.divider} />
-
-                        <View style={styles.switchBlock}>
-                            <View style={styles.switchRow}>
-                                <View style={styles.switchLabels}>
-                                    <Text style={styles.switchTitle}>{t('settings.changePassword.keepSessionsLabel')}</Text>
-                                    <Text style={styles.switchHint}>{t('settings.changePassword.keepSessionsHint')}</Text>
+                        <View style={styles.formCard}>
+                            {formError ? (
+                                <View style={styles.errorBanner}>
+                                    <Text style={styles.errorText}>{formError}</Text>
                                 </View>
-                                <Switch
-                                    accessibilityRole="switch"
-                                    accessibilityLabel={t('settings.changePassword.keepSessionsLabel')}
-                                    value={keepOtherSessions}
-                                    onValueChange={setKeepOtherSessions}
-                                    disabled={submitting}
-                                    trackColor={switchTrack}
-                                    thumbColor={switchThumb(resolvedScheme)}
-                                    ios_backgroundColor={colors.border}
-                                />
-                            </View>
-                        </View>
+                            ) : null}
 
-                        <Pressable
-                            accessibilityRole="button"
-                            accessibilityState={{ disabled: submitDisabled }}
-                            onPress={handleSubmit}
-                            disabled={submitDisabled}
-                            style={({ pressed }) => [
-                                styles.submitBtn,
-                                pressed && !submitDisabled && styles.submitBtnPressed,
-                                submitDisabled && styles.submitBtnDisabled,
-                            ]}>
-                            {submitting ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.submitLabel}>{t('settings.changePassword.submit')}</Text>
-                            )}
-                        </Pressable>
-                    </View>
-                </ScrollView>
+                            <View style={styles.fieldBlock}>
+                                <Text style={styles.label}>{t('settings.changePassword.currentLabel')}</Text>
+                                <View style={styles.passwordField}>
+                                    <TextInput
+                                        value={currentPassword}
+                                        onChangeText={text => {
+                                            setFormError(null);
+                                            setCurrentPassword(text);
+                                        }}
+                                        placeholder={t('settings.changePassword.currentPlaceholder')}
+                                        secureTextEntry={!showCurrent}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                        autoComplete="password"
+                                        textContentType="password"
+                                        editable={!submitting}
+                                        style={styles.passwordInput}
+                                        placeholderTextColor={colors.textMuted}
+                                    />
+                                    <Pressable
+                                        accessibilityRole="button"
+                                        accessibilityLabel={
+                                            showCurrent
+                                                ? t('settings.changePassword.hidePassword')
+                                                : t('settings.changePassword.showPassword')
+                                        }
+                                        hitSlop={8}
+                                        onPress={() => setShowCurrent(v => !v)}
+                                        style={({ pressed }) => [
+                                            styles.passwordToggle,
+                                            pressed && styles.passwordTogglePressed,
+                                        ]}>
+                                        {showCurrent ? (
+                                            <SvgEyeOffOutline size={22} color={colors.textMuted} />
+                                        ) : (
+                                            <SvgEyeOutline size={22} color={colors.textMuted} />
+                                        )}
+                                    </Pressable>
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldBlock}>
+                                <Text style={styles.label}>{t('settings.changePassword.newLabel')}</Text>
+                                <View style={styles.passwordField}>
+                                    <TextInput
+                                        value={newPassword}
+                                        onChangeText={text => {
+                                            setFormError(null);
+                                            setNewPassword(text);
+                                        }}
+                                        placeholder={t('settings.changePassword.newPlaceholder')}
+                                        secureTextEntry={!showNew}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                        autoComplete="password-new"
+                                        textContentType="newPassword"
+                                        editable={!submitting}
+                                        style={styles.passwordInput}
+                                        placeholderTextColor={colors.textMuted}
+                                    />
+                                    <Pressable
+                                        accessibilityRole="button"
+                                        accessibilityLabel={
+                                            showNew
+                                                ? t('settings.changePassword.hidePassword')
+                                                : t('settings.changePassword.showPassword')
+                                        }
+                                        hitSlop={8}
+                                        onPress={() => setShowNew(v => !v)}
+                                        style={({ pressed }) => [
+                                            styles.passwordToggle,
+                                            pressed && styles.passwordTogglePressed,
+                                        ]}>
+                                        {showNew ? (
+                                            <SvgEyeOffOutline size={22} color={colors.textMuted} />
+                                        ) : (
+                                            <SvgEyeOutline size={22} color={colors.textMuted} />
+                                        )}
+                                    </Pressable>
+                                </View>
+                            </View>
+
+                            <View style={styles.requirementsBlock}>
+                                <Text style={styles.requirementsTitle}>
+                                    {t('settings.changePassword.requirementsTitle')}
+                                </Text>
+                                {PASSWORD_RULE_ROWS.map(({ key, i18nKey }) => {
+                                    const ok = newAnalysis[key];
+                                    const showFailure = newPassword.trim().length > 0 && !ok;
+                                    const status = ruleStatusStyle(ok, showFailure);
+                                    return (
+                                        <View key={key} style={styles.ruleRow}>
+                                            <Text style={[styles.ruleBullet, status]}>{ok ? '✓' : '○'}</Text>
+                                            <Text style={[styles.ruleLabel, status]}>{t(i18nKey)}</Text>
+                                        </View>
+                                    );
+                                })}
+                                <View style={styles.ruleRow}>
+                                    <Text style={[styles.ruleBullet, matchRowStatus]}>
+                                        {passwordsMatch ? '✓' : '○'}
+                                    </Text>
+                                    <Text style={[styles.ruleLabel, matchRowStatus]}>
+                                        {t('settings.changePassword.ruleMatch')}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldBlock}>
+                                <Text style={styles.label}>{t('settings.changePassword.confirmLabel')}</Text>
+                                <View style={styles.passwordField}>
+                                    <TextInput
+                                        value={confirmPassword}
+                                        onChangeText={text => {
+                                            setFormError(null);
+                                            setConfirmPassword(text);
+                                        }}
+                                        placeholder={t('settings.changePassword.confirmPlaceholder')}
+                                        secureTextEntry={!showConfirm}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                        autoComplete="password-new"
+                                        textContentType="newPassword"
+                                        editable={!submitting}
+                                        style={styles.passwordInput}
+                                        placeholderTextColor={colors.textMuted}
+                                    />
+                                    <Pressable
+                                        accessibilityRole="button"
+                                        accessibilityLabel={
+                                            showConfirm
+                                                ? t('settings.changePassword.hidePassword')
+                                                : t('settings.changePassword.showPassword')
+                                        }
+                                        hitSlop={8}
+                                        onPress={() => setShowConfirm(v => !v)}
+                                        style={({ pressed }) => [
+                                            styles.passwordToggle,
+                                            pressed && styles.passwordTogglePressed,
+                                        ]}>
+                                        {showConfirm ? (
+                                            <SvgEyeOffOutline size={22} color={colors.textMuted} />
+                                        ) : (
+                                            <SvgEyeOutline size={22} color={colors.textMuted} />
+                                        )}
+                                    </Pressable>
+                                </View>
+                                {confirmPassword.trim().length > 0 &&
+                                    newPassword.trim() !== confirmPassword.trim() ? (
+                                    <Text style={styles.confirmHint}>
+                                        {t('settings.changePassword.confirmMismatchHint')}
+                                    </Text>
+                                ) : null}
+                            </View>
+
+                            <View style={styles.divider} />
+
+                            <View style={styles.switchBlock}>
+                                <View style={styles.switchRow}>
+                                    <View style={styles.switchLabels}>
+                                        <Text style={styles.switchTitle}>{t('settings.changePassword.keepSessionsLabel')}</Text>
+                                        <Text style={styles.switchHint}>{t('settings.changePassword.keepSessionsHint')}</Text>
+                                    </View>
+                                    <Switch
+                                        accessibilityRole="switch"
+                                        accessibilityLabel={t('settings.changePassword.keepSessionsLabel')}
+                                        value={keepLogin}
+                                        onValueChange={setKeepLogin}
+                                        disabled={submitting}
+                                        trackColor={switchTrack}
+                                        thumbColor={switchThumb(resolvedScheme)}
+                                        ios_backgroundColor={colors.border}
+                                    />
+                                </View>
+                            </View>
+
+                            <Pressable
+                                accessibilityRole="button"
+                                accessibilityState={{ disabled: submitDisabled }}
+                                onPress={handleSubmit}
+                                disabled={submitDisabled}
+                                style={({ pressed }) => [
+                                    styles.submitBtn,
+                                    pressed && !submitDisabled && styles.submitBtnPressed,
+                                    submitDisabled && styles.submitBtnDisabled,
+                                ]}>
+                                {submitting ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={styles.submitLabel}>{t('settings.changePassword.submit')}</Text>
+                                )}
+                            </Pressable>
+                        </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
             </View>
             <ConfirmAlert {...confirmProps} />
         </SafeAreaView>

@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
   Image,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -13,9 +13,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { createCompany } from '@src/api/createCompany';
+import { CreateCompany, type CreateCompanyFormPayload } from '@src/components/modals/CreateCompany';
+import { StatusAlert, useStatusAlert } from '@src/components/modals/StatusAlert';
+import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { StoredSelectedCompany } from '@src/types/company';
+import { companiesFromProfileRole } from '@src/utils/companiesFromProfileRole';
+import { readApiError } from '@src/utils/readApiError';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_MAX_HEIGHT = Math.min(SCREEN_HEIGHT * 0.78, 560);
@@ -174,6 +180,35 @@ function buildSwitcherStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       fontWeight: '600',
       color: colors.primary,
     },
+    emptyWrap: {
+      paddingVertical: 20,
+      paddingHorizontal: 8,
+      alignItems: 'center',
+      gap: 16,
+    },
+    emptyTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textMuted,
+      textAlign: 'center',
+    },
+    createBtn: {
+      alignSelf: 'stretch',
+      minHeight: 48,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 20,
+    },
+    createBtnPressed: {
+      opacity: 0.9,
+    },
+    createBtnLabel: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#fff',
+    },
   });
 }
 
@@ -195,97 +230,201 @@ export function CompanySwitcher({
   onSelectCompany,
   onClose,
 }: Props) {
+  const { t } = useTranslation();
+  const { refreshProfileRole } = useAuth();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
   const ms = useMemo(() => buildSwitcherStyles(colors, resolvedScheme), [colors, resolvedScheme]);
+  const { props: statusAlertProps, presentSuccess, presentError } = useStatusAlert();
 
   const [displayCompanies, setDisplayCompanies] = useState(companies);
+  const [createOpen, setCreateOpen] = useState(false);
+  const isEmpty = displayCompanies.length === 0;
+
+  const relationLabel = useCallback(
+    (relation: StoredSelectedCompany['relation']) =>
+      relation === 'owned' ? t('modals.company.owner') : t('modals.company.employee'),
+    [t],
+  );
 
   useEffect(() => {
-    if (!visible) {
-      return;
+    if (visible) {
+      setDisplayCompanies(companies);
     }
-    setDisplayCompanies(companies);
   }, [visible, companies]);
 
+  const openCreateCompany = useCallback(() => {
+    setCreateOpen(true);
+    onClose();
+  }, [onClose]);
+
+  const handleCreateSubmit = useCallback(
+    async (payload: CreateCompanyFormPayload) => {
+      const res = await createCompany(payload);
+      if (!res.success) {
+        throw new Error(
+          res.message?.trim() || t('home.companyList.createModal.errors.createFailed'),
+        );
+      }
+
+      const role = await refreshProfileRole({ silent: true });
+      const next = companiesFromProfileRole(role?.data?.companies ?? {});
+      const nameKey = payload.name.trim().toLowerCase();
+      const match =
+        next.find(c => c.name.trim().toLowerCase() === nameKey) ??
+        next.find(c => c.relation === 'owned') ??
+        next[0];
+
+      if (match) {
+        onSelectCompany(match);
+      }
+
+      presentSuccess({
+        title: t('home.companyList.createModal.successTitle'),
+        message: res.message?.trim() || t('home.companyList.createModal.successTitle'),
+        showMessage: true,
+        buttonText: t('settings.alerts.ok'),
+      });
+    },
+    [onSelectCompany, presentSuccess, refreshProfileRole, t],
+  );
+
+  const onCreateSubmit = useCallback(
+    (payload: CreateCompanyFormPayload) => {
+      return handleCreateSubmit(payload).catch((e: unknown) => {
+        presentError({
+          title: t('home.companyList.createModal.title'),
+          message:
+            e instanceof Error && e.message
+              ? e.message
+              : readApiError(e) || t('home.companyList.createModal.errors.createFailed'),
+          buttonText: t('settings.alerts.ok'),
+        });
+        throw e;
+      });
+    },
+    [handleCreateSubmit, presentError, t],
+  );
+
   return (
-    <Modal
-      animationType="fade"
-      transparent
-      statusBarTranslucent
-      visible={visible}
-      onRequestClose={onClose}>
-      <SafeAreaView style={ms.safe} edges={['top', 'right', 'left', 'bottom']}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Close company list"
-          style={ms.backdrop}
-          onPress={onClose}
-        />
-        <View style={ms.sheetWrap} pointerEvents="box-none">
-          <View style={ms.sheet}>
-            <View style={ms.titleRow}>
-              <Text style={ms.title} accessibilityRole="header">
-                Your companies
-              </Text>
-              {refreshing ? (
-                <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Updating companies" />
+    <>
+      <Modal
+        animationType="fade"
+        transparent
+        statusBarTranslucent
+        visible={visible}
+        onRequestClose={onClose}>
+        <SafeAreaView style={ms.safe} edges={['top', 'right', 'left', 'bottom']}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('modals.companySwitcher.closeList')}
+            style={ms.backdrop}
+            onPress={onClose}
+          />
+          <View style={ms.sheetWrap} pointerEvents="box-none">
+            <View style={ms.sheet}>
+              <View style={ms.titleRow}>
+                <Text style={ms.title} accessibilityRole="header">
+                  {t('home.companySwitcher.title')}
+                </Text>
+                {refreshing ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.primary}
+                    accessibilityLabel={t('modals.companySwitcher.updating')}
+                  />
+                ) : null}
+              </View>
+
+              {!isEmpty ? (
+                <Text style={ms.subtitle}>{t('home.companySwitcher.subtitle')}</Text>
               ) : null}
-            </View>
-            <Text style={ms.subtitle}>Tap one to switch the active workspace.</Text>
-            <FlatList
-              data={displayCompanies}
-              keyExtractor={item => `switch-${item.id}-${item.relation}`}
-              style={ms.list}
-              contentContainerStyle={ms.listContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              showsHorizontalScrollIndicator={false}
-              renderItem={({ item }) => {
-                const selected = item.id === selectedId;
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={`${selected ? 'Selected, ' : ''}Company ${item.name}`}
-                    onPress={() => {
-                      onSelectCompany(item);
-                      onClose();
-                    }}
-                    style={({ pressed }) => [
-                      ms.row,
-                      selected && ms.rowSelected,
-                      pressed && ms.rowPressed,
-                    ]}>
-                    <CompanyLogoChip company={item} ms={ms} />
-                    <View style={ms.rowText}>
-                      <Text style={ms.rowTitle} numberOfLines={2}>
-                        {item.name}
-                      </Text>
-                      <Text style={ms.rowHint} numberOfLines={1}>
-                        {item.relation === 'owned' ? 'Owner' : 'Employee'}
-                        {item.role ? ` • ${item.role}` : ''}
-                      </Text>
+
+              <FlatList
+                data={displayCompanies}
+                keyExtractor={item => `switch-${item.id}-${item.relation}`}
+                style={ms.list}
+                contentContainerStyle={ms.listContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                showsHorizontalScrollIndicator={false}
+                ListEmptyComponent={
+                  !refreshing ? (
+                    <View style={ms.emptyWrap}>
+                      <Text style={ms.emptyTitle}>{t('home.companySwitcher.emptyTitle')}</Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={t('home.companySwitcher.createCompany')}
+                        onPress={openCreateCompany}
+                        style={({ pressed }) => [
+                          ms.createBtn,
+                          pressed && ms.createBtnPressed,
+                        ]}>
+                        <Text style={ms.createBtnLabel}>
+                          {t('home.companySwitcher.createCompany')}
+                        </Text>
+                      </Pressable>
                     </View>
-                    {selected ? (
-                      <Text style={ms.check}>✓</Text>
-                    ) : (
-                      <Text style={ms.rowChevron}>›</Text>
-                    )}
-                  </Pressable>
-                );
-              }}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              onPress={onClose}
-              style={({ pressed }) => [ms.cancelBtn, pressed && ms.cancelBtnPressed]}>
-              <Text style={ms.cancelText}>Close</Text>
-            </Pressable>
+                  ) : null
+                }
+                renderItem={({ item }) => {
+                  const selected = item.id === selectedId;
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={
+                        selected
+                          ? `${t('modals.company.selectedPrefix')}${t('modals.company.companyRow', { name: item.name })}`
+                          : t('modals.company.companyRow', { name: item.name })
+                      }
+                      onPress={() => {
+                        onSelectCompany(item);
+                        onClose();
+                      }}
+                      style={({ pressed }) => [
+                        ms.row,
+                        selected && ms.rowSelected,
+                        pressed && ms.rowPressed,
+                      ]}>
+                      <CompanyLogoChip company={item} ms={ms} />
+                      <View style={ms.rowText}>
+                        <Text style={ms.rowTitle} numberOfLines={2}>
+                          {item.name}
+                        </Text>
+                        <Text style={ms.rowHint} numberOfLines={1}>
+                          {relationLabel(item.relation)}
+                          {item.role ? ` • ${item.role}` : ''}
+                        </Text>
+                      </View>
+                      {selected ? (
+                        <Text style={ms.check}>✓</Text>
+                      ) : (
+                        <Text style={ms.rowChevron}>›</Text>
+                      )}
+                    </Pressable>
+                  );
+                }}
+              />
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('modals.common.close')}
+                onPress={onClose}
+                style={({ pressed }) => [ms.cancelBtn, pressed && ms.cancelBtnPressed]}>
+                <Text style={ms.cancelText}>{t('settings.alerts.cancel')}</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </SafeAreaView>
-    </Modal>
+        </SafeAreaView>
+      </Modal>
+
+      <CreateCompany
+        visible={createOpen}
+        onDismiss={() => setCreateOpen(false)}
+        onSubmit={onCreateSubmit}
+      />
+      <StatusAlert {...statusAlertProps} />
+    </>
   );
 }

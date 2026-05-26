@@ -1,0 +1,30 @@
+---
+description: TypeScript type patterns — API types, component props, domain models
+globs: "**/*.ts,**/*.tsx"
+alwaysApply: false
+---
+
+# TypeScript Conventions
+
+## Type Files
+
+Types live in `src/types/`, one file per domain:
+
+- `attendanceList.ts` — list API response types, employee row, shift, calculations
+- `markAttendance.ts` — mark/bulk/leave config payload and response types
+- `company.ts`, `profileRoleUser.ts`, etc.
+
+## Patterns
+
+- Use `type` (not `interface`) for object shapes: `export type Foo = { ... }`
+- API responses wrap data: `type ApiSuccess<T> = { success: true; data: T; meta: M }`
+- Component props types named `XxxProps` and exported alongside the component
+- Discriminated unions for status/type fields: `'present' | 'half_day' | 'absent' | 'leave'`
+- Use `import type` for type-only imports to enable erasure
+
+## Naming
+
+- Payload types: `MarkAttendancePayload`, `BulkApprovePayload`
+- Response types: `MarkAttendanceResponse`, `LeaveConfigResponse`
+- Enum-like unions: `MarkAttendanceStatus`, `BulkApproveMode`, `HalfDayType`
+- Component target types: `MarkAttendanceTarget`, `BulkApproveTarget`

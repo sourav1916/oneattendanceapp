@@ -1,0 +1,48 @@
+---
+description: API call patterns — authHttpClient, company header, error handling
+globs: "src/api/**"
+alwaysApply: false
+---
+
+# API Patterns
+
+## authHttpClient
+
+All authenticated API calls use `authHttpClient` (Axios instance from `@src/api/authHttpClient`).
+It auto-attaches `Authorization: Bearer <token>` and handles 401 → sign out.
+
+## Company Header
+
+Company-scoped endpoints require a custom header:
+
+```tsx
+function withCompany(companyId: number) {
+  return { company: String(companyId) };
+}
+
+const { data } = await authHttpClient.get('/attendance/list', {
+  headers: withCompany(companyId),
+  params: { ... },
+});
+```
+
+## API Module Pattern
+
+Group related endpoints in a single object per domain:
+
+```tsx
+export const attendanceApi = {
+  async getAttendanceList(companyId: number, params: Params): Promise<Response> {
+    const { data } = await authHttpClient.get<Response>('/attendance/list', {
+      headers: withCompany(companyId),
+      params: { ... },
+    });
+    return data;
+  },
+  async markAttendance(companyId: number, payload: Payload): Promise<Response> { ... },
+};
+```
+
+## Error Handling
+
+Use `readApiError(err)` from `@src/utils/readApiError` to extract a user-facing message from Axios errors. It checks `response.data.message`, `response.data.error`, then falls back to `err.message`.

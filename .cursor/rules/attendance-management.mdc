@@ -1,0 +1,41 @@
+---
+description: Attendance Management feature — API endpoints, data model, flows
+globs: "src/screens/company/AttendanceManagement.tsx,src/components/modals/MarkAttendanceModal.tsx,src/components/modals/BulkApproveModal.tsx,src/api/attendanceApi.ts,src/types/attendanceList.ts,src/types/markAttendance.ts"
+alwaysApply: false
+---
+
+# Attendance Management System
+
+## API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/attendance/list` | Paginated employee attendance list |
+| POST | `/attendance/mark` | Upsert single employee attendance/break |
+| PUT | `/attendance/approve` | Bulk approve/override attendance |
+| GET | `/leave/company` | Fetch available leave codes |
+
+All require `company` header via `withCompany(companyId)`.
+
+## Data Model
+
+**EmployeeAttendanceRow**: `employee_id`, `name`, `shift` (ShiftInfo), `attendances[]` (AttendanceDayRecord), `calculations`.
+
+**AttendanceDayStatus**: `'present' | 'absent' | 'leave' | 'half_day' | 'unmarked'`
+
+**MarkAttendancePayload**: varies by status — present/half_day need times, leave needs leave_type+code, absent needs nothing.
+
+**BulkApprovePayload**: `mode` ('actual'|'present'|'half_day'|'leave'|'absent'), `employee_ids` (array or 'all').
+
+## User Flows
+
+1. **Single mark**: Card status button → MarkAttendanceModal (pre-filled) → POST /attendance/mark
+2. **Bulk approve**: Toggle select → floating bar → BulkApproveModal → PUT /attendance/approve
+3. **Flag toggle**: OT/Deduct button → ConfirmAlert → re-POST with toggled flag (mutually exclusive)
+
+## MarkAttendanceModal Props
+
+`target.preSelectedStatus` — from card button click
+`target.existingRecord` — pre-fill from current data
+`target.shift` — default times from shift config
+`leaveConfigs` — fetched from `/leave/company` on mount

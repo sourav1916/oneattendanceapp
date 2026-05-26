@@ -1,0 +1,64 @@
+---
+description: Modal component patterns — bottom sheets, centered dialogs, hooks
+globs: "src/components/modals/**"
+alwaysApply: false
+---
+
+# Modal Components
+
+All custom modals live in `src/components/modals/` and follow a consistent pattern.
+
+## Bottom Sheet Modal (MarkAttendanceModal, BulkApproveModal)
+
+```tsx
+<Modal visible={visible} animationType="slide" transparent statusBarTranslucent onRequestClose={onDismiss}>
+  <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+    <Pressable style={styles.backdrop} onPress={onDismiss} />
+    <View style={styles.sheetWrap} pointerEvents="box-none">
+      <View style={styles.sheet}>
+        {/* handle bar → header → ScrollView body → fixed footer */}
+      </View>
+    </View>
+  </SafeAreaView>
+</Modal>
+```
+
+- `safe` has `backgroundColor: colors.overlay`
+- `sheet` has `borderTopLeftRadius: 24, borderTopRightRadius: 24`
+- Body uses `ScrollView` with `nestedScrollEnabled`, `bounces={false}`
+- Footer has submit (primary bg) + cancel (text button)
+
+## Centered Dialog (DatePicker, TimePicker)
+
+```tsx
+<Modal visible={visible} animationType="fade" transparent statusBarTranslucent>
+  <SafeAreaView style={styles.safe}>
+    <Pressable style={styles.backdrop} onPress={onDismiss} />
+    <View style={styles.sheetWrap} pointerEvents="box-none">
+      <View style={styles.sheet}>{/* centered card content */}</View>
+    </View>
+  </SafeAreaView>
+</Modal>
+```
+
+## Imperative Hook Pattern
+
+Modals use a `useXxx()` hook returning `{ props, present, dismiss }`:
+
+```tsx
+const { props: statusAlertProps, presentError, presentSuccess } = useStatusAlert();
+const { props: confirmAlertProps, present: presentConfirm } = useConfirmAlert();
+// Render: <StatusAlert {...statusAlertProps} />
+```
+
+## Chip Selectors
+
+Reusable chip pattern for multi-option selection inside modals:
+
+```tsx
+<Pressable style={[styles.chip, active && styles.chipActive]}>
+  <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+</Pressable>
+```
+
+Active chip: `borderColor: colors.primary`, light primary bg.

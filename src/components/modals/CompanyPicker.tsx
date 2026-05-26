@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   FlatList,
   Image,
@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
@@ -141,10 +142,17 @@ type Props = {
 };
 
 export function CompanyPicker({ visible, companies, onSelectCompany }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
   const ms = useMemo(() => buildPickerStyles(colors, resolvedScheme), [colors, resolvedScheme]);
+
+  const relationLabel = useCallback(
+    (relation: StoredSelectedCompany['relation']) =>
+      relation === 'owned' ? t('modals.company.owner') : t('modals.company.employee'),
+    [t],
+  );
 
   return (
     <Modal
@@ -157,10 +165,8 @@ export function CompanyPicker({ visible, companies, onSelectCompany }: Props) {
       }}>
       <View style={[ms.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={ms.sheet}>
-          <Text style={ms.title}>Select a company</Text>
-          <Text style={ms.subtitle}>
-            Choose which organization you are working with right now.
-          </Text>
+          <Text style={ms.title}>{t('modals.companyPicker.title')}</Text>
+          <Text style={ms.subtitle}>{t('modals.companyPicker.subtitle')}</Text>
           <FlatList
             data={companies}
             keyExtractor={item => `company-${item.id}-${item.relation}`}
@@ -171,7 +177,7 @@ export function CompanyPicker({ visible, companies, onSelectCompany }: Props) {
             renderItem={({ item }) => (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Select company ${item.name}`}
+                accessibilityLabel={t('modals.company.selectCompany', { name: item.name })}
                 onPress={() => onSelectCompany(item)}
                 style={({ pressed }) => [ms.row, pressed && ms.rowPressed]}>
                 <CompanyLogoChip company={item} ms={ms} />
@@ -180,7 +186,7 @@ export function CompanyPicker({ visible, companies, onSelectCompany }: Props) {
                     {item.name}
                   </Text>
                   <Text style={ms.rowHint} numberOfLines={1}>
-                    {item.relation === 'owned' ? 'Owner' : 'Employee'}
+                    {relationLabel(item.relation)}
                     {item.role ? ` • ${item.role}` : ''}
                   </Text>
                 </View>

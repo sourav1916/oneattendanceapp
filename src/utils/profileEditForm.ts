@@ -5,6 +5,8 @@ export type ProfileEditSnapshot = {
   email: string;
   phoneDigits: string;
   profilePictureUrl: string;
+  profession: string;
+  whatsappDigits: string;
 };
 
 export function onlyDigits(s: string): string {
@@ -17,78 +19,72 @@ export type PictureSubmitState =
   | { kind: 'setUrl'; url: string };
 
 /**
- * Builds the PUT body with only changed fields. Returns `null` if nothing would be sent
- * (caller should block submit).
+ * Builds the PUT body for changed fields. Always includes `name` (required by API).
+ * Returns `null` if nothing changed besides a redundant name-only payload.
  */
 export function buildChangedProfileUpdatePayload(
   initial: ProfileEditSnapshot,
-  draft: { name: string; phoneRaw: string },
+  draft: { name: string; profession: string; whatsappRaw: string },
   picture: PictureSubmitState,
 ): UpdateProfileRequestBody | null {
-  const out: UpdateProfileRequestBody = {};
   const nameT = draft.name.trim();
+  const professionT = draft.profession.trim();
+  const whatsappD = onlyDigits(draft.whatsappRaw);
 
-  if (nameT !== initial.name.trim()) {
-    out.name = nameT;
-  }
-
-  const phoneD = onlyDigits(draft.phoneRaw);
-  const initPhone = initial.phoneDigits;
-  if (phoneD !== initPhone) {
-    if (phoneD.length === 0) {
-      out.phone = '';
-    } else if (phoneD.length >= 10 && phoneD.length <= 15) {
-      out.phone = phoneD;
-    }
-  }
+  let pictureChanged = false;
+  let nextProfilePicture: string | null | undefined;
 
   if (picture.kind === 'removed') {
     if (initial.profilePictureUrl.trim().length > 0) {
-      out.profile_picture = null;
+      pictureChanged = true;
+      nextProfilePicture = null;
     }
   } else if (picture.kind === 'setUrl') {
     const next = picture.url.trim();
     if (next !== initial.profilePictureUrl.trim()) {
-      out.profile_picture = next;
+      pictureChanged = true;
+      nextProfilePicture = next;
     }
   }
 
-  if (Object.keys(out).length === 0) {
+  const nameChanged = nameT !== initial.name.trim();
+  const professionChanged = professionT !== initial.profession.trim();
+  const whatsappChanged = whatsappD !== initial.whatsappDigits;
+
+  if (!nameChanged && !professionChanged && !whatsappChanged && !pictureChanged) {
     return null;
   }
+
+  const out: UpdateProfileRequestBody = { name: nameT };
+
+  if (professionChanged) {
+    out.profession = professionT;
+  }
+  if (whatsappChanged) {
+    out.whatsapp = whatsappD;
+  }
+  if (pictureChanged && nextProfilePicture !== undefined) {
+    out.profile_picture = nextProfilePicture;
+  }
+
   return out;
 }
 
-/** Blocks save when the phone field was edited but is not empty and not a complete number. */
-export function validateProfilePhoneChange(
-  initial: ProfileEditSnapshot,
-  draft: { phoneRaw: string },
-): string | null {
-  const phoneD = onlyDigits(draft.phoneRaw);
-  if (phoneD === initial.phoneDigits) {
-    return null;
-  }
-  if (phoneD.length > 0 && (phoneD.length < 10 || phoneD.length > 15)) {
-    return 'Phone must be 10–15 digits.';
-  }
-  return null;
-}
-
-/** Client-side checks before calling the API (after building the partial body). */
+/** Client-side checks before calling the API (after building the body). */
 export function validateProfileUpdatePayload(
-  draft: { name: string; phoneRaw: string },
+  draft: { name: string; whatsappRaw: string },
   payload: UpdateProfileRequestBody | null,
 ): string | null {
   if (payload == null) {
     return null;
   }
-  if (payload.name !== undefined && !draft.name.trim()) {
+  if (!draft.name.trim()) {
     return 'Name cannot be empty.';
   }
-  if (payload.phone !== undefined && payload.phone !== '') {
-    const d = onlyDigits(draft.phoneRaw);
-    if (!/^\d{10,15}$/.test(d)) {
-      return 'Phone must be 10–15 digits.';
+  const whatsappD = onlyDigits(draft.whatsappRaw);
+  if (payload.whatsapp !== undefined && whatsappD.length > 0) {
+    if (whatsappD.length < 10 || whatsappD.length > 15) {
+      return 'WhatsApp number must be 10–15 digits.';
     }
   }
   return null;
@@ -98,12 +94,12 @@ export function validateProfileUpdatePayload(
 export function partialUserFromUpdatePayload(
   payload: UpdateProfileRequestBody,
 ): Partial<UserProfile> {
-  const patch: Partial<UserProfile> = {};
-  if (payload.name !== undefined) {
-    patch.name = payload.name;
+  const patch: Partial<UserProfile> = { name: payload.name };
+  if (payload.profession !== undefined) {
+    patch.profession = payload.profession;
   }
-  if (payload.phone !== undefined) {
-    patch.phone = payload.phone;
+  if (payload.whatsapp !== undefined) {
+    patch.whatsapp = payload.whatsapp;
   }
   if (payload.profile_picture !== undefined) {
     patch.profile_picture = payload.profile_picture;

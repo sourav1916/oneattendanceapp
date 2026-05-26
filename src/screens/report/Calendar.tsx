@@ -4,7 +4,7 @@
 import { HeaderBackButton } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import axios from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Animated,
@@ -32,14 +32,14 @@ import type {
     CalendarDayInfo,
     CalendarDayStatus,
     CalendarLog,
-    CalendarMeta,
     CalendarShift,
-    CalendarStatistics,
     MyCalendarData,
 } from '@src/types/myCalendar';
 import {
     buildCalendarGrid,
+    computeCalendarSummary,
     formatAttendanceMethod,
+    formatCreatedByLabel,
     formatLogTypeLabel,
     formatMinutesToDuration,
     formatMonthTitle,
@@ -47,6 +47,7 @@ import {
     getStatusStyle,
     hasCalendarDayDetails,
     shiftMonth,
+    type CalendarDaySummary,
     type CalendarGridCell,
     type StatusVisualStyle,
 } from '@src/utils/calendarHelpers';
@@ -88,7 +89,7 @@ function chunkCalendarWeeks(grid: CalendarGridCell[]): CalendarGridCell[][] {
 }
 
 const SUMMARY_KEYS: Array<{
-    key: keyof CalendarMeta;
+    key: keyof CalendarDaySummary;
     labelKey: string;
     status?: CalendarDayStatus;
 }> = [
@@ -337,19 +338,27 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
             color: colors.textMuted,
             marginTop: 2,
         },
-        modalBackdrop: {
+        modalSafe: {
             flex: 1,
             backgroundColor: colors.overlay,
+        },
+        modalBackdrop: {
+            ...StyleSheet.absoluteFill,
+        },
+        modalSheetWrap: {
+            flex: 1,
             justifyContent: 'flex-end',
+            paddingTop: 48,
         },
         modalSheet: {
             backgroundColor: colors.surface,
-            borderTopLeftRadius: 18,
-            borderTopRightRadius: 18,
-            paddingHorizontal: 20,
-            paddingTop: 12,
-            paddingBottom: 28,
-            maxHeight: '82%',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            borderWidth: 1,
+            borderBottomWidth: 0,
+            borderColor: colors.border,
+            maxHeight: '88%',
+            overflow: 'hidden',
         },
         modalHandle: {
             alignSelf: 'center',
@@ -357,7 +366,14 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
             height: 4,
             borderRadius: 2,
             backgroundColor: colors.border,
-            marginBottom: 14,
+            marginBottom: 16,
+        },
+        modalHeader: {
+            paddingHorizontal: 20,
+            paddingTop: 12,
+            paddingBottom: 14,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colors.border,
         },
         modalTitle: {
             fontSize: 18,
@@ -368,18 +384,42 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         modalStatus: {
             fontSize: 14,
             fontWeight: '600',
-            marginBottom: 14,
+        },
+        modalStatusPill: {
+            alignSelf: 'flex-start',
+            borderRadius: 999,
+            borderWidth: 1,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            marginTop: 8,
+        },
+        modalScroll: {
+            flexGrow: 0,
+            flexShrink: 1,
+        },
+        modalScrollContent: {
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: 20,
+        },
+        detailSummaryCard: {
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: scheme === 'dark' ? '#0f172a' : colors.background,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            marginBottom: 16,
         },
         detailRow: {
             flexDirection: 'row',
             justifyContent: 'space-between',
             gap: 12,
-            paddingVertical: 7,
-            borderBottomWidth: StyleSheet.hairlineWidth,
-            borderBottomColor: colors.border,
+            paddingVertical: 8,
         },
         detailLabel: {
-            fontSize: 14,
+            fontSize: 13,
+            fontWeight: '600',
             color: colors.textMuted,
             flex: 1,
         },
@@ -405,40 +445,18 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
             fontWeight: '600',
             color: colors.text,
         },
-        statGrid: {
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: 8,
-        },
-        statItem: {
-            width: '48%',
-            flexGrow: 1,
-            minWidth: '46%',
-            backgroundColor: colors.background,
-            borderRadius: 10,
+        sessionBlock: {
+            borderRadius: 16,
             borderWidth: 1,
             borderColor: colors.border,
-            paddingVertical: 10,
-            paddingHorizontal: 10,
-        },
-        statValue: {
-            fontSize: 16,
-            fontWeight: '700',
-            color: colors.text,
-        },
-        statLabel: {
-            fontSize: 12,
-            color: colors.textMuted,
-            marginTop: 2,
-        },
-        sessionBlock: {
+            backgroundColor: colors.surface,
+            padding: 12,
             marginBottom: 10,
-            paddingBottom: 8,
-            borderBottomWidth: StyleSheet.hairlineWidth,
-            borderBottomColor: colors.border,
         },
         modalClose: {
-            marginTop: 16,
+            marginHorizontal: 20,
+            marginTop: 2,
+            marginBottom: 16,
             paddingVertical: 12,
             borderRadius: 12,
             backgroundColor: colors.primary,
@@ -452,11 +470,80 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         sectionHeading: {
             fontSize: 13,
             fontWeight: '700',
-            color: colors.textMuted,
-            marginTop: 10,
-            marginBottom: 4,
+            color: colors.text,
+            marginTop: 4,
+            marginBottom: 10,
             textTransform: 'uppercase',
             letterSpacing: 0.4,
+        },
+        timelineList: {
+            gap: 10,
+            marginBottom: 16,
+        },
+        timelineCard: {
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: scheme === 'dark' ? '#0f172a' : colors.background,
+            padding: 12,
+            ...Platform.select({
+                ios: {
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: scheme === 'dark' ? 0.16 : 0.05,
+                    shadowRadius: 4,
+                },
+                android: { elevation: 1 },
+            }),
+        },
+        timelineHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+        },
+        timelineIcon: {
+            width: 34,
+            height: 34,
+            borderRadius: 17,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.secondaryButton,
+        },
+        timelineText: {
+            flex: 1,
+        },
+        timelineTitle: {
+            fontSize: 15,
+            fontWeight: '700',
+            color: colors.text,
+        },
+        timelineTime: {
+            fontSize: 13,
+            color: colors.textMuted,
+            marginTop: 2,
+        },
+        timelineMetaRow: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 8,
+            marginTop: 10,
+        },
+        timelineMethodPill: {
+            borderRadius: 999,
+            backgroundColor: colors.secondaryButton,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+        },
+        timelineMethodText: {
+            fontSize: 12,
+            fontWeight: '700',
+            color: colors.text,
+        },
+        timelineByline: {
+            fontSize: 12,
+            color: colors.textMuted,
+            lineHeight: 18,
+            marginTop: 8,
         },
         skPulseBase: {
             backgroundColor: colors.border,
@@ -579,90 +666,143 @@ type DayDetailModalProps = {
     t: (key: string) => string;
 };
 
-function ActivitySessionBlock({
-    session,
-    index,
-    styles,
-    t,
-}: {
-    session: CalendarActivity[];
-    index: number;
+type TimelineEntryProps = {
+    icon: string;
+    title: string;
+    time?: string;
+    method?: string;
+    byLine?: string | null;
     styles: ReturnType<typeof buildStyles>;
-    t: (key: string, opts?: Record<string, unknown>) => string;
-}) {
-    const punchIn = session.find(a => a.type === 'PUNCH_IN');
-    const punchOut = session.find(a => a.type === 'PUNCH_OUT');
+};
 
+function TimelineEntry({ icon, title, time, method, byLine, styles }: TimelineEntryProps) {
     return (
-        <View style={styles.sessionBlock}>
-            <Text style={styles.sectionHeading}>
-                {t('home.myCalendar.modal.session', { n: index + 1 })}
-            </Text>
-            {punchIn ? (
-                <DetailRow
-                    label={t('home.myCalendar.modal.punchIn')}
-                    value={`${punchIn.time} (${formatAttendanceMethod(punchIn.attendance_method)})`}
-                    styles={styles}
-                />
+        <View style={styles.timelineCard}>
+            <View style={styles.timelineHeader}>
+                <View style={styles.timelineIcon}>
+                    <MaterialCommunityIcons name={icon} size={18} color="#2563eb" />
+                </View>
+                <View style={styles.timelineText}>
+                    <Text style={styles.timelineTitle}>{title}</Text>
+                    {time ? <Text style={styles.timelineTime}>{time}</Text> : null}
+                </View>
+            </View>
+            {method ? (
+                <View style={styles.timelineMetaRow}>
+                    <View style={styles.timelineMethodPill}>
+                        <Text style={styles.timelineMethodText}>{formatAttendanceMethod(method)}</Text>
+                    </View>
+                </View>
             ) : null}
-            {punchOut ? (
-                <DetailRow
-                    label={t('home.myCalendar.modal.punchOut')}
-                    value={`${punchOut.time} (${formatAttendanceMethod(punchOut.attendance_method)})`}
-                    styles={styles}
-                />
-            ) : null}
+            {byLine ? <Text style={styles.timelineByline}>{byLine}</Text> : null}
         </View>
     );
 }
 
-function BreakSessionBlock({
-    session,
-    index,
+function DetailSection({
+    title,
+    children,
     styles,
-    t,
 }: {
-    session: CalendarBreak[];
-    index: number;
+    title: string;
+    children: ReactNode;
     styles: ReturnType<typeof buildStyles>;
-    t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
-    const breakStart = session.find(b => b.type === 'BREAK_START');
-    const breakEnd = session.find(b => b.type === 'BREAK_END');
-
     return (
-        <View style={styles.sessionBlock}>
-            <Text style={styles.sectionHeading}>
-                {t('home.myCalendar.modal.session', { n: index + 1 })}
-            </Text>
-            {breakStart ? (
-                <DetailRow
-                    label={t('home.myCalendar.modal.breakStart')}
-                    value={`${breakStart.time} (${formatAttendanceMethod(breakStart.attendance_method)})`}
-                    styles={styles}
-                />
-            ) : null}
-            {breakEnd ? (
-                <DetailRow
-                    label={t('home.myCalendar.modal.breakEnd')}
-                    value={`${breakEnd.time} (${formatAttendanceMethod(breakEnd.attendance_method)})`}
-                    styles={styles}
-                />
-            ) : null}
+        <View>
+            <Text style={styles.sectionHeading}>{title}</Text>
+            <View style={styles.timelineList}>{children}</View>
         </View>
     );
 }
 
-function LogRow({ log, styles }: { log: CalendarLog; styles: ReturnType<typeof buildStyles> }) {
-    const value =
+function ActivityRow({
+    activity,
+    styles,
+    t,
+}: {
+    activity: CalendarActivity;
+    styles: ReturnType<typeof buildStyles>;
+    t: (key: string) => string;
+}) {
+    const label =
+        activity.type === 'PUNCH_IN'
+            ? t('home.myCalendar.modal.punchIn')
+            : t('home.myCalendar.modal.punchOut');
+    const byLine =
+        activity.created_by
+            ? formatCreatedByLabel(activity.created_by.name, activity.created_by.role)
+            : null;
+
+    return (
+        <TimelineEntry
+            icon={activity.type === 'PUNCH_IN' ? 'login' : 'logout'}
+            title={label}
+            time={activity.time}
+            method={activity.attendance_method}
+            byLine={byLine ? `${t('home.myCalendar.modal.createdBy')}: ${byLine}` : null}
+            styles={styles}
+        />
+    );
+}
+
+function BreakRow({
+    brk,
+    styles,
+    t,
+}: {
+    brk: CalendarBreak;
+    styles: ReturnType<typeof buildStyles>;
+    t: (key: string) => string;
+}) {
+    const label =
+        brk.type === 'BREAK_START'
+            ? t('home.myCalendar.modal.breakStart')
+            : t('home.myCalendar.modal.breakEnd');
+    const byLine =
+        brk.created_by
+            ? formatCreatedByLabel(brk.created_by.name, brk.created_by.role)
+            : null;
+
+    return (
+        <TimelineEntry
+            icon={brk.type === 'BREAK_START' ? 'coffee-outline' : 'coffee-off-outline'}
+            title={label}
+            time={brk.time}
+            method={brk.attendance_method}
+            byLine={byLine ? `${t('home.myCalendar.modal.createdBy')}: ${byLine}` : null}
+            styles={styles}
+        />
+    );
+}
+
+function LogRow({
+    log,
+    styles,
+    t,
+}: {
+    log: CalendarLog;
+    styles: ReturnType<typeof buildStyles>;
+    t: (key: string) => string;
+}) {
+    const title =
         log.log_type === 'day_status' && log.day_status
             ? formatStatusLabel(log.day_status)
-            : log.attendance_method
-                ? `${log.time} (${formatAttendanceMethod(log.attendance_method)})`
-                : log.time;
+            : formatLogTypeLabel(log.log_type);
+    const byLine =
+        log.created_by
+            ? formatCreatedByLabel(log.created_by.name, log.created_by.role)
+            : null;
 
     return (
-        <DetailRow label={formatLogTypeLabel(log.log_type)} value={value} styles={styles} />
+        <TimelineEntry
+            icon={log.log_type === 'day_status' ? 'calendar-check-outline' : 'history'}
+            title={title}
+            time={log.time}
+            method={log.attendance_method}
+            byLine={byLine ? `${t('home.myCalendar.modal.createdBy')}: ${byLine}` : null}
+            styles={styles}
+        />
     );
 }
 
@@ -698,190 +838,216 @@ function ShiftCard({
     );
 }
 
-function StatisticsCard({
-    statistics,
-    styles,
-    t,
-}: {
-    statistics: CalendarStatistics;
-    styles: ReturnType<typeof buildStyles>;
-    t: (key: string) => string;
-}) {
-    const items: Array<{ labelKey: string; minutes: number }> = [
-        { labelKey: 'worked', minutes: statistics.worked_minutes },
-        { labelKey: 'expectedWork', minutes: statistics.expected_work_minutes },
-        { labelKey: 'breakTaken', minutes: statistics.break_minutes },
-        { labelKey: 'expectedBreak', minutes: statistics.expected_break_minutes },
-        { labelKey: 'overtime', minutes: statistics.overtime_minutes },
-    ];
-
-    return (
-        <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t('home.myCalendar.statisticsTitle')}</Text>
-            <View style={styles.statGrid}>
-                {items.map(item => (
-                    <View key={item.labelKey} style={styles.statItem}>
-                        <Text style={styles.statValue}>{formatMinutesToDuration(item.minutes)}</Text>
-                        <Text style={styles.statLabel}>{t(`home.myCalendar.${item.labelKey}`)}</Text>
-                    </View>
-                ))}
-            </View>
-        </View>
-    );
-}
-
 function DayDetailModal({ visible, dateKey, dayInfo, onClose, styles, t }: DayDetailModalProps) {
     const statusStyle = getStatusStyle(dayInfo?.day_status);
+    const hasSummaryDetails = Boolean(
+        dayInfo &&
+        (
+            dayInfo.is_approved != null ||
+            dayInfo.is_deductible != null ||
+            dayInfo.is_overtime != null ||
+            dayInfo.verified_by
+        ),
+    );
 
     return (
-        <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-            <Pressable style={styles.modalBackdrop} onPress={onClose}>
-                <Pressable style={styles.modalSheet} onPress={e => e.stopPropagation()}>
-                    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                        <View style={styles.modalHandle} />
-                        {dateKey ? (
-                            <Text style={styles.modalTitle}>{formatDisplayDate(dateKey)}</Text>
-                        ) : null}
-                        {dayInfo ? (
-                            <>
-                                <Text style={[styles.modalStatus, { color: statusStyle.textColor }]}>
-                                    {formatStatusLabel(dayInfo.day_status)}
+        <Modal
+            visible={visible}
+            animationType="slide"
+            transparent
+            statusBarTranslucent
+            onRequestClose={onClose}>
+            <SafeAreaView style={styles.modalSafe} edges={['top', 'left', 'right', 'bottom']}>
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('home.myCalendar.modal.close')}
+                    style={styles.modalBackdrop}
+                    onPress={onClose}
+                />
+                <View style={styles.modalSheetWrap} pointerEvents="box-none">
+                    <View style={styles.modalSheet}>
+                        <View style={styles.modalHeader}>
+                            <View style={styles.modalHandle} />
+                            {dateKey ? (
+                                <Text style={styles.modalTitle} accessibilityRole="header">
+                                    {formatDisplayDate(dateKey)}
                                 </Text>
+                            ) : null}
+                            {dayInfo ? (
+                                <View
+                                    style={[
+                                        styles.modalStatusPill,
+                                        {
+                                            backgroundColor: statusStyle.backgroundColor,
+                                            borderColor: statusStyle.borderColor,
+                                        },
+                                    ]}>
+                                    <Text style={[styles.modalStatus, { color: statusStyle.textColor }]}>
+                                        {formatStatusLabel(dayInfo.day_status)}
+                                    </Text>
+                                </View>
+                            ) : null}
+                        </View>
 
-                                {dayInfo.is_approved != null ? (
-                                    <DetailRow
-                                        label={t('home.myCalendar.modal.approved')}
-                                        value={
-                                            dayInfo.is_approved
-                                                ? t('home.myCalendar.modal.yes')
-                                                : t('home.myCalendar.modal.no')
-                                        }
-                                        styles={styles}
-                                    />
-                                ) : null}
+                        <ScrollView
+                            style={styles.modalScroll}
+                            contentContainerStyle={styles.modalScrollContent}
+                            showsVerticalScrollIndicator
+                            keyboardShouldPersistTaps="handled"
+                            nestedScrollEnabled
+                            bounces={false}>
+                            {dayInfo ? (
+                                <>
+                                    {hasSummaryDetails ? (
+                                        <View style={styles.detailSummaryCard}>
+                                            {dayInfo.is_approved != null ? (
+                                                <DetailRow
+                                                    label={t('home.myCalendar.modal.approved')}
+                                                    value={
+                                                        dayInfo.is_approved
+                                                            ? t('home.myCalendar.modal.yes')
+                                                            : t('home.myCalendar.modal.no')
+                                                    }
+                                                    styles={styles}
+                                                />
+                                            ) : null}
 
-                                {dayInfo.is_deductible != null ? (
-                                    <DetailRow
-                                        label={t('home.myCalendar.modal.deductible')}
-                                        value={
-                                            dayInfo.is_deductible
-                                                ? t('home.myCalendar.modal.yes')
-                                                : t('home.myCalendar.modal.no')
-                                        }
-                                        styles={styles}
-                                    />
-                                ) : null}
+                                            {dayInfo.is_deductible != null ? (
+                                                <DetailRow
+                                                    label={t('home.myCalendar.modal.deductible')}
+                                                    value={
+                                                        dayInfo.is_deductible
+                                                            ? t('home.myCalendar.modal.yes')
+                                                            : t('home.myCalendar.modal.no')
+                                                    }
+                                                    styles={styles}
+                                                />
+                                            ) : null}
 
-                                {dayInfo.activities && dayInfo.activities.length > 0 ? (
-                                    <>
-                                        <Text style={styles.sectionHeading}>
-                                            {t('home.myCalendar.modal.activities')}
-                                        </Text>
-                                        {dayInfo.activities.map((session, i) => (
-                                            <ActivitySessionBlock
-                                                key={`activity-${i}`}
-                                                session={session}
-                                                index={i}
-                                                styles={styles}
-                                                t={t}
-                                            />
-                                        ))}
-                                    </>
-                                ) : null}
+                                            {dayInfo.is_overtime != null ? (
+                                                <DetailRow
+                                                    label={t('home.myCalendar.modal.overtime')}
+                                                    value={
+                                                        dayInfo.is_overtime
+                                                            ? t('home.myCalendar.modal.yes')
+                                                            : t('home.myCalendar.modal.no')
+                                                    }
+                                                    styles={styles}
+                                                />
+                                            ) : null}
 
-                                {dayInfo.breaks && dayInfo.breaks.length > 0 ? (
-                                    <>
-                                        <Text style={styles.sectionHeading}>
-                                            {t('home.myCalendar.modal.breaks')}
-                                        </Text>
-                                        {dayInfo.breaks.map((session, i) => (
-                                            <BreakSessionBlock
-                                                key={`break-${i}`}
-                                                session={session}
-                                                index={i}
-                                                styles={styles}
-                                                t={t}
-                                            />
-                                        ))}
-                                    </>
-                                ) : null}
+                                            {dayInfo.verified_by ? (
+                                                <DetailRow
+                                                    label={t('home.myCalendar.modal.verifiedBy')}
+                                                    value={formatCreatedByLabel(
+                                                        dayInfo.verified_by.name,
+                                                        dayInfo.verified_by.role,
+                                                    )}
+                                                    styles={styles}
+                                                />
+                                            ) : null}
+                                        </View>
+                                    ) : null}
 
-                                {dayInfo.logs && dayInfo.logs.length > 0 ? (
-                                    <>
-                                        <Text style={styles.sectionHeading}>
-                                            {t('home.myCalendar.modal.logs')}
-                                        </Text>
-                                        {dayInfo.logs.map((log, i) => (
-                                            <LogRow key={`log-${i}`} log={log} styles={styles} />
-                                        ))}
-                                    </>
-                                ) : null}
+                                    {dayInfo.activities && dayInfo.activities.length > 0 ? (
+                                        <DetailSection title={t('home.myCalendar.modal.activities')} styles={styles}>
+                                            {dayInfo.activities.map((activity, i) => (
+                                                <ActivityRow
+                                                    key={`activity-${i}`}
+                                                    activity={activity}
+                                                    styles={styles}
+                                                    t={t}
+                                                />
+                                            ))}
+                                        </DetailSection>
+                                    ) : null}
 
-                                {dayInfo.is_holiday ? (
-                                    <>
-                                        <Text style={styles.sectionHeading}>
-                                            {t('home.myCalendar.modal.holiday')}
-                                        </Text>
-                                        <DetailRow
-                                            label={t('home.myCalendar.modal.name')}
-                                            value={dayInfo.is_holiday.name}
-                                            styles={styles}
-                                        />
-                                        <DetailRow
-                                            label={t('home.myCalendar.modal.optional')}
-                                            value={
-                                                dayInfo.is_holiday.is_optional
-                                                    ? t('home.myCalendar.modal.yes')
-                                                    : t('home.myCalendar.modal.mandatory')
-                                            }
-                                            styles={styles}
-                                        />
-                                    </>
-                                ) : null}
+                                    {dayInfo.breaks && dayInfo.breaks.length > 0 ? (
+                                        <DetailSection title={t('home.myCalendar.modal.breaks')} styles={styles}>
+                                            {dayInfo.breaks.map((brk, i) => (
+                                                <BreakRow
+                                                    key={`break-${i}`}
+                                                    brk={brk}
+                                                    styles={styles}
+                                                    t={t}
+                                                />
+                                            ))}
+                                        </DetailSection>
+                                    ) : null}
 
-                                {dayInfo.is_leave ? (
-                                    <>
-                                        <Text style={styles.sectionHeading}>
-                                            {t('home.myCalendar.modal.leave')}
-                                        </Text>
-                                        <DetailRow
-                                            label={t('home.myCalendar.modal.leaveCode')}
-                                            value={dayInfo.is_leave.code}
-                                            styles={styles}
-                                        />
-                                        <DetailRow
-                                            label={t('home.myCalendar.modal.leaveName')}
-                                            value={dayInfo.is_leave.name}
-                                            styles={styles}
-                                        />
-                                        <DetailRow
-                                            label={t('home.myCalendar.modal.leaveType')}
-                                            value={formatStatusLabel(dayInfo.is_leave.type)}
-                                            styles={styles}
-                                        />
-                                        {dayInfo.is_leave.half_day_type ? (
+                                    {dayInfo.logs && dayInfo.logs.length > 0 ? (
+                                        <DetailSection title={t('home.myCalendar.modal.logs')} styles={styles}>
+                                            {dayInfo.logs.map((log, i) => (
+                                                <LogRow key={`log-${i}`} log={log} styles={styles} t={t} />
+                                            ))}
+                                        </DetailSection>
+                                    ) : null}
+
+                                    {dayInfo.is_holiday ? (
+                                        <View style={styles.detailSummaryCard}>
+                                            <Text style={styles.sectionHeading}>
+                                                {t('home.myCalendar.modal.holiday')}
+                                            </Text>
                                             <DetailRow
-                                                label={t('home.myCalendar.modal.halfDayType')}
-                                                value={formatStatusLabel(dayInfo.is_leave.half_day_type)}
+                                                label={t('home.myCalendar.modal.name')}
+                                                value={dayInfo.is_holiday.name}
                                                 styles={styles}
                                             />
-                                        ) : null}
-                                    </>
-                                ) : null}
-                            </>
-                        ) : (
-                            <Text style={styles.muted}>{t('home.myCalendar.modal.noData')}</Text>
-                        )}
+                                            <DetailRow
+                                                label={t('home.myCalendar.modal.optional')}
+                                                value={
+                                                    dayInfo.is_holiday.is_optional
+                                                        ? t('home.myCalendar.modal.yes')
+                                                        : t('home.myCalendar.modal.mandatory')
+                                                }
+                                                styles={styles}
+                                            />
+                                        </View>
+                                    ) : null}
 
+                                    {dayInfo.is_leave ? (
+                                        <View style={styles.detailSummaryCard}>
+                                            <Text style={styles.sectionHeading}>
+                                                {t('home.myCalendar.modal.leave')}
+                                            </Text>
+                                            <DetailRow
+                                                label={t('home.myCalendar.modal.leaveCode')}
+                                                value={dayInfo.is_leave.code}
+                                                styles={styles}
+                                            />
+                                            <DetailRow
+                                                label={t('home.myCalendar.modal.leaveName')}
+                                                value={dayInfo.is_leave.name}
+                                                styles={styles}
+                                            />
+                                            <DetailRow
+                                                label={t('home.myCalendar.modal.leaveType')}
+                                                value={formatStatusLabel(dayInfo.is_leave.type)}
+                                                styles={styles}
+                                            />
+                                            {dayInfo.is_leave.half_day_type ? (
+                                                <DetailRow
+                                                    label={t('home.myCalendar.modal.halfDayType')}
+                                                    value={formatStatusLabel(dayInfo.is_leave.half_day_type)}
+                                                    styles={styles}
+                                                />
+                                            ) : null}
+                                        </View>
+                                    ) : null}
+                                </>
+                            ) : (
+                                <Text style={styles.muted}>{t('home.myCalendar.modal.noData')}</Text>
+                            )}
+                        </ScrollView>
                         <Pressable
                             accessibilityRole="button"
                             onPress={onClose}
                             style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.92 }]}>
                             <Text style={styles.modalCloseLabel}>{t('home.myCalendar.modal.close')}</Text>
                         </Pressable>
-                    </ScrollView>
-                </Pressable>
-            </Pressable>
+                    </View>
+                </View>
+            </SafeAreaView>
         </Modal>
     );
 }
@@ -1003,7 +1169,6 @@ export function MyCalendarScreen({ navigation }: Props) {
     const [month, setMonth] = useState(now.getMonth() + 1);
 
     const [calendarData, setCalendarData] = useState<MyCalendarData | null>(null);
-    const [meta, setMeta] = useState<CalendarMeta | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -1027,11 +1192,15 @@ export function MyCalendarScreen({ navigation }: Props) {
 
     const calendarWeeks = useMemo(() => chunkCalendarWeeks(grid), [grid]);
 
+    const summary = useMemo(
+        () => computeCalendarSummary(calendarData?.days),
+        [calendarData?.days],
+    );
+
     const load = useCallback(
         async (mode: 'full' | 'refresh' = 'full') => {
             if (companyId == null) {
                 setCalendarData(null);
-                setMeta(null);
                 setError(null);
                 setLoading(false);
                 setRefreshing(false);
@@ -1049,15 +1218,12 @@ export function MyCalendarScreen({ navigation }: Props) {
                 const res = await fetchMyCalendar({ year, month, companyId });
                 if (!res.success || !res.data) {
                     setCalendarData(null);
-                    setMeta(null);
                     setError(res.message?.trim() || t('home.myCalendar.errors.fetchFailed'));
                     return;
                 }
                 setCalendarData(res.data);
-                setMeta(res.meta ?? null);
             } catch (e) {
                 setCalendarData(null);
-                setMeta(null);
                 const message = resolveCalendarFetchError(e, t);
                 if (message) {
                     setError(message);
@@ -1205,16 +1371,12 @@ export function MyCalendarScreen({ navigation }: Props) {
                                 <ShiftCard shift={calendarData.shift} styles={styles} t={t} />
                             ) : null}
 
-                            {calendarData?.statistics ? (
-                                <StatisticsCard statistics={calendarData.statistics} styles={styles} t={t} />
-                            ) : null}
-
-                            {meta ? (
+                            {calendarData ? (
                                 <View style={styles.card}>
                                     <Text style={styles.cardTitle}>{t('home.myCalendar.summaryTitle')}</Text>
                                     <View style={styles.summaryGrid}>
                                         {SUMMARY_KEYS.map(item => {
-                                            const count = meta[item.key];
+                                            const count = summary[item.key];
                                             const visual: StatusVisualStyle = item.status
                                                 ? getStatusStyle(item.status)
                                                 : getStatusStyle('upcoming');

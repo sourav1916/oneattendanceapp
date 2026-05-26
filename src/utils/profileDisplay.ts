@@ -8,11 +8,14 @@ export type DisplayProfile = {
   email: string;
   mobile: string;
   profilePictureUrl: string;
+  profession: string;
+  whatsapp: string;
 };
 
 export type DraftProfile = {
   name: string;
-  phoneRaw: string;
+  profession: string;
+  whatsappRaw: string;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -34,6 +37,16 @@ function firstString(...values: unknown[]): string {
   return '';
 }
 
+function optionalString(value: unknown): string {
+  if (value == null) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  return '';
+}
+
 /** Normalize `data.user` (or similar) into display fields for profile screens. */
 export function readProfileData(user: unknown): DisplayProfile {
   const row = asRecord(user);
@@ -50,6 +63,8 @@ export function readProfileData(user: unknown): DisplayProfile {
       row?.image_url,
       row?.image,
     ),
+    profession: optionalString(row?.profession),
+    whatsapp: optionalString(row?.whatsapp),
   };
 }
 
@@ -59,12 +74,15 @@ export function toEditSnapshot(display: DisplayProfile): ProfileEditSnapshot {
     email: display.email.trim(),
     phoneDigits: onlyDigits(display.mobile),
     profilePictureUrl: display.profilePictureUrl.trim(),
+    profession: display.profession.trim(),
+    whatsappDigits: onlyDigits(display.whatsapp),
   };
 }
 
 export function draftFromSnapshot(s: ProfileEditSnapshot): DraftProfile {
   return {
     name: s.name,
-    phoneRaw: s.phoneDigits,
+    profession: s.profession,
+    whatsappRaw: s.whatsappDigits,
   };
 }

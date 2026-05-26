@@ -53,8 +53,21 @@ function resolveProfilePictureUrl(path: string | null): string | null {
     return `${API_ENDPOINT}${p.startsWith('/') ? '' : '/'}${p}`;
 }
 
-function formatLabel(value: string): string {
-    return value
+function formatLabel(value: unknown): string {
+    if (value == null) {
+        return '';
+    }
+    if (typeof value === 'object' && 'label' in (value as Record<string, unknown>)) {
+        const label = (value as { label?: string }).label;
+        if (label) {
+            return label;
+        }
+    }
+    const str = typeof value === 'string' ? value : String(value);
+    if (!str) {
+        return '';
+    }
+    return str
         .split(/[\s_]+/)
         .filter(Boolean)
         .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
