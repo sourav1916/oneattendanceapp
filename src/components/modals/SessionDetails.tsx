@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+    Animated,
     Dimensions,
     Modal,
     Pressable,
@@ -131,6 +132,12 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
             borderColor: colors.border,
             backgroundColor: scheme === 'dark' ? '#0f172a' : colors.background,
         },
+        skeletonLine: {
+            height: 14,
+            borderRadius: 8,
+            backgroundColor: scheme === 'dark' ? '#334155' : '#e5e7eb',
+            marginBottom: 10,
+        },
     });
 }
 
@@ -161,6 +168,24 @@ export function SessionDetails({ visible, session, onDismiss }: Props) {
     const [nominatim, setNominatim] = useState<NominatimReverseJson | null | 'loading' | 'failed'>(
         'loading',
     );
+
+    const skeletonOpacity = useRef(new Animated.Value(0.7)).current;
+    useEffect(() => {
+        if (!visible || nominatim !== 'loading') {
+            return;
+        }
+        skeletonOpacity.setValue(0.7);
+        const anim = Animated.loop(
+            Animated.sequence([
+                Animated.timing(skeletonOpacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+                Animated.timing(skeletonOpacity, { toValue: 0.7, duration: 700, useNativeDriver: true }),
+            ]),
+        );
+        anim.start();
+        return () => {
+            anim.stop();
+        };
+    }, [visible, nominatim, skeletonOpacity]);
 
     useEffect(() => {
         if (!visible || !session) {
@@ -260,7 +285,12 @@ export function SessionDetails({ visible, session, onDismiss }: Props) {
                             <View style={[styles.row, styles.mapSection]}>
                                 <Text style={styles.label}>{t('settings.sessions.location')}</Text>
                                 {nominatim === 'loading' ? (
-                                    <Text style={styles.valueMuted}>{t('settings.sessions.locationLoading')}</Text>
+                                    <View>
+                                        <Animated.View style={[styles.skeletonLine, { opacity: skeletonOpacity }]} />
+                                        <Animated.View
+                                            style={[styles.skeletonLine, { opacity: skeletonOpacity, width: '78%' }]}
+                                        />
+                                    </View>
                                 ) : nominatim === 'failed' || !nominatim ? (
                                     <Text style={styles.valueMuted}>{t('settings.sessions.locationUnavailable')}</Text>
                                 ) : nominatim.display_name ? (

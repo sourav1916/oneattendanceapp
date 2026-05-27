@@ -16,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchActiveSessions } from '@src/api/fetchActiveSessions';
 import { logoutAllOtherSessions } from '@src/api/logoutAllOtherSessions';
 import { logoutSession } from '@src/api/logoutSession';
-import { reverseGeocode } from '@src/api/nominatimReverseGeocode';
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
 import { SessionDetails } from '@src/components/modals/SessionDetails';
 import { useAuth } from '@src/context/AuthContext';
@@ -27,6 +26,7 @@ import type { AppThemeColors } from '@src/theme/palettes';
 import type { ActiveSession } from '@src/types/activeSessions';
 import { readApiError } from '@src/utils/readApiError';
 import { formatSessionDateTime } from '@src/utils/sessionDateFormat';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Sessions'>;
 
@@ -55,6 +55,23 @@ function buildSessionStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       fontWeight: '600',
       color: colors.text,
       marginLeft: 2,
+    },
+    stackHeaderRight: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.danger,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+    },
+    stackHeaderRightPressed: {
+      opacity: 0.88,
+      backgroundColor: colors.secondaryButton,
+    },
+    stackHeaderRightDisabled: {
+      opacity: 0.55,
     },
     scroll: {
       paddingHorizontal: 20,
@@ -224,9 +241,6 @@ export function SessionScreen({ navigation }: Props) {
   const [logoutOthersSubmitting, setLogoutOthersSubmitting] = useState(false);
   const [logoutOneSubmittingId, setLogoutOneSubmittingId] = useState<number | null>(null);
   const [detailSession, setDetailSession] = useState<ActiveSession | null>(null);
-  const [placeLabels, setPlaceLabels] = useState<
-    Record<string, string | null | 'pending'>
-  >({});
 
   const hasOtherSessions = useMemo(
     () => sessions.some(s => !s.is_current),
@@ -267,37 +281,6 @@ export function SessionScreen({ navigation }: Props) {
       cancelled = true;
     };
   }, [load]);
-
-  useEffect(() => {
-    if (sessions.length === 0) {
-      setPlaceLabels({});
-      return;
-    }
-    const byKey = new Map<string, { lat: string; lon: string }>();
-    for (const s of sessions) {
-      const geo = readSessionGeocode(s);
-      if (!geo) {
-        continue;
-      }
-      byKey.set(geo.key, { lat: geo.lat, lon: geo.lon });
-    }
-
-    setPlaceLabels(prev => {
-      const next: Record<string, string | null | 'pending'> = {};
-      byKey.forEach((_, key) => {
-        const existing = prev[key];
-        next[key] =
-          existing !== undefined && existing !== 'pending' ? existing : 'pending';
-      });
-      return next;
-    });
-
-    byKey.forEach(({ lat, lon }, key) => {
-      void reverseGeocode(lat, lon).then(label => {
-        setPlaceLabels(p => ({ ...p, [key]: label }));
-      });
-    });
-  }, [sessions]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -424,6 +407,27 @@ export function SessionScreen({ navigation }: Props) {
         <Text style={ms.stackHeaderTitle} numberOfLines={1} accessibilityRole="header">
           {t('settings.sessions.title')}
         </Text>
+        {hasOtherSessions ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.sessions.logoutOthers')}
+            disabled={logoutOthersSubmitting || logoutOneSubmittingId !== null}
+            onPress={openLogoutOthersConfirm}
+            style={({ pressed }) => [
+              ms.stackHeaderRight,
+              pressed &&
+                !logoutOthersSubmitting &&
+                logoutOneSubmittingId === null &&
+                ms.stackHeaderRightPressed,
+              (logoutOthersSubmitting || logoutOneSubmittingId !== null) && ms.stackHeaderRightDisabled,
+            ]}>
+            {logoutOthersSubmitting ? (
+              <ActivityIndicator size="small" color={colors.danger} />
+            ) : (
+              <MaterialCommunityIcons name="logout" size={20} color={colors.danger} />
+            )}
+          </Pressable>
+        ) : null}
       </View>
       {loading ? (
         <View style={[ms.centerBox, ms.fill]}>
@@ -455,31 +459,13 @@ export function SessionScreen({ navigation }: Props) {
             </View>
           ) : (
             <>
-              {hasOtherSessions ? (
-                <View style={ms.logoutOthersBlock}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t('settings.sessions.logoutOthers')}
-                    disabled={logoutOthersSubmitting || logoutOneSubmittingId !== null}
-                    onPress={openLogoutOthersConfirm}
-                    style={({ pressed }) => [
-                      ms.logoutOthersBtn,
-                      pressed && !logoutOthersSubmitting && ms.logoutOthersBtnPressed,
-                      logoutOthersSubmitting && ms.logoutOthersBtnDisabled,
-                    ]}>
-                    <Text style={ms.logoutOthersBtnText}>{t('settings.sessions.logoutOthers')}</Text>
-                  </Pressable>
-                </View>
-              ) : null}
               {sessions.map(s => {
-                const geo = readSessionGeocode(s);
                 return (
                   <SessionCard
                     key={s.id}
                     session={s}
                     ms={ms}
                     localeTag={localeTag}
-                    placeLabel={geo ? placeLabels[geo.key] : undefined}
                     onOpenDetails={() => setDetailSession(s)}
                     onLogoutPress={openLogoutOneSessionConfirm}
                     logoutOneSubmittingId={logoutOneSubmittingId}
@@ -501,25 +487,10 @@ export function SessionScreen({ navigation }: Props) {
   );
 }
 
-function readSessionGeocode(session: ActiveSession): { key: string; lat: string; lon: string } | null {
-  const lat = session.location?.latitude;
-  const lng = session.location?.longitude;
-  if (lat == null || lng == null) {
-    return null;
-  }
-  const latS = String(lat).trim();
-  const lonS = String(lng).trim();
-  if (!latS || !lonS || latS === 'null' || lonS === 'null') {
-    return null;
-  }
-  return { key: `${latS},${lonS}`, lat: latS, lon: lonS };
-}
-
 function SessionCard({
   session,
   ms,
   localeTag,
-  placeLabel,
   onOpenDetails,
   onLogoutPress,
   logoutOneSubmittingId,
@@ -528,7 +499,6 @@ function SessionCard({
   session: ActiveSession;
   ms: ReturnType<typeof buildSessionStyles>;
   localeTag: string;
-  placeLabel: string | null | 'pending' | undefined;
   onOpenDetails: () => void;
   onLogoutPress: (s: ActiveSession) => void;
   logoutOneSubmittingId: number | null;
@@ -536,22 +506,9 @@ function SessionCard({
 }) {
   const { t } = useTranslation();
   const colors = useThemeColors();
-  const geoKey = readSessionGeocode(session)?.key;
   const loginAt = formatSessionDateTime(session.login_at, localeTag);
   const expiresAt = formatSessionDateTime(session.expires_at, localeTag);
   const thisLogoutLoading = logoutOneSubmittingId === session.id;
-
-  let locationText: string | null = null;
-  let locationPending = false;
-  if (geoKey) {
-    if (placeLabel === 'pending' || placeLabel === undefined) {
-      locationPending = true;
-    } else if (placeLabel === null || placeLabel === '') {
-      locationText = t('settings.sessions.locationUnavailable');
-    } else {
-      locationText = placeLabel;
-    }
-  }
 
   return (
     <View style={[ms.card, session.is_current && ms.cardCurrent]}>
@@ -565,13 +522,6 @@ function SessionCard({
           </View>
         ) : null}
       </View>
-      {geoKey ? (
-        <Text
-          style={locationPending ? ms.cardLocationMuted : ms.cardLocation}
-          numberOfLines={3}>
-          {locationPending ? t('settings.sessions.locationLoading') : locationText}
-        </Text>
-      ) : null}
       <Text style={ms.cardMeta}>
         {t('settings.sessions.loginAt')}: {loginAt}
       </Text>

@@ -66,9 +66,10 @@ const HOME_MENU_ICONS: Record<string, ActionCardIcon> = {
   },
   calendar: { name: 'calendar-month-outline', color: '#ea580c', backgroundColor: '#ffedd5' },
   company: { name: 'office-building-outline', color: '#0d9488', backgroundColor: '#ccfbf1' },
-  staff: { name: 'account-group-outline', color: '#2563eb', backgroundColor: '#dbeafe' },
+  employee: { name: 'account-group-outline', color: '#2563eb', backgroundColor: '#dbeafe' },
   leaveReq: { name: 'file-document-edit-outline', color: '#7c3aed', backgroundColor: '#ede9fe' },
   leaveMgmt: { name: 'clipboard-list-outline', color: '#0891b2', backgroundColor: '#cffafe' },
+  onboarding: { name: 'email-open-outline', color: '#d946ef', backgroundColor: '#fae8ff' },
 };
 
 function actionCardWithIcon(id: string, title: string, onPress: () => void): ActionCard {
@@ -164,9 +165,9 @@ export function HomeScreen(): React.JSX.Element {
         () => navigation.navigate('AttendanceManagement'),
       ),
       actionCardWithIcon(
-        'staff',
-        t('home.menu.staffManagement'),
-        () => navigation.navigate('StaffManagement'),
+        'employee',
+        t('home.menu.employeeManagement'),
+        () => navigation.navigate('EmployeeManagement'),
       ),
       actionCardWithIcon(
         'leaveReq',
@@ -174,6 +175,11 @@ export function HomeScreen(): React.JSX.Element {
         () => navigation.navigate('LeaveRequest'),
       ),
       actionCardWithIcon('leaveMgmt', t('home.menu.leaveManagement'), openComingSoon),
+      actionCardWithIcon(
+        'onboarding',
+        t('home.menu.onboarding'),
+        () => navigation.navigate('Onboarding'),
+      ),
     ],
     [navigation, openComingSoon, t],
   );

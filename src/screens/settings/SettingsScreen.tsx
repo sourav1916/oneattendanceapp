@@ -281,21 +281,6 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         ],
       },
       {
-        title: t('settings.work'),
-        rows: [
-          menuRowWithIcon(
-            'calendar',
-            t('settings.rows.calendar.title'),
-            t('settings.rows.calendar.subtitle'),
-          ),
-          menuRowWithIcon(
-            'leaves',
-            t('settings.rows.leaves.title'),
-            t('settings.rows.leaves.subtitle'),
-          ),
-        ],
-      },
-      {
         title: t('settings.preferences'),
         rows: [
           menuRowWithIcon('theme', t('settings.rows.theme.title'), themeSubtitle),
@@ -350,10 +335,6 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       }
       if (id === 'security') {
         navigation.navigate('ChangePassword');
-        return;
-      }
-      if (id === 'calendar') {
-        navigation.navigate('MyCalendar');
         return;
       }
       if (id === 'help') {

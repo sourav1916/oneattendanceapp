@@ -12,18 +12,29 @@ import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import type { HomeStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'StaffManagement'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'EmployeeManagement'>;
 
-type StaffMenuItem = {
+type EmployeeMenuItem = {
   id: string;
   iconName: IconProps['name'];
-  itemKey: 'addStaff' | 'staffList' | 'staffShift' | 'salary' | 'reports';
+  itemKey:
+    | 'addEmployee'
+    | 'employeeList'
+    | 'invitePackages'
+    | 'companyInvites'
+    | 'permissions'
+    | 'employeeShift'
+    | 'salary'
+    | 'reports';
 };
 
-const MENU_ITEMS: StaffMenuItem[] = [
-  { id: 'add', iconName: 'account-plus-outline', itemKey: 'addStaff' },
-  { id: 'list', iconName: 'format-list-bulleted', itemKey: 'staffList' },
-  { id: 'shift', iconName: 'calendar-clock-outline', itemKey: 'staffShift' },
+const MENU_ITEMS: EmployeeMenuItem[] = [
+  { id: 'add', iconName: 'account-plus-outline', itemKey: 'addEmployee' },
+  { id: 'list', iconName: 'format-list-bulleted', itemKey: 'employeeList' },
+  { id: 'packages', iconName: 'package-variant-closed', itemKey: 'invitePackages' },
+  { id: 'invites', iconName: 'email-send-outline', itemKey: 'companyInvites' },
+  { id: 'permissions', iconName: 'shield-key-outline', itemKey: 'permissions' },
+  { id: 'shift', iconName: 'calendar-clock-outline', itemKey: 'employeeShift' },
   { id: 'salary', iconName: 'cash-multiple', itemKey: 'salary' },
   { id: 'reports', iconName: 'chart-box-outline', itemKey: 'reports' },
 ];
@@ -118,7 +129,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   });
 }
 
-export function StaffManagementScreen({ navigation }: Props) {
+export function EmployeeManagementScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
@@ -140,10 +151,10 @@ export function StaffManagementScreen({ navigation }: Props) {
           onPress={() => navigation.goBack()}
           tintColor={colors.primary}
           displayMode="minimal"
-          accessibilityLabel={t('home.staffManagement.back')}
+          accessibilityLabel={t('home.employeeManagement.back')}
         />
         <Text style={styles.stackHeaderTitle} numberOfLines={1} accessibilityRole="header">
-          {t('home.staffManagement.title')}
+          {t('home.employeeManagement.title')}
         </Text>
       </View>
 
@@ -153,16 +164,28 @@ export function StaffManagementScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.lead}>{t('home.staffManagement.lead')}</Text>
+        <Text style={styles.lead}>{t('home.employeeManagement.lead')}</Text>
 
         {MENU_ITEMS.map(item => (
           <Pressable
             key={item.id}
             accessibilityRole="button"
-            accessibilityLabel={t(`home.staffManagement.items.${item.itemKey}.title`)}
+            accessibilityLabel={t(`home.employeeManagement.items.${item.itemKey}.title`)}
             onPress={() => {
               if (item.id === 'list') {
-                navigation.navigate('StaffList');
+                navigation.navigate('EmployeeList');
+                return;
+              }
+              if (item.id === 'packages') {
+                navigation.navigate('InvitePackages');
+                return;
+              }
+              if (item.id === 'invites') {
+                navigation.navigate('CompanyInvites');
+                return;
+              }
+              if (item.id === 'permissions') {
+                navigation.navigate('PermissionManagement');
                 return;
               }
               openComingSoon();
@@ -172,8 +195,8 @@ export function StaffManagementScreen({ navigation }: Props) {
               <MaterialCommunityIcons name={item.iconName} size={22} color={colors.primary} />
             </View>
             <View style={styles.textCol}>
-              <Text style={styles.menuTitle}>{t(`home.staffManagement.items.${item.itemKey}.title`)}</Text>
-              <Text style={styles.menuHint}>{t(`home.staffManagement.items.${item.itemKey}.hint`)}</Text>
+              <Text style={styles.menuTitle}>{t(`home.employeeManagement.items.${item.itemKey}.title`)}</Text>
+              <Text style={styles.menuHint}>{t(`home.employeeManagement.items.${item.itemKey}.hint`)}</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textMuted} />
           </Pressable>

@@ -1,27 +1,27 @@
 # One Attendance — Companies (`context/company.md`)
 
-Attach when working on **company list**, **create company**, **staff management** under `src/screens/company/`, or company-related APIs.
+Attach when working on **company list**, **create company**, **employee management** under `src/screens/company/`, or company-related APIs.
 
 ---
 
 ## Overview
 
-Users can browse companies they have access to, create new companies, and manage staff from the **Home** tab. Company **selection** for the active workspace uses **`CompanyPicker`** (gate), **`CompanySwitcher`** (top bar), and **`CompanySelectionGate`** — see [**modals.md**](./modals.md), [**home.md**](./home.md).
+Users can browse companies they have access to, create new companies, and manage employees from the **Home** tab. Company **selection** for the active workspace uses **`CompanyPicker`** (gate), **`CompanySwitcher`** (top bar), and **`CompanySelectionGate`** — see [**modals.md**](./modals.md), [**home.md**](./home.md).
 
 | Feature | Screen / UI | API |
 |---------|-------------|-----|
 | List + search | `CompanyList.tsx` | `GET /company/list` |
 | Create | `CreateCompany` modal | `POST /company/create` |
 | Create (no companies yet) | **`CompanySwitcher`** empty state → `CreateCompany` | Same API + `refreshProfileRole` |
-| Staff hub | `StaffManagement.tsx` | (sub-routes) |
-| Staff list | `StaffList.tsx` | `GET /employees/list` (+ `company` header) |
+| Employee hub | `EmployeeManagement.tsx` | (sub-routes) |
+| Employee list | `EmployeeList.tsx` | `GET /employees/list` (+ `company` header) |
 
 ---
 
 ## Navigation
 
 - **Home** grid tile **Company** → `navigation.navigate('CompanyList')` (`HomeStackParamList.CompanyList`).
-- **Staff Management** tile → `StaffManagement` → **Staff list** → `StaffList`.
+- **Employee Management** tile → `EmployeeManagement` → **Employee list** → `EmployeeList`.
 
 Defined in **`src/navigation/types.ts`** and **`src/navigation/HomeNavigator.tsx`**. See [**navigation.md**](./navigation.md).
 
@@ -97,12 +97,12 @@ Keys under **`home.companyList`** and **`home.companyList.createModal`** in `src
 
 ---
 
-## Staff management (related)
+## Employee management (related)
 
-- **`StaffManagement.tsx`**: menu hub (add staff, staff list, etc.; some items “coming soon”).
-- **`StaffList.tsx`**: paginated employees; requires **`useAuth().selectedCompany`** and sends **`company`** header — see [**theme-api.md**](./theme-api.md).
+- **`EmployeeManagement.tsx`**: menu hub (add employee, employee list, etc.; some items “coming soon”).
+- **`EmployeeList.tsx`**: paginated employees; requires **`useAuth().selectedCompany`** and sends **`company`** header — see [**theme-api.md**](./theme-api.md).
 
-Do not confuse **company list** (all companies for the user) with **staff list** (employees of the **selected** company).
+Do not confuse **company list** (all companies for the user) with **employee list** (employees of the **selected** company).
 
 ---
 
@@ -117,8 +117,8 @@ src/
 │   └── CreateCompany.tsx
 ├── screens/company/
 │   ├── CompanyList.tsx
-│   ├── StaffManagement.tsx
-│   └── StaffList.tsx
+│   ├── EmployeeManagement.tsx
+│   └── EmployeeList.tsx
 ├── screens/home/
 │   └── HomeScreen.tsx          # Company tile → CompanyList
 └── types/

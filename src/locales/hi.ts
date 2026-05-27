@@ -13,7 +13,7 @@ export const hi = {
       attendance: 'उपस्थिति',
       calendar: 'कैलेंडर',
       company: 'कंपनी',
-      staffManagement: 'स्टाफ प्रबंधन',
+      employeeManagement: 'कर्मचारी प्रबंधन',
       attendanceManagement: 'उपस्थिति प्रबंधन',
       leaveRequest: 'अवकाश अनुरोध',
       leaveManagement: 'अवकाश प्रबंधन',
@@ -105,21 +105,21 @@ export const hi = {
         },
       },
     },
-    staffManagement: {
-      title: 'स्टाफ प्रबंधन',
+    employeeManagement: {
+      title: 'कर्मचारी प्रबंधन',
       back: 'वापस',
       lead: 'अपनी टीम प्रबंधित करने के लिए एक विकल्प चुनें। नई सुविधाएँ जोड़ने पर यहाँ और विकल्प दिखेंगे।',
       items: {
-        addStaff: {
-          title: 'स्टाफ जोड़ें',
+        addEmployee: {
+          title: 'कर्मचारी जोड़ें',
           hint: 'नया सदस्य आमंत्रित या पंजीकृत करें',
         },
-        staffList: {
-          title: 'स्टाफ सूची',
+        employeeList: {
+          title: 'कर्मचारी सूची',
           hint: 'कर्मचारियों को देखें, खोजें और फ़िल्टर करें',
         },
-        staffShift: {
-          title: 'स्टाफ शिफ्ट',
+        employeeShift: {
+          title: 'कर्मचारी शिफ्ट',
           hint: 'शेड्यूल, रोटेशन और शिफ्ट असाइनमेंट',
         },
         salary: {
@@ -132,8 +132,8 @@ export const hi = {
         },
       },
     },
-    staffList: {
-      title: 'स्टाफ सूची',
+    employeeList: {
+      title: 'कर्मचारी सूची',
       back: 'वापस',
       searchPlaceholder: 'नाम, ईमेल या कोड से खोजें…',
       loading: 'कर्मचारी लोड हो रहे हैं…',

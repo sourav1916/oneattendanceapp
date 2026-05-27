@@ -65,4 +65,4 @@ Examples: `fetchMyLeaveBalance`, `getCurrentAttendanceStatus`, `fetchEmployeeLis
 
 - **`src/utils/readApiError.ts`**: normalize thrown axios errors for user-visible messages.
 - **`context/my-calendar.md`**: employee self-calendar feature and API details.
-- **`context/company.md`**: company list, create company, staff screens.
+- **`context/company.md`**: company list, create company, employee screens.

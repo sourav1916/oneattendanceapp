@@ -2,11 +2,15 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import type { HomeStackParamList } from '@src/navigation/types';
 import { AttendanceManagementScreen } from '@src/screens/company/AttendanceManagement';
+import { CompanyInvitesScreen } from '@src/screens/company/CompanyInvites';
 import { CompanyListScreen } from '@src/screens/company/CompanyList';
-import { StaffListScreen } from '@src/screens/company/StaffList';
-import { StaffManagementScreen } from '@src/screens/company/StaffManagement';
+import { InvitePackagesScreen } from '@src/screens/company/InvitePackages';
+import { PermissionManagementScreen } from '@src/screens/company/PermissionManagement';
+import { EmployeeListScreen } from '@src/screens/company/EmployeeList';
+import { EmployeeManagementScreen } from '@src/screens/company/EmployeeManagement';
 import { HomeScreen } from '@src/screens/home/HomeScreen';
 import { LeaveRequestScreen } from '@src/screens/home/LeaveRequest';
+import { OnboardingScreen } from '@src/screens/home/Onboarding';
 import { MyCalendarScreen } from '@src/screens/report/Calendar';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -22,8 +26,18 @@ export function HomeNavigator() {
         name="AttendanceManagement"
         component={AttendanceManagementScreen}
       />
-      <Stack.Screen name="StaffManagement" component={StaffManagementScreen} />
-      <Stack.Screen name="StaffList" component={StaffListScreen} />
+      <Stack.Screen
+        name="EmployeeManagement"
+        component={EmployeeManagementScreen}
+      />
+      <Stack.Screen name="EmployeeList" component={EmployeeListScreen} />
+      <Stack.Screen name="InvitePackages" component={InvitePackagesScreen} />
+      <Stack.Screen name="CompanyInvites" component={CompanyInvitesScreen} />
+      <Stack.Screen
+        name="PermissionManagement"
+        component={PermissionManagementScreen}
+      />
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
     </Stack.Navigator>
   );
 }

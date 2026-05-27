@@ -32,8 +32,12 @@ export type HomeStackParamList = {
   MyCalendar: undefined;
   CompanyList: undefined;
   AttendanceManagement: undefined;
-  StaffManagement: undefined;
-  StaffList: undefined;
+  EmployeeManagement: undefined;
+  EmployeeList: undefined;
+  InvitePackages: undefined;
+  CompanyInvites: undefined;
+  PermissionManagement: undefined;
+  Onboarding: undefined;
 };
 
 /** Main app shell: bottom tabs after login. */

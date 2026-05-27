@@ -17,7 +17,7 @@ This folder (`context/`) holds **documentation for AI and humans**, not runtime 
 | [**navigation.md**](./navigation.md) | Navigators, route types, tabs vs stacks, headers |
 | [**my-calendar.md**](./my-calendar.md) | Employee attendance calendar, `/shifts/my-calendar`, `Calendar.tsx` |
 | [**modals.md**](./modals.md) | Modal layout, language/theme/company pickers, sheet patterns |
-| [**company.md**](./company.md) | Company list, create company modal, staff screens, `/company/*` APIs |
+| [**company.md**](./company.md) | Company list, create company modal, employee screens, `/company/*` APIs |
 | [**alerts.md**](./alerts.md) | `ConfirmAlert`, `StatusAlert`, confirms and success/error popups |
 | [**profile.md**](./profile.md) | Profile / EditProfile, avatar upload, update-profile, profile-role cache |
 | [**home.md**](./home.md) | HomeScreen, MainTopBar, company switcher arrow, pull-to-refresh |
