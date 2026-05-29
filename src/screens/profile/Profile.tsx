@@ -271,7 +271,7 @@ export function ProfileScreen({ navigation }: Props) {
     profileRoleLoading && !profileRole?.data?.user && !cachedUserProfile;
 
   useEffect(() => {
-    refreshProfileRole().catch(() => { });
+    refreshProfileRole({ silent: true }).catch(() => {});
   }, [refreshProfileRole]);
 
   const displayName = displayProfile.name.trim() || t('settings.profile.title');

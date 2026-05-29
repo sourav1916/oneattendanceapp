@@ -38,6 +38,10 @@ import { StatusAlert, useStatusAlert } from '@src/components/modals/StatusAlert'
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import { useAttendanceList } from '@src/hooks/useAttendanceList';
+import {
+  TAB_SCREEN_SAFE_AREA_EDGES,
+  TAB_SCREEN_SCROLL_PADDING_BOTTOM,
+} from '@src/constants/tabScreenLayout';
 import type { HomeStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type {
@@ -122,7 +126,11 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
-    listContent: { paddingHorizontal: 12, paddingTop: 6, paddingBottom: 100 },
+    listContent: {
+      paddingHorizontal: 12,
+      paddingTop: 6,
+      paddingBottom: TAB_SCREEN_SCROLL_PADDING_BOTTOM,
+    },
     searchWrap: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1095,7 +1103,7 @@ export function AttendanceManagementScreen({ navigation }: Props) {
 
   if (companyId == null) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
         <View style={styles.stackHeader}>
           <HeaderBackButton
             onPress={() => navigation.goBack()}
@@ -1116,7 +1124,7 @@ export function AttendanceManagementScreen({ navigation }: Props) {
 
   if (error && employees.length === 0 && !loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
         <View style={styles.stackHeader}>
           <HeaderBackButton
             onPress={() => navigation.goBack()}
@@ -1143,7 +1151,7 @@ export function AttendanceManagementScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
       <View style={styles.stackHeader}>
         <HeaderBackButton
           onPress={() => navigation.goBack()}

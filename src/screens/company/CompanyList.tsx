@@ -22,6 +22,7 @@ import { fetchCompanyList } from '@src/api/fetchCompanyList';
 import { CreateCompany, type CreateCompanyFormPayload } from '@src/components/modals/CreateCompany';
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { TAB_SCREEN_SAFE_AREA_EDGES } from '@src/constants/tabScreenLayout';
 import type { HomeStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { CompanyListItem, CompanyListMeta } from '@src/types/companyList';
@@ -723,7 +724,7 @@ export function CompanyListScreen({ navigation }: Props) {
 
     if (error && companies.length === 0 && !loading) {
         return (
-            <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+            <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
                 {header}
                 <View style={[styles.centerBox, styles.fill]}>
                     <Text style={styles.error}>{error}</Text>
@@ -745,7 +746,7 @@ export function CompanyListScreen({ navigation }: Props) {
     }
 
     return (
-        <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+        <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
             {header}
             <FlatList
                 style={styles.fill}

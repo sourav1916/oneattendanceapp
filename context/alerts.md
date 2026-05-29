@@ -56,7 +56,8 @@ const { props: statusAlertProps, presentSuccess, presentError, present, dismiss 
 
 - **`presentSuccess` / `presentError`** — omit `tone`; pass **`message`** from API when available.
 - **`dismissOnIconPress`** (default `true`) — tap icon to dismiss.
-- **`onAfterDismiss`** — e.g. `navigation.goBack()` after profile save.
+- **`onAfterDismiss`** — e.g. `navigation.goBack()` after profile save. **Do not** call `goBack()` in the same tick as `presentSuccess` — the screen unmounts and the alert never shows (see **`FaceEnrollCapture.tsx`**, [**face-enroll.md**](./face-enroll.md)).
+- API errors in modals: **`readApiError(err)`**, not `err.message` alone (4xx bodies use `response.data.message`).
 
 ### Usage map
 
@@ -68,10 +69,12 @@ const { props: statusAlertProps, presentSuccess, presentError, present, dismiss 
 | `CompanySwitcher.tsx` | Create company OK / fail | `presentSuccess` / `presentError` |
 | `CompanyList.tsx` | Create OK | `ConfirmAlert` (legacy) |
 | `SettingsScreen.tsx` | Coming soon, sign out | `ConfirmAlert` |
+| `FaceEnrollCapture.tsx` | Match / enroll OK | `presentSuccess` + `onAfterDismiss` → goBack |
+| `FaceEnrollCapture.tsx` | No match / API fail | `presentError` / `presentWarning` |
 
 Prefer **`StatusAlert`** for new one-button success/error feedback.
 
-Details: [**profile.md**](./profile.md), [**modals.md**](./modals.md) (`CompanySwitcher`).
+Details: [**profile.md**](./profile.md), [**face-enroll.md**](./face-enroll.md), [**modals.md**](./modals.md) (`CompanySwitcher`).
 
 ---
 

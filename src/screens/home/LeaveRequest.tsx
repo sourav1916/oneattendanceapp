@@ -17,8 +17,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import { leaveApi } from '@src/api/leaveApi';
+import {
+    TAB_SCREEN_SAFE_AREA_EDGES,
+    TAB_SCREEN_SCROLL_PADDING_BOTTOM,
+} from '@src/constants/tabScreenLayout';
 import { fetchMyLeaveBalance } from '@src/api/fetchMyLeaveBalance';
+import { leaveApi } from '@src/api/leaveApi';
 import { ApplyLeaveModal } from '@src/components/modals/ApplyLeave';
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
 import { LeaveDetailModal } from '@src/components/modals/LeaveDetailModal';
@@ -128,7 +132,11 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
             fontWeight: '700',
             color: '#fff',
         },
-        listContent: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 100 },
+        listContent: {
+            paddingHorizontal: 14,
+            paddingTop: 8,
+            paddingBottom: TAB_SCREEN_SCROLL_PADDING_BOTTOM,
+        },
 
         statsRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
         statCard: {
@@ -461,7 +469,7 @@ export function LeaveRequestScreen({ navigation }: Props) {
             return;
         }
         initialLoadDone.current = true;
-        loadAll().catch(() => {});
+        loadAll().catch(() => { });
     }, [loadAll]);
 
     const onRefresh = useCallback(async () => {
@@ -472,7 +480,7 @@ export function LeaveRequestScreen({ navigation }: Props) {
 
     const goToPage = useCallback((p: number) => {
         setPage(p);
-        loadLeaves(p).catch(() => {});
+        loadLeaves(p).catch(() => { });
     }, [loadLeaves]);
 
     const filteredLeaves = useMemo(() => {
@@ -826,7 +834,7 @@ export function LeaveRequestScreen({ navigation }: Props) {
                     <Text style={styles.error}>{error}</Text>
                     <Pressable
                         accessibilityRole="button"
-                        onPress={() => { loadAll().catch(() => {}); }}
+                        onPress={() => { loadAll().catch(() => { }); }}
                         style={({ pressed }) => [styles.retryBtn, pressed && { opacity: 0.9 }]}>
                         <Text style={styles.retryLabel}>{t('home.leaveRequest.retry')}</Text>
                     </Pressable>
@@ -852,7 +860,7 @@ export function LeaveRequestScreen({ navigation }: Props) {
 
     if (companyId == null) {
         return (
-            <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+            <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
                 <View style={styles.stackHeader}>
                     <HeaderBackButton onPress={() => navigation.goBack()} tintColor={colors.primary} displayMode="minimal" />
                     <Text style={styles.stackHeaderTitle} numberOfLines={1} accessibilityRole="header">
@@ -867,7 +875,7 @@ export function LeaveRequestScreen({ navigation }: Props) {
     }
 
     return (
-        <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+        <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
             <View style={styles.stackHeader}>
                 <HeaderBackButton onPress={() => navigation.goBack()} tintColor={colors.primary} displayMode="minimal" />
                 <Text style={styles.stackHeaderTitle} numberOfLines={1} accessibilityRole="header">

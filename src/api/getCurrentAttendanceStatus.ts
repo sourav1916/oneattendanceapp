@@ -23,7 +23,6 @@ export async function getCurrentAttendanceStatus(
     },
   });
 
-  console.log(data);
 
   if (data?.success && data.data != null && typeof data.data === 'object') {
     return {

@@ -10,7 +10,9 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ActivityIndicator,
   Animated,
+  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -36,6 +38,7 @@ import { formatTime12h, TimePicker, useTimePicker } from '@src/components/modals
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import { useEmployeeManagement } from '@src/hooks/useEmployeeManagement';
+import { TAB_SCREEN_SAFE_AREA_EDGES } from '@src/constants/tabScreenLayout';
 import type { HomeStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type {
@@ -45,13 +48,14 @@ import type {
   EmployeeListMeta,
   ModalType,
   PermissionPackage,
-  ViewMode,
 } from '@src/types/employeeManagement';
 import { API_ENDPOINT } from '@src/utils/config';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'EmployeeList'>;
 
 const SKELETON_ROWS = 6;
+const SHEET_MAX_HEIGHT = Dimensions.get('window').height * 0.92;
+const DROPDOWN_SHEET_MAX = Dimensions.get('window').height * 0.55;
 
 const ALL_WEEKDAYS = [
   'monday',
@@ -180,7 +184,9 @@ function buildFormDataFromEmployee(emp: EmployeeListItem): EmployeeEditFormData 
     shift_end: emp.shift_end ?? '18:00',
     break_minutes: formatDuration(emp.break_minutes),
     grace_minutes: formatDuration(emp.grace_minutes),
-    weekends: emp.weekends.map(w => w.day.toLowerCase()),
+    weekends: emp.weekends
+      .map(w => (typeof w.day === 'string' ? w.day.toLowerCase() : ''))
+      .filter(Boolean),
   };
 }
 
@@ -208,25 +214,8 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       color: colors.text,
       marginLeft: 2,
     },
-    headerActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    headerBtn: {
-      padding: 8,
-      borderRadius: 10,
-    },
-    headerBtnActive: {
-      backgroundColor: scheme === 'dark' ? 'rgba(96,165,250,0.18)' : '#eff6ff',
-    },
     listContent: {
       paddingHorizontal: 20,
-      paddingTop: 12,
-      paddingBottom: 32,
-    },
-    gridContent: {
-      paddingHorizontal: 14,
       paddingTop: 12,
       paddingBottom: 32,
     },
@@ -439,59 +428,6 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     actionBtnText: { fontSize: 12, fontWeight: '600', color: colors.text },
     actionBtnTextDanger: { color: colors.danger },
 
-    // Grid card
-    gridCard: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 12,
-      margin: 6,
-      alignItems: 'center',
-      ...Platform.select({
-        ios: {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: scheme === 'dark' ? 0.2 : 0.06,
-          shadowRadius: 4,
-        },
-        android: { elevation: 1 },
-      }),
-    },
-    gridAvatar: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: colors.secondaryButton,
-      marginBottom: 8,
-    },
-    gridName: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.text,
-      textAlign: 'center',
-      marginBottom: 2,
-    },
-    gridSub: {
-      fontSize: 12,
-      color: colors.textMuted,
-      textAlign: 'center',
-      marginBottom: 4,
-    },
-    gridActions: {
-      flexDirection: 'row',
-      gap: 6,
-      marginTop: 8,
-    },
-    gridActionBtn: {
-      padding: 6,
-      borderRadius: 8,
-      backgroundColor: colors.secondaryButton,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-
     // Footer
     footerBox: { paddingVertical: 16, alignItems: 'center' },
 
@@ -545,7 +481,9 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       backgroundColor: colors.surface,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      maxHeight: '92%',
+      maxHeight: SHEET_MAX_HEIGHT,
+      flexDirection: 'column',
+      overflow: 'hidden',
       ...Platform.select({
         ios: {
           shadowColor: '#000',
@@ -556,6 +494,8 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         android: { elevation: 12 },
       }),
     },
+    sheetForm: { height: SHEET_MAX_HEIGHT },
+    sheetScroll: { flex: 1, minHeight: 0 },
     sheetHandle: {
       alignSelf: 'center',
       width: 40,
@@ -563,68 +503,117 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderRadius: 2,
       backgroundColor: colors.border,
       marginTop: 10,
-      marginBottom: 8,
+      marginBottom: 4,
     },
     sheetHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 20,
-      paddingBottom: 12,
+      paddingTop: 4,
+      paddingBottom: 14,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
+      backgroundColor: colors.surface,
     },
     sheetTitle: {
       flex: 1,
       fontSize: 18,
       fontWeight: '700',
       color: colors.text,
+      letterSpacing: -0.2,
     },
-    sheetCloseBtn: { padding: 6 },
-    sheetBody: { paddingHorizontal: 20, paddingVertical: 16 },
+    sheetCloseBtn: {
+      padding: 8,
+      borderRadius: 20,
+      backgroundColor: colors.secondaryButton,
+    },
+    sheetBody: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 24,
+    },
     sheetFooter: {
       flexDirection: 'row',
       gap: 10,
       paddingHorizontal: 20,
       paddingTop: 12,
-      paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+      paddingBottom: Platform.OS === 'ios' ? 24 : 16,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
+      backgroundColor: colors.surface,
     },
+    sheetFooterBtn: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.secondaryButton,
+    },
+    sheetFooterBtnPrimary: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    sheetFooterBtnDisabled: { opacity: 0.55 },
+    sheetFooterBtnText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    sheetFooterBtnTextPrimary: { color: '#fff', fontWeight: '700' },
 
     // View modal
-    viewSection: { marginBottom: 18 },
+    viewHero: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      padding: 16,
+      marginBottom: 16,
+      borderRadius: 16,
+      backgroundColor:
+        scheme === 'dark' ? 'rgba(96,165,250,0.14)' : '#eff6ff',
+      borderWidth: 1,
+      borderColor:
+        scheme === 'dark' ? 'rgba(96,165,250,0.35)' : '#bfdbfe',
+    },
+    viewSection: { marginBottom: 14 },
+    viewSectionCard: {
+      backgroundColor: colors.background,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 14,
+      paddingTop: 12,
+      paddingBottom: 4,
+      overflow: 'hidden',
+    },
     viewSectionTitle: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: '700',
-      color: colors.textMuted,
+      color: colors.primary,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 0.6,
       marginBottom: 10,
     },
     viewRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingVertical: 6,
+      alignItems: 'flex-start',
+      gap: 12,
+      paddingVertical: 11,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
+    viewRowLast: { borderBottomWidth: 0, paddingBottom: 12 },
     viewLabel: { fontSize: 14, color: colors.textMuted, flex: 1 },
     viewValue: {
       fontSize: 14,
       fontWeight: '600',
       color: colors.text,
-      flex: 1,
+      flex: 1.2,
       textAlign: 'right',
-    },
-    viewProfileRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 14,
-      marginBottom: 16,
-    },
-    viewProfileAvatar: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: colors.secondaryButton,
     },
     viewProfileName: { fontSize: 18, fontWeight: '700', color: colors.text },
     viewProfileDesignation: {
@@ -632,19 +621,42 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       color: colors.textMuted,
       marginTop: 2,
     },
-    chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 8,
-      backgroundColor: colors.secondaryButton,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      backgroundColor:
+        scheme === 'dark' ? 'rgba(96,165,250,0.18)' : '#eff6ff',
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor:
+        scheme === 'dark' ? 'rgba(96,165,250,0.4)' : '#bfdbfe',
     },
-    chipText: { fontSize: 12, fontWeight: '600', color: colors.text },
+    chipText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: scheme === 'dark' ? '#93c5fd' : colors.primary,
+    },
 
     // Edit form
-    formGroup: { marginBottom: 16 },
+    formSectionCard: {
+      backgroundColor: colors.background,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+      marginBottom: 14,
+    },
+    formSectionTitle: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.primary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      marginBottom: 12,
+    },
+    formGroup: { marginBottom: 14 },
+    formGroupLast: { marginBottom: 0 },
     formLabel: {
       fontSize: 13,
       fontWeight: '700',
@@ -661,7 +673,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderRadius: 12,
       paddingHorizontal: 14,
       paddingVertical: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     dropdownText: { flex: 1, fontSize: 15, color: colors.text },
     dropdownPlaceholder: { color: colors.textMuted },
@@ -669,10 +681,10 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     methodChip: {
       paddingHorizontal: 14,
       paddingVertical: 8,
-      borderRadius: 10,
+      borderRadius: 20,
       borderWidth: 1.5,
       borderColor: colors.border,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     methodChipActive: {
       borderColor: colors.primary,
@@ -706,7 +718,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderRadius: 12,
       paddingHorizontal: 14,
       paddingVertical: 12,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
     timeBtnText: { fontSize: 15, fontWeight: '600', color: colors.text },
     durationInput: {
@@ -717,32 +729,17 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       paddingVertical: 12,
       fontSize: 15,
       color: colors.text,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
     },
-    saveBtn: {
-      flex: 1,
-      paddingVertical: 14,
-      borderRadius: 14,
-      alignItems: 'center',
-      backgroundColor: colors.primary,
-    },
-    saveBtnDisabled: { opacity: 0.5 },
-    saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-    cancelBtn: {
-      flex: 1,
-      paddingVertical: 14,
-      borderRadius: 14,
-      alignItems: 'center',
-      backgroundColor: colors.secondaryButton,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    cancelBtnText: { color: colors.text, fontWeight: '600', fontSize: 16 },
     formError: {
       fontSize: 13,
       color: colors.danger,
       marginTop: 4,
       fontWeight: '500',
+    },
+    optionsLoadingText: {
+      marginTop: 12,
+      textAlign: 'center',
     },
     statusPillMarginTop: {
       marginTop: 6,
@@ -760,7 +757,10 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       backgroundColor: colors.surface,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      maxHeight: '60%',
+      maxHeight: DROPDOWN_SHEET_MAX,
+      height: DROPDOWN_SHEET_MAX,
+      flexDirection: 'column',
+      overflow: 'hidden',
       ...Platform.select({
         ios: {
           shadowColor: '#000',
@@ -771,6 +771,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         android: { elevation: 12 },
       }),
     },
+    dropdownList: { flex: 1, minHeight: 0 },
     dropdownOption: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1020,7 +1021,7 @@ function DropdownPicker({
       onRequestClose={onDismiss}>
       <SafeAreaView
         style={styles.dropdownModalSafe}
-        edges={['top', 'left', 'right', 'bottom']}>
+        edges={TAB_SCREEN_SAFE_AREA_EDGES}>
         <Pressable style={styles.modalBackdrop} onPress={onDismiss} />
         <View style={styles.sheetWrap} pointerEvents="box-none">
           <View style={styles.dropdownSheet}>
@@ -1039,6 +1040,7 @@ function DropdownPicker({
               </Pressable>
             </View>
             <FlatList
+              style={styles.dropdownList}
               data={options}
               keyExtractor={item => item.value}
               bounces={false}
@@ -1114,10 +1116,10 @@ function ViewDetailsModal({
       onRequestClose={onDismiss}>
       <SafeAreaView
         style={styles.modalSafe}
-        edges={['top', 'left', 'right', 'bottom']}>
+        edges={TAB_SCREEN_SAFE_AREA_EDGES}>
         <Pressable style={styles.modalBackdrop} onPress={onDismiss} />
         <View style={styles.sheetWrap} pointerEvents="box-none">
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, styles.sheetForm]}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>
@@ -1130,19 +1132,18 @@ function ViewDetailsModal({
                 accessibilityLabel={t('home.employeeList.viewModal.close')}>
                 <MaterialCommunityIcons
                   name="close"
-                  size={22}
+                  size={20}
                   color={colors.textMuted}
                 />
               </Pressable>
             </View>
             <ScrollView
-              style={styles.fill}
+              style={styles.sheetScroll}
               contentContainerStyle={styles.sheetBody}
               bounces={false}
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled>
-              {/* Profile header */}
-              <View style={styles.viewProfileRow}>
+              <View style={styles.viewHero}>
                 <AvatarView
                   uri={uri}
                   name={employee.name}
@@ -1164,188 +1165,199 @@ function ViewDetailsModal({
                 </View>
               </View>
 
-              {/* Info */}
               <View style={styles.viewSection}>
                 <Text style={styles.viewSectionTitle}>
                   {t('home.employeeList.viewModal.infoSection')}
                 </Text>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.code')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {employee.employee_code || '—'}
-                  </Text>
-                </View>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.email')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {employee.email || '—'}
-                  </Text>
-                </View>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.phone')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {employee.phone || '—'}
-                  </Text>
-                </View>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.employmentType')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {formatLabel(employee.employment_type) || '—'}
-                  </Text>
-                </View>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.salaryType')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {formatLabel(employee.salary_type) || '—'}
-                  </Text>
-                </View>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.joiningDate')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {employee.joining_date
-                      ? formatJoiningDate(employee.joining_date)
-                      : '—'}
-                  </Text>
+                <View style={styles.viewSectionCard}>
+                  <View style={styles.viewRow}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.code')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {employee.employee_code || '—'}
+                    </Text>
+                  </View>
+                  <View style={styles.viewRow}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.email')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {employee.email || '—'}
+                    </Text>
+                  </View>
+                  <View style={styles.viewRow}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.phone')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {employee.phone || '—'}
+                    </Text>
+                  </View>
+                  <View style={styles.viewRow}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.employmentType')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {formatLabel(employee.employment_type) || '—'}
+                    </Text>
+                  </View>
+                  <View style={styles.viewRow}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.salaryType')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {formatLabel(employee.salary_type) || '—'}
+                    </Text>
+                  </View>
+                  <View style={[styles.viewRow, styles.viewRowLast]}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.joiningDate')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {employee.joining_date
+                        ? formatJoiningDate(employee.joining_date)
+                        : '—'}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
-              {/* Schedule */}
               <View style={styles.viewSection}>
                 <Text style={styles.viewSectionTitle}>
                   {t('home.employeeList.viewModal.scheduleSection')}
                 </Text>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.shiftStart')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {employee.shift_start
-                      ? formatTime12h(employee.shift_start)
-                      : '—'}
-                  </Text>
-                </View>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.shiftEnd')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {employee.shift_end
-                      ? formatTime12h(employee.shift_end)
-                      : '—'}
-                  </Text>
-                </View>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.breakMinutes')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {formatDuration(employee.break_minutes)}
-                  </Text>
-                </View>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.graceMinutes')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {formatDuration(employee.grace_minutes)}
-                  </Text>
+                <View style={styles.viewSectionCard}>
+                  <View style={styles.viewRow}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.shiftStart')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {employee.shift_start
+                        ? formatTime12h(employee.shift_start)
+                        : '—'}
+                    </Text>
+                  </View>
+                  <View style={styles.viewRow}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.shiftEnd')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {employee.shift_end
+                        ? formatTime12h(employee.shift_end)
+                        : '—'}
+                    </Text>
+                  </View>
+                  <View style={styles.viewRow}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.breakMinutes')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {formatDuration(employee.break_minutes)}
+                    </Text>
+                  </View>
+                  <View style={[styles.viewRow, styles.viewRowLast]}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.graceMinutes')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {formatDuration(employee.grace_minutes)}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
-              {/* Security & Access */}
               <View style={styles.viewSection}>
                 <Text style={styles.viewSectionTitle}>
                   {t('home.employeeList.viewModal.securitySection')}
                 </Text>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.permissionPackage')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {employee.package_name || '—'}
-                  </Text>
-                </View>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.permissions')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {t('home.employeeList.viewModal.permissionCount', {
-                      count: employee.permissions.length,
-                    })}
-                  </Text>
-                </View>
-                {employee.permissions.length > 0 ? (
-                  <View style={[styles.chipWrap, styles.chipWrapMarginTop]}>
-                    {employee.permissions.map(p => (
-                      <View key={p.permission_id} style={styles.chip}>
-                        <Text style={styles.chipText}>{p.name}</Text>
-                      </View>
-                    ))}
+                <View style={styles.viewSectionCard}>
+                  <View style={styles.viewRow}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.permissionPackage')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {employee.package_name || '—'}
+                    </Text>
                   </View>
-                ) : null}
+                  <View style={[styles.viewRow, styles.viewRowLast]}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.permissions')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {t('home.employeeList.viewModal.permissionCount', {
+                        count: employee.permissions.length,
+                      })}
+                    </Text>
+                  </View>
+                  {employee.permissions.length > 0 ? (
+                    <View style={[styles.chipWrap, styles.chipWrapMarginTop]}>
+                      {employee.permissions.map((p, index) => (
+                        <View key={`${p.permission_id}-${index}`} style={styles.chip}>
+                          <Text style={styles.chipText}>{p.name}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
               </View>
 
-              {/* Attendance methods */}
               <View style={styles.viewSection}>
                 <Text style={styles.viewSectionTitle}>
                   {t('home.employeeList.viewModal.attendanceSection')}
                 </Text>
-                <View style={styles.viewRow}>
-                  <Text style={styles.viewLabel}>
-                    {t('home.employeeList.viewModal.autoApprove')}
-                  </Text>
-                  <Text style={styles.viewValue}>
-                    {employee.attendance_methods.some(m => m.is_auto)
-                      ? t('home.employeeList.viewModal.yes')
-                      : t('home.employeeList.viewModal.no')}
-                  </Text>
-                </View>
-                {employee.attendance_methods.length > 0 ? (
-                  <View style={[styles.chipWrap, styles.chipWrapMarginTop]}>
-                    {employee.attendance_methods.map(m => (
-                      <View key={m.id} style={styles.chip}>
-                        <Text style={styles.chipText}>
-                          {formatLabel(m.method)}
-                        </Text>
-                      </View>
-                    ))}
+                <View style={styles.viewSectionCard}>
+                  <View style={[styles.viewRow, styles.viewRowLast]}>
+                    <Text style={styles.viewLabel}>
+                      {t('home.employeeList.viewModal.autoApprove')}
+                    </Text>
+                    <Text style={styles.viewValue}>
+                      {employee.attendance_methods.some(m => m.is_auto)
+                        ? t('home.employeeList.viewModal.yes')
+                        : t('home.employeeList.viewModal.no')}
+                    </Text>
                   </View>
-                ) : null}
+                  {employee.attendance_methods.length > 0 ? (
+                    <View style={[styles.chipWrap, styles.chipWrapMarginTop]}>
+                      {employee.attendance_methods.map((m, index) => (
+                        <View key={`${m.id}-${index}`} style={styles.chip}>
+                          <Text style={styles.chipText}>
+                            {formatLabel(m.method)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
               </View>
 
-              {/* Weekends */}
               <View style={styles.viewSection}>
                 <Text style={styles.viewSectionTitle}>
                   {t('home.employeeList.viewModal.weekendsSection')}
                 </Text>
-                {employee.weekends.length > 0 ? (
-                  <View style={styles.chipWrap}>
-                    {employee.weekends.map(w => (
-                      <View key={w.day} style={styles.chip}>
-                        <Text style={styles.chipText}>
-                          {t(
-                            `home.employeeList.days.${w.day.toLowerCase()}` as never,
-                          ) || formatLabel(w.day)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                ) : (
-                  <Text style={styles.muted}>—</Text>
-                )}
+                <View style={styles.viewSectionCard}>
+                  {employee.weekends.length > 0 ? (
+                    <View style={styles.chipWrap}>
+                      {employee.weekends.map((w, index) => {
+                        const dayValue =
+                          typeof w.day === 'string' ? w.day.toLowerCase() : '';
+                        return (
+                          <View key={`${w.day ?? 'weekend'}-${index}`} style={styles.chip}>
+                            <Text style={styles.chipText}>
+                              {dayValue
+                                ? t(
+                                  `home.employeeList.days.${dayValue}` as never,
+                                ) || formatLabel(w.day)
+                                : '—'}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <Text style={styles.muted}>—</Text>
+                  )}
+                </View>
               </View>
             </ScrollView>
           </View>
@@ -1371,6 +1383,7 @@ type EditEmployeeModalProps = {
   onSave: (data: EmployeeEditFormData) => void;
   onDismiss: () => void;
   saving: boolean;
+  optionsLoading: boolean;
   styles: ReturnType<typeof buildStyles>;
   colors: AppThemeColors;
   t: TFunction;
@@ -1384,6 +1397,7 @@ function EditEmployeeModal({
   onSave,
   onDismiss,
   saving,
+  optionsLoading,
   styles,
   colors,
   t,
@@ -1586,10 +1600,10 @@ function EditEmployeeModal({
         onRequestClose={onDismiss}>
         <SafeAreaView
           style={styles.modalSafe}
-          edges={['top', 'left', 'right', 'bottom']}>
+          edges={TAB_SCREEN_SAFE_AREA_EDGES}>
           <Pressable style={styles.modalBackdrop} onPress={onDismiss} />
           <View style={styles.sheetWrap} pointerEvents="box-none">
-            <View style={styles.sheet}>
+            <View style={[styles.sheet, styles.sheetForm]}>
               <View style={styles.sheetHandle} />
               <View style={styles.sheetHeader}>
                 <Text style={styles.sheetTitle}>
@@ -1599,308 +1613,342 @@ function EditEmployeeModal({
                   style={styles.sheetCloseBtn}
                   onPress={onDismiss}
                   accessibilityRole="button"
-                accessibilityLabel={t('home.employeeList.editModal.close')}>
+                  accessibilityLabel={t('home.employeeList.editModal.close')}>
                   <MaterialCommunityIcons
                     name="close"
-                    size={22}
+                    size={20}
                     color={colors.textMuted}
                   />
                 </Pressable>
               </View>
               <ScrollView
-                style={styles.fill}
+                style={styles.sheetScroll}
                 contentContainerStyle={styles.sheetBody}
                 bounces={false}
                 showsVerticalScrollIndicator={false}
                 nestedScrollEnabled
                 keyboardShouldPersistTaps="handled">
-                {/* Designation */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>
-                    {t('home.employeeList.editModal.designation')}
-                  </Text>
-                  <Pressable
-                    style={styles.dropdown}
-                    onPress={() => setDropdownField('designation')}>
-                    <Text
-                      style={[
-                        styles.dropdownText,
-                        !getDropdownDisplayText('designation') &&
-                        styles.dropdownPlaceholder,
-                      ]}>
-                      {getDropdownDisplayText('designation') ||
-                        t('home.employeeList.editModal.selectDesignation')}
+                {optionsLoading ? (
+                  <View style={styles.centerBox}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={[styles.muted, styles.optionsLoadingText]}>
+                      {t('home.employeeList.editModal.loadingOptions')}
                     </Text>
-                    <MaterialCommunityIcons
-                      name="chevron-down"
-                      size={20}
-                      color={colors.textMuted}
-                    />
-                  </Pressable>
-                </View>
-
-                {/* Permission Package */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>
-                    {t('home.employeeList.editModal.permissionPackage')}
-                  </Text>
-                  <Pressable
-                    style={styles.dropdown}
-                    onPress={() => setDropdownField('permission_package')}>
-                    <Text
-                      style={[
-                        styles.dropdownText,
-                        !getDropdownDisplayText('permission_package') &&
-                        styles.dropdownPlaceholder,
-                      ]}>
-                      {getDropdownDisplayText('permission_package') ||
-                        t('home.employeeList.editModal.selectPackage')}
-                    </Text>
-                    <MaterialCommunityIcons
-                      name="chevron-down"
-                      size={20}
-                      color={colors.textMuted}
-                    />
-                  </Pressable>
-                </View>
-
-                {/* Employment Type */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>
-                    {t('home.employeeList.editModal.employmentType')}
-                  </Text>
-                  <Pressable
-                    style={styles.dropdown}
-                    onPress={() => setDropdownField('employment_type')}>
-                    <Text
-                      style={[
-                        styles.dropdownText,
-                        !getDropdownDisplayText('employment_type') &&
-                        styles.dropdownPlaceholder,
-                      ]}>
-                      {getDropdownDisplayText('employment_type') ||
-                        t('home.employeeList.editModal.selectEmploymentType')}
-                    </Text>
-                    <MaterialCommunityIcons
-                      name="chevron-down"
-                      size={20}
-                      color={colors.textMuted}
-                    />
-                  </Pressable>
-                </View>
-
-                {/* Salary Type */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>
-                    {t('home.employeeList.editModal.salaryType')}
-                  </Text>
-                  <Pressable
-                    style={styles.dropdown}
-                    onPress={() => setDropdownField('salary_type')}>
-                    <Text
-                      style={[
-                        styles.dropdownText,
-                        !getDropdownDisplayText('salary_type') &&
-                        styles.dropdownPlaceholder,
-                      ]}>
-                      {getDropdownDisplayText('salary_type') ||
-                        t('home.employeeList.editModal.selectSalaryType')}
-                    </Text>
-                    <MaterialCommunityIcons
-                      name="chevron-down"
-                      size={20}
-                      color={colors.textMuted}
-                    />
-                  </Pressable>
-                </View>
-
-                {/* Attendance Methods */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>
-                    {t('home.employeeList.editModal.attendanceMethods')}
-                  </Text>
-                  <View style={styles.methodChipWrap}>
-                    {(constants?.attendance_methods ?? []).map(method => {
-                      const active = form.attendance_methods.includes(
-                        method.id,
-                      );
-                      return (
+                  </View>
+                ) : null}
+                {!optionsLoading && constants ? (
+                  <>
+                    <View style={styles.formSectionCard}>
+                      <Text style={styles.formSectionTitle}>
+                        {t('home.employeeList.viewModal.infoSection')}
+                      </Text>
+                      {/* Designation */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.formLabel}>
+                          {t('home.employeeList.editModal.designation')}
+                        </Text>
                         <Pressable
-                          key={method.id}
-                          style={[
-                            styles.methodChip,
-                            active && styles.methodChipActive,
-                          ]}
-                          onPress={() => toggleMethod(method.id)}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: active }}>
+                          style={styles.dropdown}
+                          onPress={() => setDropdownField('designation')}>
                           <Text
                             style={[
-                              styles.methodChipText,
-                              active && styles.methodChipTextActive,
+                              styles.dropdownText,
+                              !getDropdownDisplayText('designation') &&
+                              styles.dropdownPlaceholder,
                             ]}>
-                            {method.name}
+                            {getDropdownDisplayText('designation') ||
+                              t('home.employeeList.editModal.selectDesignation')}
                           </Text>
+                          <MaterialCommunityIcons
+                            name="chevron-down"
+                            size={20}
+                            color={colors.textMuted}
+                          />
                         </Pressable>
-                      );
-                    })}
-                  </View>
-                  {formError ? (
-                    <Text style={styles.formError}>{formError}</Text>
-                  ) : null}
-                </View>
+                      </View>
 
-                {/* Auto Approve */}
-                <View style={[styles.formGroup, styles.switchRow]}>
-                  <Text style={styles.switchLabel}>
-                    {t('home.employeeList.editModal.autoApprove')}
-                  </Text>
-                  <Switch
-                    value={form.auto_approve}
-                    onValueChange={v =>
-                      setForm(f => (f ? { ...f, auto_approve: v } : f))
-                    }
-                    trackColor={{
-                      false: colors.border,
-                      true: colors.primary,
-                    }}
-                    thumbColor="#fff"
-                  />
-                </View>
-
-                {/* Shift Times */}
-                <View style={styles.formGroup}>
-                  <View style={styles.timeRow}>
-                    <View style={styles.timeField}>
-                      <Text style={styles.formLabel}>
-                        {t('home.employeeList.editModal.shiftStart')}
-                      </Text>
-                      <Pressable
-                        style={styles.timeBtn}
-                        onPress={shiftStartPicker.present}>
-                        <MaterialCommunityIcons
-                          name="clock-outline"
-                          size={18}
-                          color={colors.primary}
-                        />
-                        <Text style={styles.timeBtnText}>
-                          {formatTime12h(form.shift_start)}
+                      {/* Permission Package */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.formLabel}>
+                          {t('home.employeeList.editModal.permissionPackage')}
                         </Text>
-                      </Pressable>
-                    </View>
-                    <View style={styles.timeField}>
-                      <Text style={styles.formLabel}>
-                        {t('home.employeeList.editModal.shiftEnd')}
-                      </Text>
-                      <Pressable
-                        style={styles.timeBtn}
-                        onPress={shiftEndPicker.present}>
-                        <MaterialCommunityIcons
-                          name="clock-outline"
-                          size={18}
-                          color={colors.primary}
-                        />
-                        <Text style={styles.timeBtnText}>
-                          {formatTime12h(form.shift_end)}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Break / Grace */}
-                <View style={styles.formGroup}>
-                  <View style={styles.timeRow}>
-                    <View style={styles.timeField}>
-                      <Text style={styles.formLabel}>
-                        {t('home.employeeList.editModal.breakMinutes')}
-                      </Text>
-                      <TextInput
-                        style={styles.durationInput}
-                        value={form.break_minutes}
-                        onChangeText={v =>
-                          setForm(f => (f ? { ...f, break_minutes: v } : f))
-                        }
-                        placeholder="00:30"
-                        placeholderTextColor={colors.textMuted}
-                        keyboardType="numbers-and-punctuation"
-                        maxLength={5}
-                      />
-                    </View>
-                    <View style={styles.timeField}>
-                      <Text style={styles.formLabel}>
-                        {t('home.employeeList.editModal.graceMinutes')}
-                      </Text>
-                      <TextInput
-                        style={styles.durationInput}
-                        value={form.grace_minutes}
-                        onChangeText={v =>
-                          setForm(f => (f ? { ...f, grace_minutes: v } : f))
-                        }
-                        placeholder="00:15"
-                        placeholderTextColor={colors.textMuted}
-                        keyboardType="numbers-and-punctuation"
-                        maxLength={5}
-                      />
-                    </View>
-                  </View>
-                </View>
-
-                {/* Weekends */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>
-                    {t('home.employeeList.editModal.weekends')}
-                  </Text>
-                  <View style={styles.methodChipWrap}>
-                    {ALL_WEEKDAYS.map(day => {
-                      const active = form.weekends.includes(day);
-                      return (
                         <Pressable
-                          key={day}
-                          style={[
-                            styles.methodChip,
-                            active && styles.methodChipActive,
-                          ]}
-                          onPress={() => toggleWeekend(day)}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: active }}>
+                          style={styles.dropdown}
+                          onPress={() => setDropdownField('permission_package')}>
                           <Text
                             style={[
-                              styles.methodChipText,
-                              active && styles.methodChipTextActive,
+                              styles.dropdownText,
+                              !getDropdownDisplayText('permission_package') &&
+                              styles.dropdownPlaceholder,
                             ]}>
-                            {t(`home.employeeList.days.${day}` as never)}
+                            {getDropdownDisplayText('permission_package') ||
+                              t('home.employeeList.editModal.selectPackage')}
                           </Text>
+                          <MaterialCommunityIcons
+                            name="chevron-down"
+                            size={20}
+                            color={colors.textMuted}
+                          />
                         </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
+                      </View>
+
+                      {/* Employment Type */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.formLabel}>
+                          {t('home.employeeList.editModal.employmentType')}
+                        </Text>
+                        <Pressable
+                          style={styles.dropdown}
+                          onPress={() => setDropdownField('employment_type')}>
+                          <Text
+                            style={[
+                              styles.dropdownText,
+                              !getDropdownDisplayText('employment_type') &&
+                              styles.dropdownPlaceholder,
+                            ]}>
+                            {getDropdownDisplayText('employment_type') ||
+                              t('home.employeeList.editModal.selectEmploymentType')}
+                          </Text>
+                          <MaterialCommunityIcons
+                            name="chevron-down"
+                            size={20}
+                            color={colors.textMuted}
+                          />
+                        </Pressable>
+                      </View>
+
+                      {/* Salary Type */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.formLabel}>
+                          {t('home.employeeList.editModal.salaryType')}
+                        </Text>
+                        <Pressable
+                          style={styles.dropdown}
+                          onPress={() => setDropdownField('salary_type')}>
+                          <Text
+                            style={[
+                              styles.dropdownText,
+                              !getDropdownDisplayText('salary_type') &&
+                              styles.dropdownPlaceholder,
+                            ]}>
+                            {getDropdownDisplayText('salary_type') ||
+                              t('home.employeeList.editModal.selectSalaryType')}
+                          </Text>
+                          <MaterialCommunityIcons
+                            name="chevron-down"
+                            size={20}
+                            color={colors.textMuted}
+                          />
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    <View style={styles.formSectionCard}>
+                      <Text style={styles.formSectionTitle}>
+                        {t('home.employeeList.viewModal.attendanceSection')}
+                      </Text>
+                      {/* Attendance Methods */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.formLabel}>
+                          {t('home.employeeList.editModal.attendanceMethods')}
+                        </Text>
+                        <View style={styles.methodChipWrap}>
+                          {(constants?.attendance_methods ?? []).map(method => {
+                            const active = form.attendance_methods.includes(
+                              method.id,
+                            );
+                            return (
+                              <Pressable
+                                key={method.id}
+                                style={[
+                                  styles.methodChip,
+                                  active && styles.methodChipActive,
+                                ]}
+                                onPress={() => toggleMethod(method.id)}
+                                accessibilityRole="button"
+                                accessibilityState={{ selected: active }}>
+                                <Text
+                                  style={[
+                                    styles.methodChipText,
+                                    active && styles.methodChipTextActive,
+                                  ]}>
+                                  {method.name}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                        {formError ? (
+                          <Text style={styles.formError}>{formError}</Text>
+                        ) : null}
+                      </View>
+
+                      {/* Auto Approve */}
+                      <View style={[styles.formGroup, styles.switchRow]}>
+                        <Text style={styles.switchLabel}>
+                          {t('home.employeeList.editModal.autoApprove')}
+                        </Text>
+                        <Switch
+                          value={form.auto_approve}
+                          onValueChange={v =>
+                            setForm(f => (f ? { ...f, auto_approve: v } : f))
+                          }
+                          trackColor={{
+                            false: colors.border,
+                            true: colors.primary,
+                          }}
+                          thumbColor="#fff"
+                        />
+                      </View>
+                    </View>
+
+                    <View style={styles.formSectionCard}>
+                      <Text style={styles.formSectionTitle}>
+                        {t('home.employeeList.viewModal.scheduleSection')}
+                      </Text>
+                      {/* Shift Times */}
+                      <View style={styles.formGroup}>
+                        <View style={styles.timeRow}>
+                          <View style={styles.timeField}>
+                            <Text style={styles.formLabel}>
+                              {t('home.employeeList.editModal.shiftStart')}
+                            </Text>
+                            <Pressable
+                              style={styles.timeBtn}
+                              onPress={shiftStartPicker.present}>
+                              <MaterialCommunityIcons
+                                name="clock-outline"
+                                size={18}
+                                color={colors.primary}
+                              />
+                              <Text style={styles.timeBtnText}>
+                                {formatTime12h(form.shift_start)}
+                              </Text>
+                            </Pressable>
+                          </View>
+                          <View style={styles.timeField}>
+                            <Text style={styles.formLabel}>
+                              {t('home.employeeList.editModal.shiftEnd')}
+                            </Text>
+                            <Pressable
+                              style={styles.timeBtn}
+                              onPress={shiftEndPicker.present}>
+                              <MaterialCommunityIcons
+                                name="clock-outline"
+                                size={18}
+                                color={colors.primary}
+                              />
+                              <Text style={styles.timeBtnText}>
+                                {formatTime12h(form.shift_end)}
+                              </Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Break / Grace */}
+                      <View style={styles.formGroup}>
+                        <View style={styles.timeRow}>
+                          <View style={styles.timeField}>
+                            <Text style={styles.formLabel}>
+                              {t('home.employeeList.editModal.breakMinutes')}
+                            </Text>
+                            <TextInput
+                              style={styles.durationInput}
+                              value={form.break_minutes}
+                              onChangeText={v =>
+                                setForm(f => (f ? { ...f, break_minutes: v } : f))
+                              }
+                              placeholder="00:30"
+                              placeholderTextColor={colors.textMuted}
+                              keyboardType="numbers-and-punctuation"
+                              maxLength={5}
+                            />
+                          </View>
+                          <View style={styles.timeField}>
+                            <Text style={styles.formLabel}>
+                              {t('home.employeeList.editModal.graceMinutes')}
+                            </Text>
+                            <TextInput
+                              style={styles.durationInput}
+                              value={form.grace_minutes}
+                              onChangeText={v =>
+                                setForm(f => (f ? { ...f, grace_minutes: v } : f))
+                              }
+                              placeholder="00:15"
+                              placeholderTextColor={colors.textMuted}
+                              keyboardType="numbers-and-punctuation"
+                              maxLength={5}
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.formSectionCard}>
+                      <Text style={styles.formSectionTitle}>
+                        {t('home.employeeList.editModal.weekends')}
+                      </Text>
+                      {/* Weekends */}
+                      <View style={[styles.formGroup, styles.formGroupLast]}>
+                        <Text style={styles.formLabel}>
+                          {t('home.employeeList.editModal.weekends')}
+                        </Text>
+                        <View style={styles.methodChipWrap}>
+                          {ALL_WEEKDAYS.map(day => {
+                            const active = form.weekends.includes(day);
+                            return (
+                              <Pressable
+                                key={day}
+                                style={[
+                                  styles.methodChip,
+                                  active && styles.methodChipActive,
+                                ]}
+                                onPress={() => toggleWeekend(day)}
+                                accessibilityRole="button"
+                                accessibilityState={{ selected: active }}>
+                                <Text
+                                  style={[
+                                    styles.methodChipText,
+                                    active && styles.methodChipTextActive,
+                                  ]}>
+                                  {t(`home.employeeList.days.${day}` as never)}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                ) : null}
               </ScrollView>
 
               {/* Footer */}
               <View style={styles.sheetFooter}>
                 <Pressable
                   style={({ pressed }) => [
-                    styles.cancelBtn,
+                    styles.sheetFooterBtn,
                     pressed && { opacity: 0.88 },
                   ]}
                   onPress={onDismiss}
                   accessibilityRole="button">
-                  <Text style={styles.cancelBtnText}>
+                  <Text style={styles.sheetFooterBtnText}>
                     {t('home.employeeList.editModal.cancel')}
                   </Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
-                    styles.saveBtn,
-                    saving && styles.saveBtnDisabled,
+                    styles.sheetFooterBtn,
+                    styles.sheetFooterBtnPrimary,
+                    (saving || optionsLoading || !constants) &&
+                    styles.sheetFooterBtnDisabled,
                     pressed && !saving && { opacity: 0.88 },
                   ]}
                   onPress={handleSave}
-                  disabled={saving}
+                  disabled={saving || optionsLoading || !constants}
                   accessibilityRole="button">
-                  <Text style={styles.saveBtnText}>
+                  <Text style={styles.sheetFooterBtnTextPrimary}>
                     {saving
                       ? t('home.employeeList.editModal.saving')
                       : t('home.employeeList.editModal.save')}
@@ -1939,6 +1987,7 @@ type RowProps = {
   styles: ReturnType<typeof buildStyles>;
   colors: AppThemeColors;
   joinedLabel: string;
+  onOpenProfile: () => void;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -1950,6 +1999,7 @@ const EmployeeRow = React.memo(function EmployeeRow({
   styles,
   colors,
   joinedLabel,
+  onOpenProfile,
   onView,
   onEdit,
   onDelete,
@@ -1959,7 +2009,11 @@ const EmployeeRow = React.memo(function EmployeeRow({
   const shift = formatShiftSpan(item.shift_start, item.shift_end);
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      onPress={onOpenProfile}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name} profile`}
+      style={({ pressed }) => [styles.card, pressed && { opacity: 0.96 }]}>
       <View style={styles.cardTop}>
         <AvatarView uri={uri} name={item.name} size={48} styles={styles} />
         <View style={styles.cardMain}>
@@ -2053,90 +2107,7 @@ const EmployeeRow = React.memo(function EmployeeRow({
           </Text>
         </Pressable>
       </View>
-    </View>
-  );
-});
-
-// ---------------------------------------------------------------------------
-// Employee Grid Card
-// ---------------------------------------------------------------------------
-type GridCardProps = {
-  item: EmployeeListItem;
-  styles: ReturnType<typeof buildStyles>;
-  colors: AppThemeColors;
-  onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-};
-
-const EmployeeGridCard = React.memo(function EmployeeGridCard({
-  item,
-  styles,
-  colors,
-  onView,
-  onEdit,
-  onDelete,
-}: GridCardProps) {
-  const uri = resolveProfilePictureUrl(item.profile_picture);
-  return (
-    <View style={styles.gridCard}>
-      <AvatarView uri={uri} name={item.name} size={56} styles={styles} />
-      <Text style={styles.gridName} numberOfLines={1}>
-        {item.name}
-      </Text>
-      <Text style={styles.gridSub} numberOfLines={1}>
-        {formatLabel(item.designation)}
-      </Text>
-      <View style={styles.statusPill}>
-        <Text style={styles.statusPillText}>
-          {formatLabel(item.status)}
-        </Text>
-      </View>
-      <Text style={styles.gridSub} numberOfLines={1}>
-        {item.email || item.employee_code}
-      </Text>
-      <View style={styles.gridActions}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.gridActionBtn,
-            pressed && { opacity: 0.8 },
-          ]}
-          onPress={onView}
-          accessibilityRole="button">
-          <MaterialCommunityIcons
-            name="eye-outline"
-            size={18}
-            color={colors.primary}
-          />
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [
-            styles.gridActionBtn,
-            pressed && { opacity: 0.8 },
-          ]}
-          onPress={onEdit}
-          accessibilityRole="button">
-          <MaterialCommunityIcons
-            name="pencil-outline"
-            size={18}
-            color={colors.primary}
-          />
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [
-            styles.gridActionBtn,
-            pressed && { opacity: 0.8 },
-          ]}
-          onPress={onDelete}
-          accessibilityRole="button">
-          <MaterialCommunityIcons
-            name="trash-can-outline"
-            size={18}
-            color={colors.danger}
-          />
-        </Pressable>
-      </View>
-    </View>
+    </Pressable>
   );
 });
 
@@ -2161,7 +2132,6 @@ export function EmployeeListScreen({ navigation }: Props) {
   } = useStatusAlert();
   const { props: confirmProps, present: presentConfirm } = useConfirmAlert();
 
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [modalType, setModalType] = useState<ModalType>('NONE');
   const [selectedEmployee, setSelectedEmployee] =
     useState<EmployeeListItem | null>(null);
@@ -2171,6 +2141,8 @@ export function EmployeeListScreen({ navigation }: Props) {
     meta,
     constants,
     permissionPackages,
+    formOptionsLoading,
+    loadFormOptions,
     loading,
     loadingMore,
     refreshing,
@@ -2209,10 +2181,21 @@ export function EmployeeListScreen({ navigation }: Props) {
     setModalType('VIEW');
   }, []);
 
-  const openEdit = useCallback((emp: EmployeeListItem) => {
-    setSelectedEmployee(emp);
-    setModalType('EDIT');
-  }, []);
+  const openProfile = useCallback(
+    (emp: EmployeeListItem) => {
+      navigation.navigate('EmployeeProfile', { employeeId: emp.id });
+    },
+    [navigation],
+  );
+
+  const openEdit = useCallback(
+    (emp: EmployeeListItem) => {
+      setSelectedEmployee(emp);
+      setModalType('EDIT');
+      loadFormOptions(true).catch(() => { });
+    },
+    [loadFormOptions],
+  );
 
   const openDelete = useCallback(
     (emp: EmployeeListItem) => {
@@ -2289,28 +2272,14 @@ export function EmployeeListScreen({ navigation }: Props) {
         styles={styles}
         colors={colors}
         joinedLabel={t('home.employeeList.joined')}
+        onOpenProfile={() => openProfile(item)}
         onView={() => openView(item)}
         onEdit={() => openEdit(item)}
         onDelete={() => openDelete(item)}
         t={t}
       />
     ),
-    [styles, colors, t, openView, openEdit, openDelete],
-  );
-
-  // Grid view render
-  const renderGridItem = useCallback(
-    ({ item }: { item: EmployeeListItem }) => (
-      <EmployeeGridCard
-        item={item}
-        styles={styles}
-        colors={colors}
-        onView={() => openView(item)}
-        onEdit={() => openEdit(item)}
-        onDelete={() => openDelete(item)}
-      />
-    ),
-    [styles, colors, openView, openEdit, openDelete],
+    [styles, colors, t, openProfile, openView, openEdit, openDelete],
   );
 
   const listHeader = useMemo(
@@ -2377,7 +2346,7 @@ export function EmployeeListScreen({ navigation }: Props) {
     if (employees.length === 0) {
       return (
         <View style={styles.centerBox}>
-              <Text style={styles.muted}>{t('home.employeeList.empty')}</Text>
+          <Text style={styles.muted}>{t('home.employeeList.empty')}</Text>
         </View>
       );
     }
@@ -2397,7 +2366,7 @@ export function EmployeeListScreen({ navigation }: Props) {
     return (
       <SafeAreaView
         style={styles.safe}
-        edges={['top', 'left', 'right', 'bottom']}>
+        edges={TAB_SCREEN_SAFE_AREA_EDGES}>
         <View style={styles.stackHeader}>
           <HeaderBackButton
             onPress={() => navigation.goBack()}
@@ -2426,7 +2395,7 @@ export function EmployeeListScreen({ navigation }: Props) {
     return (
       <SafeAreaView
         style={styles.safe}
-        edges={['top', 'left', 'right', 'bottom']}>
+        edges={TAB_SCREEN_SAFE_AREA_EDGES}>
         <View style={styles.stackHeader}>
           <HeaderBackButton
             onPress={() => navigation.goBack()}
@@ -2462,7 +2431,7 @@ export function EmployeeListScreen({ navigation }: Props) {
   return (
     <SafeAreaView
       style={styles.safe}
-      edges={['top', 'left', 'right', 'bottom']}>
+      edges={TAB_SCREEN_SAFE_AREA_EDGES}>
       <View style={styles.stackHeader}>
         <HeaderBackButton
           onPress={() => navigation.goBack()}
@@ -2476,92 +2445,30 @@ export function EmployeeListScreen({ navigation }: Props) {
           accessibilityRole="header">
           {t('home.employeeList.title')}
         </Text>
-        <View style={styles.headerActions}>
-          <Pressable
-            style={[
-              styles.headerBtn,
-              viewMode === 'list' && styles.headerBtnActive,
-            ]}
-            onPress={() => setViewMode('list')}
-            accessibilityRole="button"
-            accessibilityLabel={t('home.employeeList.viewMode.list')}
-            accessibilityState={{ selected: viewMode === 'list' }}>
-            <MaterialCommunityIcons
-              name="format-list-bulleted"
-              size={22}
-              color={
-                viewMode === 'list' ? colors.primary : colors.textMuted
-              }
-            />
-          </Pressable>
-          <Pressable
-            style={[
-              styles.headerBtn,
-              viewMode === 'grid' && styles.headerBtnActive,
-            ]}
-            onPress={() => setViewMode('grid')}
-            accessibilityRole="button"
-            accessibilityLabel={t('home.employeeList.viewMode.grid')}
-            accessibilityState={{ selected: viewMode === 'grid' }}>
-            <MaterialCommunityIcons
-              name="view-grid-outline"
-              size={22}
-              color={
-                viewMode === 'grid' ? colors.primary : colors.textMuted
-              }
-            />
-          </Pressable>
-        </View>
       </View>
 
-      {viewMode === 'list' ? (
-        <FlatList
-          style={styles.fill}
-          data={loading ? [] : employees}
-          keyExtractor={item => String(item.id)}
-          renderItem={renderListItem}
-          ListHeaderComponent={listHeader}
-          ListFooterComponent={listFooter}
-          ListEmptyComponent={listEmpty}
-          contentContainerStyle={styles.listContent}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-            />
-          }
-          onEndReached={onEndReached}
-          onEndReachedThreshold={0.35}
-          showsVerticalScrollIndicator={false}
-        />
-      ) : (
-        <FlatList
-          style={styles.fill}
-          data={loading ? [] : employees}
-          keyExtractor={item => String(item.id)}
-          renderItem={renderGridItem}
-          numColumns={2}
-          ListHeaderComponent={listHeader}
-          ListFooterComponent={listFooter}
-          ListEmptyComponent={listEmpty}
-          contentContainerStyle={styles.gridContent}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-            />
-          }
-          onEndReached={onEndReached}
-          onEndReachedThreshold={0.35}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+      <FlatList
+        style={styles.fill}
+        data={loading ? [] : employees}
+        keyExtractor={item => String(item.id)}
+        renderItem={renderListItem}
+        ListHeaderComponent={listHeader}
+        ListFooterComponent={listFooter}
+        ListEmptyComponent={listEmpty}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.35}
+        showsVerticalScrollIndicator={false}
+      />
 
       {/* View Details Modal */}
       <ViewDetailsModal
@@ -2582,6 +2489,7 @@ export function EmployeeListScreen({ navigation }: Props) {
         onSave={handleEditSave}
         onDismiss={closeModal}
         saving={mutating}
+        optionsLoading={formOptionsLoading}
         styles={styles}
         colors={colors}
         t={t}

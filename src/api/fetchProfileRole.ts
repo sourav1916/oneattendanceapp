@@ -6,5 +6,6 @@ export async function fetchProfileRole(): Promise<ProfileRoleResponse> {
   const { data } = await authHttpClient.get<ProfileRoleResponse>('/users/profile-role', {
     maxBodyLength: Infinity,
   });
+
   return data;
 }

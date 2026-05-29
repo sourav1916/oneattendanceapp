@@ -14,7 +14,8 @@ alwaysApply: true
 src/
 ├── api/            # API functions (authHttpClient + endpoint wrappers)
 ├── components/     # Shared components (modals/, icons/, MainTopBar)
-├── context/        # AuthContext, ThemeContext
+├── constants/      # Shared constants (e.g. tabScreenLayout for bottom tab screens)
+├── context/        # AuthContext, ThemeContext (runtime — docs in /context/*.md)
 ├── hooks/          # Custom hooks (useAttendanceList, useUpdateProfile, etc.)
 ├── i18n/           # i18next setup
 ├── locales/        # Translation files (en.ts, hi.ts, ta.ts, te.ts, etc.)

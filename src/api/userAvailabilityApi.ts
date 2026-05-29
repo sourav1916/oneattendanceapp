@@ -21,6 +21,7 @@ export const userAvailabilityApi = {
         params,
       },
     );
+
     return data;
   },
 };

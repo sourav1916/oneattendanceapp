@@ -87,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /** Same value as `token` state; updated synchronously before any auth API call. */
   const tokenRef = useRef<string | null>(null);
+  const profileLoadCountRef = useRef(0);
 
   const applyProfileRoleUserToSession = useCallback((snap: CachedUserProfile | null) => {
     if (!snap) {
@@ -127,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
       if (!silent) {
+        profileLoadCountRef.current += 1;
         setProfileRoleLoading(true);
       }
       try {
@@ -163,7 +165,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null;
       } finally {
         if (!silent) {
-          setProfileRoleLoading(false);
+          profileLoadCountRef.current = Math.max(0, profileLoadCountRef.current - 1);
+          if (profileLoadCountRef.current === 0) {
+            setProfileRoleLoading(false);
+          }
         }
       }
     },
@@ -172,6 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     tokenRef.current = null;
+    profileLoadCountRef.current = 0;
     await clearAuthSession();
     await clearCachedUserProfile();
     await clearSelectedCompany();
@@ -182,6 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfileRole(null);
     setCachedUserProfile(null);
     setProfileRoleUser(null);
+    setProfileRoleLoading(false);
   }, []);
 
   const signOutRef = useRef(signOut);

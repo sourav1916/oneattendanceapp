@@ -28,6 +28,7 @@ export function configureAuthHttpClient(options: ConfigureAuthHttpClientOptions)
 
 export const authHttpClient: AxiosInstance = axios.create({
   baseURL: API_ENDPOINT,
+  timeout: 30_000,
 });
 
 authHttpClient.interceptors.request.use(config => {

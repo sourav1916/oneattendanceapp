@@ -47,6 +47,8 @@ On mount: **`refreshProfileRole()`** (non-silent).
 
 ### Photo upload
 
+Same pipeline as **face enrollment** capture: **`uploadFileToOneSaas`** (`src/utils/FileUpload.ts`). Face flow also uses **`saveCameraPhotoForUpload`** for camera orientation — see [**face-enroll.md**](./face-enroll.md).
+
 | Outcome | UX |
 |---------|-----|
 | **Success** | Preview shows uploaded URL via **`resolveMediaUrl`**; **no** popup |

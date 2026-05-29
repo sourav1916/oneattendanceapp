@@ -11,12 +11,20 @@ export function readApiError(err: unknown): string {
   }
   if (body && typeof body === 'object') {
     const o = body as { message?: unknown; error?: unknown };
-    if (typeof o.message === 'string') {
-      return o.message;
+    if (typeof o.message === 'string' && o.message.trim()) {
+      return o.message.trim();
     }
-    if (typeof o.error === 'string') {
-      return o.error;
+    if (typeof o.error === 'string' && o.error.trim()) {
+      return o.error.trim();
     }
+  }
+
+  if (err.code === 'ECONNABORTED' || err.message?.toLowerCase().includes('timeout')) {
+    return 'Request timed out. Please try again.';
+  }
+
+  if (!err.response && err.message === 'Network Error') {
+    return 'Could not reach the server. Check your internet connection and try again.';
   }
 
   return err.message || 'Request failed';

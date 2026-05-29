@@ -19,18 +19,28 @@ Route types defined in `src/navigation/types.ts`.
 
 ## Standard Screen Layout
 
+**Tab-visible stacks** (Home, Settings list): match `SettingsScreen` — do **not** use bottom safe-area edge (tab bar already has inset). See `src/constants/tabScreenLayout.ts` and `context/company.md`.
+
 ```tsx
-<SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+import {
+  TAB_SCREEN_SAFE_AREA_EDGES,
+  TAB_SCREEN_SCROLL_PADDING_BOTTOM,
+} from '@src/constants/tabScreenLayout';
+
+<SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
   <View style={styles.stackHeader}>
     <HeaderBackButton onPress={() => navigation.goBack()} tintColor={colors.primary} />
     <Text style={styles.stackHeaderTitle}>{t('...')}</Text>
   </View>
-  {/* Fixed header filters (date, search, chips, stats) */}
-  <FlatList ... />  {/* Scrollable content */}
-  {/* Floating action bar (conditional) */}
-  {/* Modals (StatusAlert, ConfirmAlert, DatePicker, etc.) */}
+  <FlatList
+    contentContainerStyle={{ paddingBottom: TAB_SCREEN_SCROLL_PADDING_BOTTOM }}
+    ...
+  />
+  <StatusAlert {...statusProps} />
 </SafeAreaView>
 ```
+
+Full-screen modals may use `edges` including `'bottom'`. Face capture: see `context/face-enroll.md`.
 
 ## Data Loading Pattern
 

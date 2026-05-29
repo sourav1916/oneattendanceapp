@@ -34,10 +34,17 @@ export type HomeStackParamList = {
   AttendanceManagement: undefined;
   EmployeeManagement: undefined;
   EmployeeList: undefined;
+  FaceEnrollList: undefined;
+  FaceEnrollCapture: {
+    employeeId: number;
+    employeeName: string;
+    mode?: 'enroll' | 'check';
+  };
   InvitePackages: undefined;
   CompanyInvites: undefined;
   PermissionManagement: undefined;
-  Onboarding: undefined;
+  EmployeeProfile: { employeeId: number };
+  OnboardingRequest: undefined;
 };
 
 /** Main app shell: bottom tabs after login. */

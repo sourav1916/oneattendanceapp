@@ -1,45 +1,118 @@
 import { HeaderBackButton } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { IconProps } from 'react-native-vector-icons/Icon';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { TAB_SCREEN_SAFE_AREA_EDGES } from '@src/constants/tabScreenLayout';
 import type { HomeStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'EmployeeManagement'>;
 
+type MenuTheme = {
+  accent: string;
+  tint: string;
+  border: string;
+};
+
 type EmployeeMenuItem = {
   id: string;
   iconName: IconProps['name'];
   itemKey:
-    | 'addEmployee'
-    | 'employeeList'
-    | 'invitePackages'
-    | 'companyInvites'
-    | 'permissions'
-    | 'employeeShift'
-    | 'salary'
-    | 'reports';
+  | 'addEmployee'
+  | 'employeeList'
+  | 'invitePackages'
+  | 'companyInvites'
+  | 'permissions'
+  | 'faceEnrollList'
+  | 'employeeShift'
+  | 'salary'
+  | 'reports';
+  theme: MenuTheme;
+};
+
+const MENU_THEMES: Record<string, MenuTheme> = {
+  add: { accent: '#2563eb', tint: '#dbeafe', border: '#bfdbfe' },
+  invites: { accent: '#d946ef', tint: '#fae8ff', border: '#f5d0fe' },
+  list: { accent: '#059669', tint: '#d1fae5', border: '#a7f3d0' },
+  packages: { accent: '#ea580c', tint: '#ffedd5', border: '#fed7aa' },
+  salary: { accent: '#0891b2', tint: '#cffafe', border: '#a5f3fc' },
+  shift: { accent: '#4f46e5', tint: '#eef2ff', border: '#c7d2fe' },
+  reports: { accent: '#7c3aed', tint: '#ede9fe', border: '#ddd6fe' },
+  permissions: { accent: '#0d9488', tint: '#ccfbf1', border: '#99f6e4' },
+  face: { accent: '#7c3aed', tint: '#ede9fe', border: '#ddd6fe' },
 };
 
 const MENU_ITEMS: EmployeeMenuItem[] = [
-  { id: 'add', iconName: 'account-plus-outline', itemKey: 'addEmployee' },
-  { id: 'list', iconName: 'format-list-bulleted', itemKey: 'employeeList' },
-  { id: 'packages', iconName: 'package-variant-closed', itemKey: 'invitePackages' },
-  { id: 'invites', iconName: 'email-send-outline', itemKey: 'companyInvites' },
-  { id: 'permissions', iconName: 'shield-key-outline', itemKey: 'permissions' },
-  { id: 'shift', iconName: 'calendar-clock-outline', itemKey: 'employeeShift' },
-  { id: 'salary', iconName: 'cash-multiple', itemKey: 'salary' },
-  { id: 'reports', iconName: 'chart-box-outline', itemKey: 'reports' },
+  {
+    id: 'add',
+    iconName: 'account-plus-outline',
+    itemKey: 'addEmployee',
+    theme: MENU_THEMES.add,
+  },
+  {
+    id: 'invites',
+    iconName: 'email-send-outline',
+    itemKey: 'companyInvites',
+    theme: MENU_THEMES.invites,
+  },
+  {
+    id: 'list',
+    iconName: 'format-list-bulleted',
+    itemKey: 'employeeList',
+    theme: MENU_THEMES.list,
+  },
+  {
+    id: 'packages',
+    iconName: 'package-variant-closed',
+    itemKey: 'invitePackages',
+    theme: MENU_THEMES.packages,
+  },
+  {
+    id: 'salary',
+    iconName: 'cash-multiple',
+    itemKey: 'salary',
+    theme: MENU_THEMES.salary,
+  },
+  {
+    id: 'shift',
+    iconName: 'calendar-clock-outline',
+    itemKey: 'employeeShift',
+    theme: MENU_THEMES.shift,
+  },
+  {
+    id: 'reports',
+    iconName: 'chart-box-outline',
+    itemKey: 'reports',
+    theme: MENU_THEMES.reports,
+  },
+  {
+    id: 'permissions',
+    iconName: 'shield-key-outline',
+    itemKey: 'permissions',
+    theme: MENU_THEMES.permissions,
+  },
+  {
+    id: 'face',
+    iconName: 'face-recognition',
+    itemKey: 'faceEnrollList',
+    theme: MENU_THEMES.face,
+  },
 ];
 
-function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
+function buildStyles(colors: AppThemeColors, _scheme: 'light' | 'dark') {
   return StyleSheet.create({
     safe: {
       flex: 1,
@@ -61,53 +134,41 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     stackHeaderTitle: {
       flex: 1,
       fontSize: 17,
-      fontWeight: '600',
+      fontWeight: '700',
       color: colors.text,
       marginLeft: 2,
     },
     scroll: {
       paddingHorizontal: 20,
-      paddingTop: 16,
+      paddingTop: 8,
       paddingBottom: 32,
     },
-    lead: {
-      fontSize: 15,
-      color: colors.textMuted,
-      lineHeight: 22,
-      marginBottom: 18,
+    menuCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
     },
     menuRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 14,
-      backgroundColor: colors.surface,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingVertical: 14,
+      gap: 12,
+      paddingVertical: 12,
       paddingHorizontal: 14,
-      marginBottom: 10,
-      ...Platform.select({
-        ios: {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: scheme === 'dark' ? 0.2 : 0.06,
-          shadowRadius: 4,
-        },
-        android: { elevation: 1 },
-      }),
+      minHeight: 56,
+    },
+    menuRowBorder: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
     },
     menuRowPressed: {
       backgroundColor: colors.secondaryButton,
-      opacity: 0.96,
     },
     iconWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: scheme === 'dark' ? '#334155' : colors.secondaryButton,
-      borderWidth: 1,
-      borderColor: colors.border,
+      width: 40,
+      height: 40,
+      borderRadius: 11,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -119,9 +180,9 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
-      marginBottom: 2,
     },
     menuHint: {
+      marginTop: 2,
       fontSize: 13,
       color: colors.textMuted,
       lineHeight: 18,
@@ -129,11 +190,78 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   });
 }
 
+type MenuRowStyles = ReturnType<typeof buildStyles>;
+
+type EmployeeMenuRowProps = {
+  item: EmployeeMenuItem;
+  styles: MenuRowStyles;
+  colors: AppThemeColors;
+  title: string;
+  hint: string;
+  scheme: 'light' | 'dark';
+  isFirst: boolean;
+  onPress: () => void;
+};
+
+const EmployeeMenuRow = React.memo(function EmployeeMenuRow({
+  item,
+  styles,
+  colors,
+  title,
+  hint,
+  scheme,
+  isFirst,
+  onPress,
+}: EmployeeMenuRowProps) {
+  const dark = scheme === 'dark';
+  const { theme } = item;
+  const iconBg = dark ? `${theme.accent}22` : theme.tint;
+  const iconBorder = dark ? `${theme.accent}44` : theme.border;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.menuRow,
+        !isFirst && styles.menuRowBorder,
+        pressed && styles.menuRowPressed,
+      ]}>
+      <View
+        style={[
+          styles.iconWrap,
+          { backgroundColor: iconBg, borderColor: iconBorder },
+        ]}>
+        <MaterialCommunityIcons
+          name={item.iconName}
+          size={24}
+          color={theme.accent}
+          accessibilityElementsHidden
+        />
+      </View>
+      <View style={styles.textCol}>
+        <Text style={styles.menuTitle} numberOfLines={1}>{title}</Text>
+        <Text style={styles.menuHint} numberOfLines={2}>{hint}</Text>
+      </View>
+      <MaterialCommunityIcons
+        name="chevron-right"
+        size={22}
+        color={dark ? colors.textMuted : '#94a3b8'}
+        accessibilityElementsHidden
+      />
+    </Pressable>
+  );
+});
+
 export function EmployeeManagementScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
-  const styles = useMemo(() => buildStyles(colors, resolvedScheme), [colors, resolvedScheme]);
+  const styles = useMemo(
+    () => buildStyles(colors, resolvedScheme),
+    [colors, resolvedScheme],
+  );
   const { props: confirmProps, present } = useConfirmAlert();
 
   const openComingSoon = useCallback(() => {
@@ -144,8 +272,37 @@ export function EmployeeManagementScreen({ navigation }: Props) {
     });
   }, [present, t]);
 
+  const handleItemPress = useCallback(
+    (itemId: string) => {
+      if (itemId === 'list') {
+        navigation.navigate('EmployeeList');
+        return;
+      }
+      if (itemId === 'packages') {
+        navigation.navigate('InvitePackages');
+        return;
+      }
+      if (itemId === 'invites') {
+        navigation.navigate('CompanyInvites');
+        return;
+      }
+      if (itemId === 'permissions') {
+        navigation.navigate('PermissionManagement');
+        return;
+      }
+      if (itemId === 'face') {
+        navigation.navigate('FaceEnrollList');
+        return;
+      }
+      openComingSoon();
+    },
+    [navigation, openComingSoon],
+  );
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView
+      style={styles.safe}
+      edges={TAB_SCREEN_SAFE_AREA_EDGES}>
       <View style={styles.stackHeader}>
         <HeaderBackButton
           onPress={() => navigation.goBack()}
@@ -153,7 +310,10 @@ export function EmployeeManagementScreen({ navigation }: Props) {
           displayMode="minimal"
           accessibilityLabel={t('home.employeeManagement.back')}
         />
-        <Text style={styles.stackHeaderTitle} numberOfLines={1} accessibilityRole="header">
+        <Text
+          style={styles.stackHeaderTitle}
+          numberOfLines={1}
+          accessibilityRole="header">
           {t('home.employeeManagement.title')}
         </Text>
       </View>
@@ -164,43 +324,21 @@ export function EmployeeManagementScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.lead}>{t('home.employeeManagement.lead')}</Text>
-
-        {MENU_ITEMS.map(item => (
-          <Pressable
-            key={item.id}
-            accessibilityRole="button"
-            accessibilityLabel={t(`home.employeeManagement.items.${item.itemKey}.title`)}
-            onPress={() => {
-              if (item.id === 'list') {
-                navigation.navigate('EmployeeList');
-                return;
-              }
-              if (item.id === 'packages') {
-                navigation.navigate('InvitePackages');
-                return;
-              }
-              if (item.id === 'invites') {
-                navigation.navigate('CompanyInvites');
-                return;
-              }
-              if (item.id === 'permissions') {
-                navigation.navigate('PermissionManagement');
-                return;
-              }
-              openComingSoon();
-            }}
-            style={({ pressed }) => [styles.menuRow, pressed && styles.menuRowPressed]}>
-            <View style={styles.iconWrap}>
-              <MaterialCommunityIcons name={item.iconName} size={22} color={colors.primary} />
-            </View>
-            <View style={styles.textCol}>
-              <Text style={styles.menuTitle}>{t(`home.employeeManagement.items.${item.itemKey}.title`)}</Text>
-              <Text style={styles.menuHint}>{t(`home.employeeManagement.items.${item.itemKey}.hint`)}</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textMuted} />
-          </Pressable>
-        ))}
+        <View style={styles.menuCard}>
+          {MENU_ITEMS.map((item, index) => (
+            <EmployeeMenuRow
+              key={item.id}
+              item={item}
+              styles={styles}
+              colors={colors}
+              scheme={resolvedScheme}
+              isFirst={index === 0}
+              title={t(`home.employeeManagement.items.${item.itemKey}.title`)}
+              hint={t(`home.employeeManagement.items.${item.itemKey}.hint`)}
+              onPress={() => handleItemPress(item.id)}
+            />
+          ))}
+        </View>
       </ScrollView>
       <ConfirmAlert {...confirmProps} />
     </SafeAreaView>

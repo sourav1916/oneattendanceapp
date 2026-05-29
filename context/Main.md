@@ -18,6 +18,7 @@ This folder (`context/`) holds **documentation for AI and humans**, not runtime 
 | [**my-calendar.md**](./my-calendar.md) | Employee attendance calendar, `/shifts/my-calendar`, `Calendar.tsx` |
 | [**modals.md**](./modals.md) | Modal layout, language/theme/company pickers, sheet patterns |
 | [**company.md**](./company.md) | Company list, create company modal, employee screens, `/company/*` APIs |
+| [**face-enroll.md**](./face-enroll.md) | Face enroll list/capture, image upload, `/employees/face-enroll/*`, Vision Camera |
 | [**alerts.md**](./alerts.md) | `ConfirmAlert`, `StatusAlert`, confirms and success/error popups |
 | [**profile.md**](./profile.md) | Profile / EditProfile, avatar upload, update-profile, profile-role cache |
 | [**home.md**](./home.md) | HomeScreen, MainTopBar, company switcher arrow, pull-to-refresh |
@@ -67,9 +68,10 @@ App/
 │   ├── navigation/         # AuthNavigator, MainNavigator, SettingsNavigator, types
 │   ├── screens/            # auth/, home/, attendance/, settings/, report/, company/, profile/
 │   ├── storage/            # AsyncStorage helpers (auth, company, language, theme)
+│   ├── constants/          # tabScreenLayout (safe area + scroll padding for tab screens)
 │   ├── theme/              # lightTheme / darkTheme palettes
 │   ├── types/              # Shared TS types for API responses
-│   └── utils/              # config, readApiError, sessionDateFormat, companiesFromProfileRole, …
+│   └── utils/              # config, readApiError, FileUpload, parseFaceEnrollCheckResult, …
 ├── android/
 └── ios/
 ```
@@ -142,7 +144,8 @@ Types for responses live in **`src/types/`**.
 
 - **Strings**: Prefer **`useTranslation()`** + keys under `src/locales/en.ts` (and mirror in `hi.ts` etc.).
 - **Colors**: **`useThemeColors()`** or **`useAppTheme()`** when you need `resolvedScheme` (e.g. subtle surfaces).
-- **Errors from axios**: **`readApiError`** (`src/utils/readApiError.ts`).
+- **Errors from axios**: **`readApiError`** (`src/utils/readApiError.ts`) — use for modals, not raw `err.message` (4xx bodies expose `message`).
+- **Tab stack screens** (Home / company / settings list): **`TAB_SCREEN_SAFE_AREA_EDGES`** + **`TAB_SCREEN_SCROLL_PADDING_BOTTOM`** in `src/constants/tabScreenLayout.ts` — see [**company.md**](./company.md#tab-layout-home-stack-screens), [**face-enroll.md**](./face-enroll.md#tab-screens--bottom-navigation).
 - **Confirm / alert UI**: **`useConfirmAlert`** / **`useStatusAlert`** — see [**alerts.md**](./alerts.md) and [**modals.md**](./modals.md).
 - **Profile edit & cache**: [**profile.md**](./profile.md).
 - **User/company display helpers**: `src/utils/userDisplay.ts`, `src/utils/profileDisplay.ts`, `src/utils/resolveMediaUrl.ts`.

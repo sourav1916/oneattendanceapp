@@ -22,6 +22,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { fetchMyCalendar } from '@src/api/fetchMyCalendar';
+import {
+    TAB_SCREEN_SAFE_AREA_EDGES,
+    TAB_SCREEN_SCROLL_PADDING_BOTTOM,
+} from '@src/constants/tabScreenLayout';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import type { HomeStackParamList, SettingsStackParamList } from '@src/navigation/types';
@@ -169,7 +173,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         scroll: {
             paddingHorizontal: 16,
             paddingTop: 14,
-            paddingBottom: 28,
+            paddingBottom: TAB_SCREEN_SCROLL_PADDING_BOTTOM,
         },
         centerBox: {
             paddingVertical: 40,
@@ -1267,7 +1271,7 @@ export function MyCalendarScreen({ navigation }: Props) {
     }, []);
 
     return (
-        <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+        <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
             <View style={styles.stackHeader}>
                 <HeaderBackButton
                     onPress={() => navigation.goBack()}

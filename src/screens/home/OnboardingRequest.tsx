@@ -33,7 +33,7 @@ import type { InviteRecord, InviteStatus } from '@src/types/invite';
 import { API_ENDPOINT } from '@src/utils/config';
 import { readApiError } from '@src/utils/readApiError';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'Onboarding'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'OnboardingRequest'>;
 
 const PAGE_LIMIT = 10;
 const DEBOUNCE_MS = 500;
@@ -873,7 +873,7 @@ function buildDetailStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
 // Main screen
 // ---------------------------------------------------------------------------
 
-export function OnboardingScreen({ navigation }: Props): React.JSX.Element {
+export function OnboardingRequestScreen({ navigation }: Props): React.JSX.Element {
     const { t } = useTranslation();
     const colors = useThemeColors();
     const { resolvedScheme } = useAppTheme();
@@ -1357,6 +1357,7 @@ export function OnboardingScreen({ navigation }: Props): React.JSX.Element {
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
+                style={styles.filterScroll}
                 contentContainerStyle={styles.filterRow}
                 keyboardShouldPersistTaps="handled">
                 {STATUS_FILTERS.map(f => {
@@ -1385,6 +1386,7 @@ export function OnboardingScreen({ navigation }: Props): React.JSX.Element {
 
             {/* List */}
             <FlatList
+                style={styles.list}
                 data={loading ? [] : invites}
                 keyExtractor={keyExtractor}
                 renderItem={renderCard}
@@ -1469,28 +1471,35 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         },
 
         // Filters
+        filterScroll: {
+            flexGrow: 0,
+            marginBottom: 8,
+        },
         filterRow: {
             flexDirection: 'row',
+            alignItems: 'center',
             paddingHorizontal: 14,
-            paddingVertical: 6,
-            gap: 6,
+            paddingVertical: 2,
+            gap: 8,
         },
         filterChip: {
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            borderRadius: 8,
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            borderRadius: 20,
             backgroundColor: colors.surface,
             borderWidth: 1,
             borderColor: colors.border,
+            alignSelf: 'center',
         },
         filterChipActive: {
             backgroundColor: scheme === 'dark' ? 'rgba(99,102,241,0.2)' : '#eef2ff',
             borderColor: colors.primary,
         },
         filterChipText: {
-            fontSize: 13,
-            fontWeight: '500',
+            fontSize: 12,
+            fontWeight: '600',
             color: colors.textMuted,
+            ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
         },
         filterChipTextActive: {
             color: colors.primary,
@@ -1498,6 +1507,9 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         },
 
         // FlatList
+        list: {
+            flex: 1,
+        },
         listContent: {
             paddingHorizontal: 14,
             paddingTop: 6,

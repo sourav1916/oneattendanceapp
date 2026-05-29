@@ -1,5 +1,5 @@
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HeaderBackButton } from '@react-navigation/elements';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -13,6 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  TAB_SCREEN_SAFE_AREA_EDGES,
+  TAB_SCREEN_SCROLL_PADDING_BOTTOM,
+} from '@src/constants/tabScreenLayout';
 import { fetchActiveSessions } from '@src/api/fetchActiveSessions';
 import { logoutAllOtherSessions } from '@src/api/logoutAllOtherSessions';
 import { logoutSession } from '@src/api/logoutSession';
@@ -76,7 +80,7 @@ function buildSessionStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     scroll: {
       paddingHorizontal: 20,
       paddingTop: 4,
-      paddingBottom: 32,
+      paddingBottom: TAB_SCREEN_SCROLL_PADDING_BOTTOM,
     },
     centerBox: {
       paddingVertical: 48,
@@ -396,7 +400,7 @@ export function SessionScreen({ navigation }: Props) {
   }, [load, present, t]);
 
   return (
-    <SafeAreaView style={ms.safe} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={ms.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
       <View style={ms.stackHeader}>
         <HeaderBackButton
           onPress={() => navigation.goBack()}
@@ -416,9 +420,9 @@ export function SessionScreen({ navigation }: Props) {
             style={({ pressed }) => [
               ms.stackHeaderRight,
               pressed &&
-                !logoutOthersSubmitting &&
-                logoutOneSubmittingId === null &&
-                ms.stackHeaderRightPressed,
+              !logoutOthersSubmitting &&
+              logoutOneSubmittingId === null &&
+              ms.stackHeaderRightPressed,
               (logoutOthersSubmitting || logoutOneSubmittingId !== null) && ms.stackHeaderRightDisabled,
             ]}>
             {logoutOthersSubmitting ? (

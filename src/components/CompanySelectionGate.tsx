@@ -66,8 +66,12 @@ export function CompanySelectionGate({ children }: Props) {
     (!selectedCompany ||
       !eligibleCompanies.some(c => c.id === selectedCompany.id));
 
+  // Keep the app usable with a saved company while profile-role refreshes in the background.
   const showBlockingLoader =
-    hydrated && profileRoleLoading && (profileRole == null || needsPicker);
+    hydrated &&
+    profileRoleLoading &&
+    selectedCompany == null &&
+    (profileRole == null || needsPicker);
   const showPicker = hydrated && !profileRoleLoading && needsPicker;
 
   return (

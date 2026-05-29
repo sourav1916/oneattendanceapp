@@ -22,6 +22,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { TAB_SCREEN_SAFE_AREA_EDGES } from '@src/constants/tabScreenLayout';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { companyInviteApi } from '@src/api/invitePackageApi';
@@ -36,14 +38,15 @@ import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import { useOnboardInviteFormData } from '@src/hooks/useOnboardInviteFormData';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { InvitePackageItem } from '@src/types/invitePackage';
-import type { AvailableUser } from '@src/types/userAvailability';
 import type { OnboardInviteFormData } from '@src/types/onboardInvite';
+import type { AvailableUser } from '@src/types/userAvailability';
 import {
   buildCompanyInviteSendPayload,
   formatInviteSendError,
   readInviteSendFailure,
 } from '@src/utils/companyInviteSendPayload';
 import {
+  combinePhoneDigits,
   DEFAULT_LOGIN_COUNTRY,
   type LoginCountry,
 } from '@src/utils/loginCountries';
@@ -129,7 +132,7 @@ function formatLabel(value: string): string {
 function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   return StyleSheet.create({
     modalSafe: { flex: 1, backgroundColor: colors.overlay },
-    modalBackdrop: { ...StyleSheet.absoluteFillObject },
+    modalBackdrop: { ...StyleSheet.absoluteFill },
     sheetWrap: { flex: 1, justifyContent: 'flex-end' },
     sheet: {
       backgroundColor: colors.surface,
@@ -548,7 +551,7 @@ function DropdownPicker({
       onRequestClose={onDismiss}>
       <SafeAreaView
         style={styles.dropdownModalSafe}
-        edges={['top', 'left', 'right', 'bottom']}>
+        edges={TAB_SCREEN_SAFE_AREA_EDGES}>
         <Pressable style={styles.modalBackdrop} onPress={onDismiss} />
         <View style={styles.sheetWrap} pointerEvents="box-none">
           <View style={styles.dropdownSheet}>
@@ -911,7 +914,7 @@ function InviteFormStep({
             style={[
               styles.dropdownText,
               !getDropdownDisplayText('employment_type') &&
-                styles.dropdownPlaceholder,
+              styles.dropdownPlaceholder,
             ]}>
             {getDropdownDisplayText('employment_type') ||
               t('home.invitePackages.formModal.selectEmploymentType')}
@@ -938,7 +941,7 @@ function InviteFormStep({
             style={[
               styles.dropdownText,
               !getDropdownDisplayText('salary_type') &&
-                styles.dropdownPlaceholder,
+              styles.dropdownPlaceholder,
             ]}>
             {getDropdownDisplayText('salary_type') ||
               t('home.invitePackages.formModal.selectSalaryType')}
@@ -965,7 +968,7 @@ function InviteFormStep({
             style={[
               styles.dropdownText,
               !getDropdownDisplayText('permission_package') &&
-                styles.dropdownPlaceholder,
+              styles.dropdownPlaceholder,
             ]}>
             {getDropdownDisplayText('permission_package') ||
               t('home.invitePackages.formModal.selectPackage')}
@@ -1301,7 +1304,7 @@ export function OnboardEmployeeModal({
     setLookupLoading(true);
     try {
       const res = await userAvailabilityApi.checkAvailable(companyId, {
-        mobile: digits,
+        mobile: combinePhoneDigits(selectedCountry, digits),
       });
       if (res.success && res.code === 'USER_AVAILABLE' && res.data) {
         setFoundUser(res.data);
@@ -1313,7 +1316,7 @@ export function OnboardEmployeeModal({
     } finally {
       setLookupLoading(false);
     }
-  }, [companyId, email, identifierType, phone, t]);
+  }, [companyId, email, identifierType, phone, selectedCountry, t]);
 
   const handleChangeUser = useCallback(() => {
     setFoundUser(null);
@@ -1424,7 +1427,7 @@ export function OnboardEmployeeModal({
         onRequestClose={onDismiss}>
         <SafeAreaView
           style={styles.modalSafe}
-          edges={['top', 'left', 'right', 'bottom']}>
+          edges={TAB_SCREEN_SAFE_AREA_EDGES}>
           <Pressable style={styles.modalBackdrop} onPress={onDismiss} />
           <View style={styles.sheetWrap} pointerEvents="box-none">
             <View style={[styles.sheet, styles.sheetForm]}>
@@ -1532,7 +1535,7 @@ export function OnboardEmployeeModal({
                           style={[
                             styles.onboardSegmentBtn,
                             identifierType === 'email' &&
-                              styles.onboardSegmentBtnActive,
+                            styles.onboardSegmentBtnActive,
                           ]}
                           onPress={() => handleChangeType('email')}
                           accessibilityRole="button"
@@ -1543,7 +1546,7 @@ export function OnboardEmployeeModal({
                             style={[
                               styles.onboardSegmentText,
                               identifierType === 'email' &&
-                                styles.onboardSegmentTextActive,
+                              styles.onboardSegmentTextActive,
                             ]}>
                             {t('home.companyInvites.onboardModal.emailTab')}
                           </Text>
@@ -1552,7 +1555,7 @@ export function OnboardEmployeeModal({
                           style={[
                             styles.onboardSegmentBtn,
                             identifierType === 'mobile' &&
-                              styles.onboardSegmentBtnActive,
+                            styles.onboardSegmentBtnActive,
                           ]}
                           onPress={() => handleChangeType('mobile')}
                           accessibilityRole="button"
@@ -1563,7 +1566,7 @@ export function OnboardEmployeeModal({
                             style={[
                               styles.onboardSegmentText,
                               identifierType === 'mobile' &&
-                                styles.onboardSegmentTextActive,
+                              styles.onboardSegmentTextActive,
                             ]}>
                             {t('home.companyInvites.onboardModal.mobileTab')}
                           </Text>
@@ -1600,7 +1603,7 @@ export function OnboardEmployeeModal({
                             textContentType="emailAddress"
                             returnKeyType="search"
                             onSubmitEditing={() => {
-                              handleFindUser().catch(() => {});
+                              handleFindUser().catch(() => { });
                             }}
                           />
                         </View>
@@ -1635,7 +1638,7 @@ export function OnboardEmployeeModal({
                               textContentType="telephoneNumber"
                               returnKeyType="search"
                               onSubmitEditing={() => {
-                                handleFindUser().catch(() => {});
+                                handleFindUser().catch(() => { });
                               }}
                             />
                           </View>
@@ -1685,7 +1688,7 @@ export function OnboardEmployeeModal({
                           stepLoading && styles.sheetFooterBtnDisabled,
                         ]}
                         onPress={() => {
-                          handleNext().catch(() => {});
+                          handleNext().catch(() => { });
                         }}
                         disabled={stepLoading}
                         accessibilityRole="button">
@@ -1720,7 +1723,7 @@ export function OnboardEmployeeModal({
                           lookupLoading && styles.sheetFooterBtnDisabled,
                         ]}
                         onPress={() => {
-                          handleFindUser().catch(() => {});
+                          handleFindUser().catch(() => { });
                         }}
                         disabled={lookupLoading}
                         accessibilityRole="button">
@@ -1756,7 +1759,7 @@ export function OnboardEmployeeModal({
                         sending && styles.sheetFooterBtnDisabled,
                       ]}
                       onPress={() => {
-                        handleSendInvite().catch(() => {});
+                        handleSendInvite().catch(() => { });
                       }}
                       disabled={sending || formOptionsLoading}
                       accessibilityRole="button">

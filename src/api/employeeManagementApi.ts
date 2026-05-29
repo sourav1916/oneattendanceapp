@@ -5,10 +5,13 @@ import type {
   EmployeeDeleteResponse,
   EmployeeUpdatePayload,
   EmployeeUpdateResponse,
+  PermissionPackage,
   PermissionPackagesResponse,
 } from '@src/types/employeeManagement';
 import type { PermissionPackageListResponse } from '@src/types/permissionPackageList';
 import { mapPermissionPackagesList } from '@src/utils/mapPermissionPackages';
+
+export const FORM_OPTIONS_PAGE_LIMIT = 100;
 
 function withCompany(companyId: number) {
   return { company: String(companyId) };
@@ -34,7 +37,7 @@ export const employeeManagementApi = {
         params: {
           search: params.search ?? '',
           page: params.page ?? 1,
-          limit: params.limit ?? 10,
+          limit: params.limit ?? FORM_OPTIONS_PAGE_LIMIT,
         },
       },
     );
@@ -47,6 +50,63 @@ export const employeeManagementApi = {
           ? mapPermissionPackagesList(packages)
           : null,
     };
+  },
+
+  /** Loads every active permission package page for edit/update dropdowns. */
+  async getAllPermissionPackages(
+    companyId: number,
+  ): Promise<PermissionPackagesResponse> {
+    const merged: PermissionPackage[] = [];
+    let page = 1;
+    let lastMessage = '';
+
+    while (true) {
+      const { data } = await authHttpClient.get<PermissionPackageListResponse>(
+        '/permissions/permission-packages',
+        {
+          headers: withCompany(companyId),
+          params: {
+            search: '',
+            page,
+            limit: FORM_OPTIONS_PAGE_LIMIT,
+          },
+        },
+      );
+
+      lastMessage = data.message ?? '';
+
+      if (!data.success) {
+        return {
+          success: false,
+          message: lastMessage || 'Could not load permission packages.',
+          data: merged.length > 0 ? merged : null,
+        };
+      }
+
+      const packages = data.data?.packages;
+      if (packages != null) {
+        merged.push(...mapPermissionPackagesList(packages));
+      }
+
+      const meta = data.data?.meta;
+      const isLast =
+        meta?.is_last_page === true ||
+        (meta != null &&
+          meta.totalPages > 0 &&
+          page >= meta.totalPages) ||
+        packages == null ||
+        packages.length === 0;
+
+      if (isLast) {
+        return {
+          success: true,
+          message: lastMessage,
+          data: merged,
+        };
+      }
+
+      page += 1;
+    }
   },
 
   async updateEmployee(

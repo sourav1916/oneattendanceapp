@@ -15,6 +15,7 @@ Users can browse companies they have access to, create new companies, and manage
 | Create (no companies yet) | **`CompanySwitcher`** empty state → `CreateCompany` | Same API + `refreshProfileRole` |
 | Employee hub | `EmployeeManagement.tsx` | (sub-routes) |
 | Employee list | `EmployeeList.tsx` | `GET /employees/list` (+ `company` header) |
+| Face enrollment | `FaceEnrollList.tsx` → `FaceEnrollCapture.tsx` | `/employees/face-enroll/*` — see [**face-enroll.md**](./face-enroll.md) |
 
 ---
 
@@ -99,10 +100,26 @@ Keys under **`home.companyList`** and **`home.companyList.createModal`** in `src
 
 ## Employee management (related)
 
-- **`EmployeeManagement.tsx`**: menu hub (add employee, employee list, etc.; some items “coming soon”).
+- **`EmployeeManagement.tsx`**: menu hub (add employee, employee list, face enrollment, etc.; some items “coming soon”).
 - **`EmployeeList.tsx`**: paginated employees; requires **`useAuth().selectedCompany`** and sends **`company`** header — see [**theme-api.md**](./theme-api.md).
+- **Face enrollment**: [**face-enroll.md**](./face-enroll.md) — list, capture, upload image URL, enroll/check/delete APIs.
 
 Do not confuse **company list** (all companies for the user) with **employee list** (employees of the **selected** company).
+
+---
+
+## Tab layout (Home stack screens)
+
+Company screens sit in **`HomeNavigator`** above the bottom tab bar. Use the same safe-area pattern as **`SettingsScreen`**:
+
+- **`TAB_SCREEN_SAFE_AREA_EDGES`** = `['top', 'left', 'right']` only — **not** `'bottom'`.
+- List/scroll **`paddingBottom: 32`** via **`TAB_SCREEN_SCROLL_PADDING_BOTTOM`**.
+
+Defined in **`src/constants/tabScreenLayout.ts`**. `MainNavigator` already applies bottom inset on the tab bar (`safeAreaInsets={{ bottom: 0 }}`); adding `bottom` to `SafeAreaView` causes a large empty gap.
+
+**Applied to:** `CompanyList`, `EmployeeManagement`, `EmployeeList`, `FaceEnrollList`, `AttendanceManagement`, `CompanyInvites`, `InvitePackages`, `PermissionManagement`, `EmployeeProfile`, etc.
+
+**Exceptions:** full-screen modals (`OnboardEmployeeModal`, …) may keep `bottom` edge; `FaceEnrollCapture` uses camera-specific edges (`top` + `bottom` for capture UI).
 
 ---
 
@@ -115,10 +132,15 @@ src/
 │   └── createCompany.ts
 ├── components/modals/
 │   └── CreateCompany.tsx
+├── constants/
+│   └── tabScreenLayout.ts
 ├── screens/company/
 │   ├── CompanyList.tsx
 │   ├── EmployeeManagement.tsx
-│   └── EmployeeList.tsx
+│   ├── EmployeeList.tsx
+│   ├── FaceEnrollList.tsx
+│   ├── FaceEnrollCapture.tsx
+│   └── … (AttendanceManagement, Invites, Permissions, …)
 ├── screens/home/
 │   └── HomeScreen.tsx          # Company tile → CompanyList
 └── types/
@@ -143,4 +165,5 @@ src/
 - [**modals.md**](./modals.md) — `CompanySwitcher`, `CreateCompany`, sheet patterns
 - [**alerts.md**](./alerts.md) — `StatusAlert` / `ConfirmAlert` after create
 - [**navigation.md**](./navigation.md) — `HomeStackParamList`.
+- [**face-enroll.md**](./face-enroll.md) — capture, upload, enroll/check APIs.
 - [**theme-api.md**](./theme-api.md) — `authHttpClient`, `company` header on employee routes.

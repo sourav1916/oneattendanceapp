@@ -16,9 +16,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { IconProps } from 'react-native-vector-icons/Icon';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
+import {
+  TAB_SCREEN_SAFE_AREA_EDGES,
+  TAB_SCREEN_SCROLL_PADDING_BOTTOM,
+} from '@src/constants/tabScreenLayout';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import type { SettingsStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
@@ -174,7 +178,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     scroll: {
       paddingHorizontal: 20,
       paddingTop: 16,
-      paddingBottom: 36,
+      paddingBottom: TAB_SCREEN_SCROLL_PADDING_BOTTOM,
     },
     hero: {
       borderRadius: 18,
@@ -356,7 +360,7 @@ export function SupportScreen({ navigation }: Props) {
   const contactTypes = useMemo<SupportKind[]>(() => ['sales', 'support', 'technical'], []);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
       <View style={styles.stackHeader}>
         <HeaderBackButton
           onPress={() => navigation.goBack()}

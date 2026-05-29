@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { constantsApi } from '@src/api/constantsApi';
 import { employeeManagementApi } from '@src/api/employeeManagementApi';
 import { fetchEmployeeList } from '@src/api/fetchEmployeeList';
+import { mapGlobalConstantsToFormConstants } from '@src/utils/mapGlobalConstants';
 import type {
   CompanyConstants,
   EmployeeListItem,
@@ -29,6 +31,9 @@ export type UseEmployeeManagementResult = {
   loadingMore: boolean;
   refreshing: boolean;
   constantsLoading: boolean;
+  permissionPackagesLoading: boolean;
+  formOptionsLoading: boolean;
+  loadFormOptions: (force?: boolean) => Promise<void>;
   error: string | null;
   search: string;
   setSearch: (value: string) => void;
@@ -55,6 +60,8 @@ export function useEmployeeManagement({
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [constantsLoading, setConstantsLoading] = useState(false);
+  const [permissionPackagesLoading, setPermissionPackagesLoading] =
+    useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearchRaw] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -83,47 +90,85 @@ export function useEmployeeManagement({
     setSearchRaw(value);
   }, []);
 
-  const loadConstants = useCallback(async () => {
-    if (companyId == null) {
-      return;
-    }
-    if (constantsCacheRef.current?.companyId === companyId) {
-      setConstants(constantsCacheRef.current.data);
-      return;
-    }
-    setConstantsLoading(true);
-    try {
-      const res = await employeeManagementApi.getConstants(companyId);
-      if (res.success && res.data) {
-        constantsCacheRef.current = { companyId, data: res.data };
-        setConstants(res.data);
+  const loadConstants = useCallback(
+    async (force = false) => {
+      if (companyId == null) {
+        return;
       }
-    } catch {
-      /* constants failure is non-blocking */
-    } finally {
-      setConstantsLoading(false);
-    }
-  }, [companyId]);
+      if (
+        !force &&
+        constantsCacheRef.current?.companyId === companyId
+      ) {
+        setConstants(constantsCacheRef.current.data);
+        return;
+      }
+      setConstantsLoading(true);
+      try {
+        const globalRes = await constantsApi.list();
+        if (globalRes.success && globalRes.data) {
+          const mapped = mapGlobalConstantsToFormConstants(globalRes.data);
+          const data: CompanyConstants = {
+            ...mapped,
+            employment_statuses: [],
+          };
+          constantsCacheRef.current = { companyId, data };
+          setConstants(data);
+          return;
+        }
 
-  const loadPermissionPackages = useCallback(async () => {
-    if (companyId == null) {
-      return;
-    }
-    if (packagesCacheRef.current?.companyId === companyId) {
-      setPermissionPackages(packagesCacheRef.current.data);
-      return;
-    }
-    try {
-      const res =
-        await employeeManagementApi.getPermissionPackages(companyId);
-      if (res.success && res.data) {
-        packagesCacheRef.current = { companyId, data: res.data };
-        setPermissionPackages(res.data);
+        const companyRes =
+          await employeeManagementApi.getConstants(companyId);
+        if (companyRes.success && companyRes.data) {
+          constantsCacheRef.current = { companyId, data: companyRes.data };
+          setConstants(companyRes.data);
+        }
+      } catch {
+        /* constants failure is non-blocking */
+      } finally {
+        setConstantsLoading(false);
       }
-    } catch {
-      /* non-blocking */
-    }
-  }, [companyId]);
+    },
+    [companyId],
+  );
+
+  const loadPermissionPackages = useCallback(
+    async (force = false) => {
+      if (companyId == null) {
+        return;
+      }
+      if (
+        !force &&
+        packagesCacheRef.current?.companyId === companyId
+      ) {
+        setPermissionPackages(packagesCacheRef.current.data);
+        return;
+      }
+      setPermissionPackagesLoading(true);
+      try {
+        const res =
+          await employeeManagementApi.getAllPermissionPackages(companyId);
+        if (res.success && res.data) {
+          packagesCacheRef.current = { companyId, data: res.data };
+          setPermissionPackages(res.data);
+        }
+      } catch {
+        /* non-blocking */
+      } finally {
+        setPermissionPackagesLoading(false);
+      }
+    },
+    [companyId],
+  );
+
+  const loadFormOptions = useCallback(
+    async (force = false) => {
+      await Promise.all([
+        loadConstants(force),
+        loadPermissionPackages(force),
+      ]);
+    },
+    [loadConstants, loadPermissionPackages],
+  );
 
   const loadFirst = useCallback(async () => {
     if (companyId == null) {
@@ -177,13 +222,12 @@ export function useEmployeeManagement({
   }, [companyId, debouncedSearch]);
 
   useEffect(() => {
-    loadFirst().catch(() => {});
+    loadFirst().catch(() => { });
   }, [loadFirst]);
 
   useEffect(() => {
-    loadConstants().catch(() => {});
-    loadPermissionPackages().catch(() => {});
-  }, [loadConstants, loadPermissionPackages]);
+    loadFormOptions().catch(() => { });
+  }, [loadFormOptions]);
 
   const loadMore = useCallback(async () => {
     if (
@@ -208,6 +252,7 @@ export function useEmployeeManagement({
         page: nextPage,
         limit: PAGE_SIZE,
       });
+
       const chunk = res.data;
       if (!res.success || chunk == null) {
         return;
@@ -238,11 +283,11 @@ export function useEmployeeManagement({
 
   const refresh = useCallback(() => {
     setRefreshing(true);
-    loadFirst().catch(() => {});
+    loadFirst().catch(() => { });
   }, [loadFirst]);
 
   const retry = useCallback(() => {
-    loadFirst().catch(() => {});
+    loadFirst().catch(() => { });
   }, [loadFirst]);
 
   const tryLoadMore = useCallback(() => {
@@ -256,7 +301,7 @@ export function useEmployeeManagement({
       return;
     }
     endReachedLock.current = true;
-    loadMore().catch(() => {});
+    loadMore().catch(() => { });
   }, [loadMore, loading, loadingMore, meta]);
 
   const updateEmployee = useCallback(
@@ -272,7 +317,7 @@ export function useEmployeeManagement({
         );
         if (res.success) {
           onSuccessRef.current?.(res.message || 'Employee updated.');
-          loadFirst().catch(() => {});
+          loadFirst().catch(() => { });
           return true;
         }
         onErrorRef.current?.(res.message || 'Update failed.');
@@ -299,7 +344,7 @@ export function useEmployeeManagement({
         });
         if (res.success) {
           onSuccessRef.current?.(res.message || 'Employee deleted.');
-          loadFirst().catch(() => {});
+          loadFirst().catch(() => { });
           return true;
         }
         onErrorRef.current?.(res.message || 'Delete failed.');
@@ -323,6 +368,9 @@ export function useEmployeeManagement({
     loadingMore,
     refreshing,
     constantsLoading,
+    permissionPackagesLoading,
+    formOptionsLoading: constantsLoading || permissionPackagesLoading,
+    loadFormOptions,
     error,
     search,
     setSearch,

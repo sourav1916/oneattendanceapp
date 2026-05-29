@@ -37,6 +37,7 @@ import { formatTime12h } from '@src/components/modals/TimePicker';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import { useCompanyInvites } from '@src/hooks/useCompanyInvites';
+import { TAB_SCREEN_SAFE_AREA_EDGES } from '@src/constants/tabScreenLayout';
 import type { HomeStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type {
@@ -935,7 +936,7 @@ function ViewDetailsModal({
       onRequestClose={onDismiss}>
       <SafeAreaView
         style={styles.modalSafe}
-        edges={['top', 'left', 'right', 'bottom']}>
+        edges={TAB_SCREEN_SAFE_AREA_EDGES}>
         <Pressable style={styles.modalBackdrop} onPress={onDismiss} />
         <View style={styles.sheetWrap} pointerEvents="box-none">
           <View style={[styles.sheet, styles.sheetForm]}>
@@ -1523,7 +1524,7 @@ export function CompanyInvitesScreen({ navigation }: Props) {
   return (
     <SafeAreaView
       style={styles.safe}
-      edges={['top', 'left', 'right', 'bottom']}>
+      edges={TAB_SCREEN_SAFE_AREA_EDGES}>
       {/* Header */}
       <View style={styles.stackHeader}>
         <HeaderBackButton

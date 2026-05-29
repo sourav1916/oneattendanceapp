@@ -98,8 +98,6 @@ export type EmployeeEditFormData = {
   weekends: string[];
 };
 
-export type ViewMode = 'list' | 'grid';
-
 export type ModalType = 'NONE' | 'VIEW' | 'EDIT' | 'DELETE_CONFIRM';
 
 export type {

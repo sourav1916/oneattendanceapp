@@ -1,9 +1,9 @@
 /**
  * @format
  */
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +24,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 import { MainTopBar } from '@src/components/MainTopBar';
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
+import { TAB_SCREEN_SCROLL_PADDING_BOTTOM } from '@src/constants/tabScreenLayout';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import type { HomeStackParamList, MainTabParamList } from '@src/navigation/types';
@@ -178,7 +179,7 @@ export function HomeScreen(): React.JSX.Element {
       actionCardWithIcon(
         'onboarding',
         t('home.menu.onboarding'),
-        () => navigation.navigate('Onboarding'),
+        () => navigation.navigate('OnboardingRequest'),
       ),
     ],
     [navigation, openComingSoon, t],
@@ -187,7 +188,7 @@ export function HomeScreen(): React.JSX.Element {
   return (
     <View style={styles.root}>
       <MainTopBar />
-      <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['left', 'right']}>
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
@@ -280,7 +281,7 @@ function buildHomeStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     scroll: {
       paddingHorizontal: H_PAD,
       paddingTop: 12,
-      paddingBottom: 32,
+      paddingBottom: TAB_SCREEN_SCROLL_PADDING_BOTTOM,
     },
     welcomeCard: {
       flexDirection: 'row',
