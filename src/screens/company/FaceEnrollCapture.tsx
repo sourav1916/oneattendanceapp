@@ -1,13 +1,9 @@
 import { HeaderBackButton } from '@react-navigation/elements';
-import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  AppState,
-  type AppStateStatus,
-  type LayoutChangeEvent,
   Platform,
   Pressable,
   StyleSheet,
@@ -15,19 +11,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  useFaceDetectorOutput,
-  type Face,
-} from 'react-native-vision-camera-face-detector';
-import {
-  Camera,
-  useCameraDevice,
-  useCameraPermission,
-  usePhotoOutput,
-} from 'react-native-vision-camera';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Camera } from 'react-native-vision-camera';
 
 import { checkEmployeeFaceEnroll } from '@src/api/checkEmployeeFaceEnroll';
+import { FaceCaptureCameraToolbar } from '@src/components/face/FaceCaptureCameraToolbar';
 import { setEmployeeFaceEnroll } from '@src/api/setEmployeeFaceEnroll';
 import {
   StatusAlert,
@@ -35,6 +23,7 @@ import {
 } from '@src/components/modals/StatusAlert';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { useFaceCaptureCamera } from '@src/hooks/useFaceCaptureCamera';
 import type { HomeStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import {
@@ -48,9 +37,6 @@ import { saveCameraPhotoForUpload } from '@src/utils/saveCameraPhotoForUpload';
 type Props = NativeStackScreenProps<HomeStackParamList, 'FaceEnrollCapture'>;
 
 const ACCENT = '#7c3aed';
-const MIN_FACE_RATIO = 0.08;
-const FACE_DETECTOR_FALLBACK_WIDTH = 360;
-const FACE_DETECTOR_FALLBACK_HEIGHT = 640;
 const FACE_ENROLL_LOG_TAG = '[FaceEnrollCapture]';
 
 function logFaceEnrollError(stage: string, err: unknown): void {
@@ -102,9 +88,13 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderWidth: 2,
       borderColor: 'rgba(255,255,255,0.85)',
       backgroundColor: 'transparent',
+      marginTop: -56,
     },
     guideReady: {
       borderColor: '#4ade80',
+    },
+    guideMultiple: {
+      borderColor: '#fbbf24',
     },
     bottomPanel: {
       paddingHorizontal: 20,
@@ -214,8 +204,6 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
     () => buildStyles(colors, resolvedScheme),
     [colors, resolvedScheme],
   );
-  const isFocused = useIsFocused();
-  const device = useCameraDevice('front');
   const { selectedCompany } = useAuth();
   const companyId = selectedCompany?.id ?? null;
   const {
@@ -224,113 +212,46 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
     presentError,
     presentWarning,
   } = useStatusAlert();
-  const { hasPermission, requestPermission, canRequestPermission } =
-    useCameraPermission();
 
-  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
-  const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
-  const [faceReady, setFaceReady] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const submittedRef = useRef(false);
   const enrollingRef = useRef(false);
   const captureBusyRef = useRef(false);
   const captureStageRef = useRef<'photo' | 'upload' | 'api'>('photo');
-  const photoOutput = usePhotoOutput({ qualityPrioritization: 'balanced' });
-
-  captureBusyRef.current = uploading || submitting;
-
-  useEffect(() => {
-    if (!hasPermission && canRequestPermission) {
-      requestPermission().catch(() => {});
-    }
-  }, [canRequestPermission, hasPermission, requestPermission]);
-
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', setAppState);
-    return () => sub.remove();
-  }, []);
-
-  const handleCameraLayout = useCallback((event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    if (width > 0 && height > 0) {
-      setPreviewSize({ width, height });
-    }
-  }, []);
-
-  const previewWidth = previewSize.width;
-  const previewHeight = previewSize.height;
-  const previewReady = previewWidth > 0 && previewHeight > 0;
-
-  // Keep camera active while capturing/processing — deactivating on `submitting`
-  // unbinds ImageCapture and causes "Camera is closed" on Vision Camera v5.
-  const cameraActive =
-    isFocused &&
-    appState === 'active' &&
-    hasPermission &&
-    device != null &&
-    previewReady;
 
   const captureBusy = uploading || submitting;
+  captureBusyRef.current = captureBusy;
+
+  const exitAfterCaptureError = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
+
+  const {
+    photoOutput,
+    device,
+    cameraOutputs,
+    cameraPosition,
+    torchOn,
+    canUseTorch,
+    cameraRef,
+    hasPermission,
+    canRequestPermission,
+    requestPermission,
+    preferenceLoaded,
+    previewReady,
+    cameraActive,
+    faceReady,
+    multipleFaces,
+    canCapture: baseCanCapture,
+    handleCameraLayout,
+    toggleCameraPosition,
+    toggleTorch,
+    capturePhotoSettings,
+  } = useFaceCaptureCamera({ captureBusy });
+
   const canCapture =
-    faceReady &&
-    previewReady &&
-    !captureBusy &&
-    (isCheckMode || !submittedRef.current);
-
-  const resetStability = useCallback(() => {
-    setFaceReady(false);
-  }, []);
-
-  const onFacesDetected = useCallback(
-    (faces: Face[]) => {
-      if (submittedRef.current || captureBusyRef.current) {
-        return;
-      }
-      if (faces.length !== 1) {
-        resetStability();
-        return;
-      }
-      const face = faces[0];
-      if (!face) {
-        resetStability();
-        return;
-      }
-      const area = face.bounds.width * face.bounds.height;
-      const frameArea = previewWidth * previewHeight;
-      if (frameArea > 0 && area / frameArea < MIN_FACE_RATIO) {
-        resetStability();
-        return;
-      }
-      setFaceReady(true);
-    },
-    [previewHeight, previewWidth, resetStability],
-  );
-
-  const detectorWindowWidth = previewReady
-    ? previewWidth
-    : FACE_DETECTOR_FALLBACK_WIDTH;
-  const detectorWindowHeight = previewReady
-    ? previewHeight
-    : FACE_DETECTOR_FALLBACK_HEIGHT;
-
-  const faceDetectorOutput = useFaceDetectorOutput({
-    onFacesDetected,
-    onError: resetStability,
-    autoMode: true,
-    windowWidth: detectorWindowWidth,
-    windowHeight: detectorWindowHeight,
-    runLandmarks: false,
-    runContours: false,
-    runClassifications: false,
-    performanceMode: 'fast',
-    cameraFacing: 'front',
-  });
-
-  const cameraOutputs = useMemo(
-    () => [faceDetectorOutput, photoOutput],
-    [faceDetectorOutput, photoOutput],
-  );
+    baseCanCapture && (isCheckMode || !submittedRef.current);
 
   const showEnrollSuccessModal = useCallback(
     (apiMessage: string | undefined) => {
@@ -355,13 +276,13 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
     ) => {
       const detail = matched
         ? t('home.faceEnrollCapture.checkSuccessMessage', {
-            similarity,
-            threshold,
-          })
+          similarity,
+          threshold,
+        })
         : t('home.faceEnrollCapture.checkNoMatchMessage', {
-            similarity,
-            threshold,
-          });
+          similarity,
+          threshold,
+        });
       const message = apiMessage?.trim() ? `${apiMessage.trim()}\n\n${detail}` : detail;
 
       if (matched) {
@@ -377,9 +298,10 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
         title: t('home.faceEnrollCapture.checkNoMatchTitle'),
         message,
         showMessage: true,
+        onAfterDismiss: exitAfterCaptureError,
       });
     },
-    [navigation, presentError, presentSuccess, t],
+    [exitAfterCaptureError, navigation, presentError, presentSuccess, t],
   );
 
   const submitFaceImage = useCallback(
@@ -392,85 +314,90 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
       }
 
       try {
-      if (isCheckMode) {
-        const res = await checkEmployeeFaceEnroll(companyId, {
+        if (isCheckMode) {
+          const res = await checkEmployeeFaceEnroll(companyId, {
+            employee_id: employeeId,
+            image,
+          });
+          if (!res.success) {
+            logFaceEnrollError('checkApi', res.message ?? res);
+            presentError({
+              title: t('home.faceEnrollCapture.errorTitleCheck'),
+              message:
+                res.message?.trim() ||
+                t('home.faceEnrollCapture.errorGenericCheck'),
+              showMessage: true,
+              onAfterDismiss: exitAfterCaptureError,
+            });
+            return;
+          }
+          const parsed = parseFaceEnrollCheckResult(res);
+          if (parsed.kind === 'not_enrolled') {
+            presentWarning({
+              title: t('home.faceEnrollCapture.checkNotEnrolledTitle'),
+              message:
+                res.message?.trim() ||
+                t('home.faceEnrollCapture.checkNotEnrolledMessage'),
+              showMessage: true,
+              onAfterDismiss: exitAfterCaptureError,
+            });
+            return;
+          }
+          if (parsed.kind === 'matched') {
+            showCheckResultModal(
+              true,
+              parsed.similarity,
+              parsed.threshold,
+              res.message,
+            );
+            return;
+          }
+          if (parsed.kind === 'no_match') {
+            showCheckResultModal(
+              false,
+              parsed.similarity,
+              parsed.threshold,
+              res.message,
+            );
+            return;
+          }
+          logFaceEnrollError('checkApi', res.message ?? res);
+          presentWarning({
+            title: t('home.faceEnrollCapture.errorTitleCheck'),
+            message:
+              res.message?.trim() || t('home.faceEnrollCapture.errorGenericCheck'),
+            showMessage: true,
+            onAfterDismiss: exitAfterCaptureError,
+          });
+          return;
+        }
+
+        const res = await setEmployeeFaceEnroll(companyId, {
           employee_id: employeeId,
           image,
         });
         if (!res.success) {
-          logFaceEnrollError('checkApi', res.message ?? res);
+          logFaceEnrollError('enrollApi', res.message ?? res);
           presentError({
-            title: t('home.faceEnrollCapture.errorTitleCheck'),
+            title: t('home.faceEnrollCapture.errorTitle'),
             message:
-              res.message?.trim() ||
-              t('home.faceEnrollCapture.errorGenericCheck'),
+              res.message?.trim() || t('home.faceEnrollCapture.errorGeneric'),
             showMessage: true,
+            onAfterDismiss: exitAfterCaptureError,
           });
           return;
         }
-        const parsed = parseFaceEnrollCheckResult(res);
-        if (parsed.kind === 'not_enrolled') {
+        if (res.data?.face_enrolled !== true) {
           presentWarning({
-            title: t('home.faceEnrollCapture.checkNotEnrolledTitle'),
+            title: t('home.faceEnrollCapture.errorTitle'),
             message:
-              res.message?.trim() ||
-              t('home.faceEnrollCapture.checkNotEnrolledMessage'),
+              res.message?.trim() || t('home.faceEnrollCapture.errorGeneric'),
             showMessage: true,
+            onAfterDismiss: exitAfterCaptureError,
           });
           return;
         }
-        if (parsed.kind === 'matched') {
-          showCheckResultModal(
-            true,
-            parsed.similarity,
-            parsed.threshold,
-            res.message,
-          );
-          return;
-        }
-        if (parsed.kind === 'no_match') {
-          showCheckResultModal(
-            false,
-            parsed.similarity,
-            parsed.threshold,
-            res.message,
-          );
-          return;
-        }
-        logFaceEnrollError('checkApi', res.message ?? res);
-        presentWarning({
-          title: t('home.faceEnrollCapture.errorTitleCheck'),
-          message:
-            res.message?.trim() || t('home.faceEnrollCapture.errorGenericCheck'),
-          showMessage: true,
-        });
-        return;
-      }
-
-      const res = await setEmployeeFaceEnroll(companyId, {
-        employee_id: employeeId,
-        image,
-      });
-      if (!res.success) {
-        logFaceEnrollError('enrollApi', res.message ?? res);
-        presentError({
-          title: t('home.faceEnrollCapture.errorTitle'),
-          message:
-            res.message?.trim() || t('home.faceEnrollCapture.errorGeneric'),
-          showMessage: true,
-        });
-        return;
-      }
-      if (res.data?.face_enrolled !== true) {
-        presentWarning({
-          title: t('home.faceEnrollCapture.errorTitle'),
-          message:
-            res.message?.trim() || t('home.faceEnrollCapture.errorGeneric'),
-          showMessage: true,
-        });
-        return;
-      }
-      showEnrollSuccessModal(res.message);
+        showEnrollSuccessModal(res.message);
       } catch (err) {
         logFaceEnrollError(isCheckMode ? 'checkSubmit' : 'enrollSubmit', err);
         presentError({
@@ -478,12 +405,15 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
             ? t('home.faceEnrollCapture.errorTitleCheck')
             : t('home.faceEnrollCapture.errorTitle'),
           message: readApiError(err),
+          showMessage: true,
+          onAfterDismiss: exitAfterCaptureError,
         });
       }
     },
     [
       companyId,
       employeeId,
+      exitAfterCaptureError,
       isCheckMode,
       presentError,
       presentWarning,
@@ -501,7 +431,7 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
     captureBusyRef.current = true;
     captureStageRef.current = 'photo';
     photoOutput
-      .capturePhoto({}, {})
+      .capturePhoto(capturePhotoSettings, {})
       .then(photo => saveCameraPhotoForUpload(photo))
       .then(path => {
         captureStageRef.current = 'upload';
@@ -524,6 +454,8 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
               ? t('home.faceEnrollCapture.errorTitleCheck')
               : t('home.faceEnrollCapture.errorTitle'),
           message: readApiError(err),
+          showMessage: true,
+          onAfterDismiss: exitAfterCaptureError,
         });
       })
       .finally(() => {
@@ -533,10 +465,19 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
         setUploading(false);
         setSubmitting(false);
       });
-  }, [canCapture, isCheckMode, photoOutput, presentError, submitFaceImage, t]);
+  }, [
+    canCapture,
+    capturePhotoSettings,
+    exitAfterCaptureError,
+    isCheckMode,
+    photoOutput,
+    presentError,
+    submitFaceImage,
+    t,
+  ]);
 
   const handleRequestPermission = useCallback(() => {
-    requestPermission().catch(() => {});
+    requestPermission().catch(() => { });
   }, [requestPermission]);
 
   return (
@@ -597,15 +538,25 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
       ) : (
         <>
           <View style={styles.cameraWrap} onLayout={handleCameraLayout}>
-            {previewReady ? (
+            {preferenceLoaded ? (
               <Camera
+                ref={cameraRef}
                 style={StyleSheet.absoluteFill}
                 device={device}
                 resizeMode="cover"
+                orientationSource="interface"
                 isActive={cameraActive}
                 outputs={cameraOutputs}
               />
             ) : null}
+            <FaceCaptureCameraToolbar
+              cameraPosition={cameraPosition}
+              hasTorch={canUseTorch}
+              torchOn={torchOn}
+              disabled={captureBusy}
+              onToggleCamera={toggleCameraPosition}
+              onToggleTorch={toggleTorch}
+            />
             {uploading ? (
               <View style={styles.modelsOverlay} pointerEvents="none">
                 <ActivityIndicator color="#fff" size="large" />
@@ -625,18 +576,26 @@ export function FaceEnrollCaptureScreen({ navigation, route }: Props) {
               </View>
             ) : null}
             <View style={styles.overlay} pointerEvents="none">
-              <View style={[styles.guide, faceReady && styles.guideReady]} />
+              <View
+                style={[
+                  styles.guide,
+                  faceReady && !multipleFaces && styles.guideReady,
+                  multipleFaces && styles.guideMultiple,
+                ]}
+              />
             </View>
           </View>
           <View style={styles.bottomPanel}>
             <Text style={styles.hint}>
-              {faceReady
-                ? isCheckMode
-                  ? t('home.faceEnrollCapture.hintReadyCheck')
-                  : t('home.faceEnrollCapture.hintReady')
-                : isCheckMode
-                  ? t('home.faceEnrollCapture.hintAlignCheck')
-                  : t('home.faceEnrollCapture.hintAlign')}
+              {multipleFaces
+                ? t('home.faceEnrollCapture.hintMultipleFaces')
+                : faceReady
+                  ? isCheckMode
+                    ? t('home.faceEnrollCapture.hintReadyCheck')
+                    : t('home.faceEnrollCapture.hintReady')
+                  : isCheckMode
+                    ? t('home.faceEnrollCapture.hintAlignCheck')
+                    : t('home.faceEnrollCapture.hintAlign')}
             </Text>
             <Text style={styles.hintMuted}>
               {isCheckMode

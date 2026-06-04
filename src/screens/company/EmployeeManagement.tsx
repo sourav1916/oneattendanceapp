@@ -37,6 +37,7 @@ type EmployeeMenuItem = {
   | 'companyInvites'
   | 'permissions'
   | 'faceEnrollList'
+  | 'companyLedger'
   | 'employeeShift'
   | 'salary'
   | 'reports';
@@ -53,6 +54,7 @@ const MENU_THEMES: Record<string, MenuTheme> = {
   reports: { accent: '#7c3aed', tint: '#ede9fe', border: '#ddd6fe' },
   permissions: { accent: '#0d9488', tint: '#ccfbf1', border: '#99f6e4' },
   face: { accent: '#7c3aed', tint: '#ede9fe', border: '#ddd6fe' },
+  ledger: { accent: '#0d9488', tint: '#ccfbf1', border: '#99f6e4' },
 };
 
 const MENU_ITEMS: EmployeeMenuItem[] = [
@@ -109,6 +111,12 @@ const MENU_ITEMS: EmployeeMenuItem[] = [
     iconName: 'face-recognition',
     itemKey: 'faceEnrollList',
     theme: MENU_THEMES.face,
+  },
+  {
+    id: 'ledger',
+    iconName: 'book-open-variant',
+    itemKey: 'companyLedger',
+    theme: MENU_THEMES.ledger,
   },
 ];
 
@@ -274,6 +282,10 @@ export function EmployeeManagementScreen({ navigation }: Props) {
 
   const handleItemPress = useCallback(
     (itemId: string) => {
+      if (itemId === 'add') {
+        navigation.navigate('CreateEmployee');
+        return;
+      }
       if (itemId === 'list') {
         navigation.navigate('EmployeeList');
         return;
@@ -292,6 +304,10 @@ export function EmployeeManagementScreen({ navigation }: Props) {
       }
       if (itemId === 'face') {
         navigation.navigate('FaceEnrollList');
+        return;
+      }
+      if (itemId === 'ledger') {
+        navigation.navigate('CompanyLedger');
         return;
       }
       openComingSoon();

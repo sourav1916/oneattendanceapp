@@ -136,3 +136,60 @@ export function viewFromIso(iso: string, fallback: { y: number; m: number }): { 
   }
   return { y: p.y, m: p.m };
 }
+
+export type RangeCalendarCell = CalendarCell & {
+  isRangeStart: boolean;
+  isRangeEnd: boolean;
+  inRange: boolean;
+};
+
+function normalizeRange(start: string | null, end: string | null): [string | null, string | null] {
+  if (start == null || end == null) {
+    return [start, end];
+  }
+  return compareIso(start, end) <= 0 ? [start, end] : [end, start];
+}
+
+function isIsoInRange(iso: string, start: string | null, end: string | null): boolean {
+  const [rangeStart, rangeEnd] = normalizeRange(start, end);
+  if (rangeStart == null) {
+    return false;
+  }
+  if (rangeEnd == null) {
+    return iso === rangeStart;
+  }
+  return compareIso(iso, rangeStart) >= 0 && compareIso(iso, rangeEnd) <= 0;
+}
+
+export function buildMonthRangeGrid(options: {
+  viewYear: number;
+  viewMonth: number;
+  startIso: string | null;
+  endIso: string | null;
+  todayIso: string;
+  minDate?: string;
+  maxDate?: string;
+  weekStartsOn: 0 | 1;
+}): RangeCalendarCell[] {
+  const { viewYear, viewMonth, startIso, endIso, todayIso, minDate, maxDate, weekStartsOn } =
+    options;
+  const [rangeStart, rangeEnd] = normalizeRange(startIso, endIso);
+  const anchorIso = rangeStart ?? rangeEnd ?? todayIso;
+  const base = buildMonthGrid({
+    viewYear,
+    viewMonth,
+    selectedIso: anchorIso,
+    todayIso,
+    minDate,
+    maxDate,
+    weekStartsOn,
+  });
+
+  return base.map(cell => ({
+    ...cell,
+    isSelected: false,
+    isRangeStart: rangeStart != null && cell.iso === rangeStart,
+    isRangeEnd: rangeEnd != null && cell.iso === rangeEnd,
+    inRange: isIsoInRange(cell.iso, startIso, endIso),
+  }));
+}

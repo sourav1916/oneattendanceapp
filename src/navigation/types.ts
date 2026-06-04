@@ -1,4 +1,5 @@
 import type { LoginType } from '@src/types/loginAuth';
+import type { FaceAttendanceActionType } from '@src/types/faceAttendance';
 
 export type VerifyOtpRouteParams = {
   loginType: LoginType;
@@ -35,6 +36,10 @@ export type HomeStackParamList = {
   EmployeeManagement: undefined;
   EmployeeList: undefined;
   FaceEnrollList: undefined;
+  FaceAttendance: undefined;
+  FaceAttendanceCapture: {
+    action: FaceAttendanceActionType;
+  };
   FaceEnrollCapture: {
     employeeId: number;
     employeeName: string;
@@ -45,6 +50,9 @@ export type HomeStackParamList = {
   PermissionManagement: undefined;
   EmployeeProfile: { employeeId: number };
   OnboardingRequest: undefined;
+  CompanyLedger: undefined;
+  Ledger: undefined;
+  CreateEmployee: undefined;
 };
 
 /** Main app shell: bottom tabs after login. */

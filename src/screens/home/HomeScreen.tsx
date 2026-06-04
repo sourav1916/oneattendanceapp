@@ -70,6 +70,8 @@ const HOME_MENU_ICONS: Record<string, ActionCardIcon> = {
   employee: { name: 'account-group-outline', color: '#2563eb', backgroundColor: '#dbeafe' },
   leaveReq: { name: 'file-document-edit-outline', color: '#7c3aed', backgroundColor: '#ede9fe' },
   leaveMgmt: { name: 'clipboard-list-outline', color: '#0891b2', backgroundColor: '#cffafe' },
+  ledger: { name: 'book-account-outline', color: '#b45309', backgroundColor: '#fef3c7' },
+  faceAttendance: { name: 'face-recognition', color: '#0d9488', backgroundColor: '#ccfbf1' },
   onboarding: { name: 'email-open-outline', color: '#d946ef', backgroundColor: '#fae8ff' },
 };
 
@@ -89,7 +91,7 @@ function actionCardWithIcon(id: string, title: string, onPress: () => void): Act
 export function HomeScreen(): React.JSX.Element {
   const { t } = useTranslation();
   const navigation = useNavigation<HomeMainNavigation>();
-  const { name, email, cachedUserProfile, profileRoleUser, refreshProfileRole } = useAuth();
+  const { name, email, cachedUserProfile, profileRoleUser, refreshProfileRole, selectedCompany } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
@@ -143,8 +145,11 @@ export function HomeScreen(): React.JSX.Element {
     });
   }, [present, t]);
 
-  const actionCards = useMemo<ActionCard[]>(
-    () => [
+  const isEmployeeCompany = selectedCompany?.relation === 'employee';
+  const isManagerCompany = !isEmployeeCompany;
+
+  const actionCards = useMemo((): ActionCard[] => {
+    const cards: ActionCard[] = [
       actionCardWithIcon(
         'attendance',
         t('home.menu.attendance'),
@@ -165,6 +170,19 @@ export function HomeScreen(): React.JSX.Element {
         t('home.menu.attendanceManagement'),
         () => navigation.navigate('AttendanceManagement'),
       ),
+    ];
+
+    if (isManagerCompany) {
+      cards.push(
+        actionCardWithIcon(
+          'faceAttendance',
+          t('home.menu.faceAttendance'),
+          () => navigation.navigate('FaceAttendance'),
+        ),
+      );
+    }
+
+    cards.push(
       actionCardWithIcon(
         'employee',
         t('home.menu.employeeManagement'),
@@ -181,9 +199,18 @@ export function HomeScreen(): React.JSX.Element {
         t('home.menu.onboarding'),
         () => navigation.navigate('OnboardingRequest'),
       ),
-    ],
-    [navigation, openComingSoon, t],
-  );
+    );
+
+    if (isEmployeeCompany) {
+      cards.splice(2, 0, actionCardWithIcon(
+        'ledger',
+        t('home.menu.ledger'),
+        () => navigation.navigate('Ledger'),
+      ));
+    }
+
+    return cards;
+  }, [isEmployeeCompany, isManagerCompany, navigation, openComingSoon, t]);
 
   return (
     <View style={styles.root}>

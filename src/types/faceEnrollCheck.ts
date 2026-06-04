@@ -5,6 +5,11 @@ export type FaceEnrollCheckData = {
   /** Current API: match score (higher = closer match). */
   similarity?: number | null;
   threshold?: number | null;
+  designation?: string | null;
+  email?: string | null;
+  mobile?: string | null;
+  /** Profile picture URL (absolute or API-relative). */
+  image?: string | null;
   /** Legacy API fields (still accepted when present). */
   enrolled?: boolean;
   is_match?: boolean | null;

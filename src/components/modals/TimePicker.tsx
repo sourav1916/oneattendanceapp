@@ -27,6 +27,7 @@ const LIST_H = ITEM_H * VISIBLE;
 const CENTER_PAD = ITEM_H * Math.floor(VISIBLE / 2);
 
 const HOURS_12 = Array.from({ length: 12 }, (_, i) => i + 1);
+const HOURS_24 = Array.from({ length: 24 }, (_, i) => i);
 
 function minuteData(step: number): number[] {
   const r: number[] = [];
@@ -87,6 +88,14 @@ export function formatTime12h(hhmm: string): string {
   return `${h12}:${pad2(parsed[1])} ${period}`;
 }
 
+export function formatTime24h(hhmm: string): string {
+  const parsed = parseHHmm(hhmm);
+  if (!parsed) {
+    return hhmm;
+  }
+  return `${pad2(parsed[0])}:${pad2(parsed[1])}`;
+}
+
 export type TimePickerProps = {
   visible: boolean;
   value: string;
@@ -99,6 +108,8 @@ export type TimePickerProps = {
   maxTime?: string;
   minuteStep?: number;
   dismissOnBackdropPress?: boolean;
+  /** 24-hour wheels without AM/PM (HH:mm). */
+  use24Hour?: boolean;
 };
 
 function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
@@ -454,6 +465,7 @@ export function TimePicker({
   maxTime,
   minuteStep = 1,
   dismissOnBackdropPress = true,
+  use24Hour = false,
 }: TimePickerProps) {
   const { t } = useTranslation();
   const colors = useThemeColors();
@@ -472,6 +484,7 @@ export function TimePicker({
   const maxParsed = useMemo(() => parseHHmm(maxTime), [maxTime]);
 
   const [hour12, setHour12] = useState(9);
+  const [hour24Direct, setHour24Direct] = useState(9);
   const [minute, setMinute] = useState(0);
   const [period, setPeriod] = useState<Period>('AM');
 
@@ -488,29 +501,39 @@ export function TimePicker({
     }
     const parsed = parseHHmm(value);
     if (parsed) {
-      const conv = from24(parsed[0]);
-      setHour12(conv.h12);
-      setPeriod(conv.period);
       const nearest = minutes.reduce((best, m) =>
         Math.abs(m - parsed[1]) < Math.abs(best - parsed[1]) ? m : best,
       );
       setMinute(nearest);
-      setHourText(String(conv.h12));
       setMinuteText(pad2(nearest));
+      if (use24Hour) {
+        setHour24Direct(parsed[0]);
+        setHourText(pad2(parsed[0]));
+      } else {
+        const conv = from24(parsed[0]);
+        setHour12(conv.h12);
+        setPeriod(conv.period);
+        setHourText(String(conv.h12));
+      }
     } else {
-      setHour12(9);
       setMinute(0);
-      setPeriod('AM');
-      setHourText('9');
       setMinuteText('00');
+      if (use24Hour) {
+        setHour24Direct(9);
+        setHourText('09');
+      } else {
+        setHour12(9);
+        setPeriod('AM');
+        setHourText('9');
+      }
     }
-  }, [visible, value, minutes]);
+  }, [visible, value, minutes, use24Hour]);
 
   useEffect(() => {
     if (!hourFocused) {
-      setHourText(String(hour12));
+      setHourText(use24Hour ? pad2(hour24Direct) : String(hour12));
     }
-  }, [hour12, hourFocused]);
+  }, [hour12, hour24Direct, hourFocused, use24Hour]);
 
   useEffect(() => {
     if (!minuteFocused) {
@@ -519,8 +542,8 @@ export function TimePicker({
   }, [minute, minuteFocused]);
 
   const hour24 = useMemo(
-    () => to24(hour12, period),
-    [hour12, period],
+    () => (use24Hour ? hour24Direct : to24(hour12, period)),
+    [hour12, hour24Direct, period, use24Hour],
   );
 
   const totalMinutes = useMemo(
@@ -543,8 +566,16 @@ export function TimePicker({
     if (isInRange) {
       return null;
     }
-    const minDisplay = minParsed ? formatTime12h(`${pad2(minParsed[0])}:${pad2(minParsed[1])}`) : '';
-    const maxDisplay = maxParsed ? formatTime12h(`${pad2(maxParsed[0])}:${pad2(maxParsed[1])}`) : '';
+    const minDisplay = minParsed
+      ? use24Hour
+        ? formatTime24h(`${pad2(minParsed[0])}:${pad2(minParsed[1])}`)
+        : formatTime12h(`${pad2(minParsed[0])}:${pad2(minParsed[1])}`)
+      : '';
+    const maxDisplay = maxParsed
+      ? use24Hour
+        ? formatTime24h(`${pad2(maxParsed[0])}:${pad2(maxParsed[1])}`)
+        : formatTime12h(`${pad2(maxParsed[0])}:${pad2(maxParsed[1])}`)
+      : '';
     if (minParsed && maxParsed) {
       return t('modals.timePicker.rangeError', { min: minDisplay, max: maxDisplay });
     }
@@ -555,13 +586,11 @@ export function TimePicker({
       return t('modals.timePicker.rangeErrorMax', { max: maxDisplay });
     }
     return null;
-  }, [isInRange, maxParsed, minParsed, t]);
+  }, [isInRange, maxParsed, minParsed, t, use24Hour]);
 
   const isHourDisabled = useCallback(
-    (h12: number) => {
-      const am24 = to24(h12, 'AM');
-      const pm24 = to24(h12, 'PM');
-      const h24 = period === 'AM' ? am24 : pm24;
+    (hourVal: number) => {
+      const h24 = use24Hour ? hourVal : to24(hourVal, period);
       if (minParsed && h24 < minParsed[0]) {
         return true;
       }
@@ -570,7 +599,7 @@ export function TimePicker({
       }
       return false;
     },
-    [maxParsed, minParsed, period],
+    [maxParsed, minParsed, period, use24Hour],
   );
 
   const isMinuteDisabled = useCallback(
@@ -591,11 +620,15 @@ export function TimePicker({
       const digits = text.replace(/\D/g, '').slice(0, 2);
       setHourText(digits);
       const num = parseInt(digits, 10);
-      if (num >= 1 && num <= 12) {
+      if (use24Hour) {
+        if (num >= 0 && num <= 23) {
+          setHour24Direct(num);
+        }
+      } else if (num >= 1 && num <= 12) {
         setHour12(num);
       }
     },
-    [],
+    [use24Hour],
   );
 
   const handleMinuteTextChange = useCallback(
@@ -616,13 +649,20 @@ export function TimePicker({
   const commitHourText = useCallback(() => {
     setHourFocused(false);
     const num = parseInt(hourText, 10);
-    if (isNaN(num) || num < 1 || num > 12) {
+    if (use24Hour) {
+      if (isNaN(num) || num < 0 || num > 23) {
+        setHourText(pad2(hour24Direct));
+      } else {
+        setHour24Direct(num);
+        setHourText(pad2(num));
+      }
+    } else if (isNaN(num) || num < 1 || num > 12) {
       setHourText(String(hour12));
     } else {
       setHour12(num);
       setHourText(String(num));
     }
-  }, [hour12, hourText]);
+  }, [hour12, hour24Direct, hourText, use24Hour]);
 
   const commitMinuteText = useCallback(() => {
     setMinuteFocused(false);
@@ -644,8 +684,8 @@ export function TimePicker({
   }, [commitHourText]);
 
   const formatHourItem = useCallback(
-    (val: number) => String(val),
-    [],
+    (val: number) => (use24Hour ? pad2(val) : String(val)),
+    [use24Hour],
   );
 
   const handleConfirm = useCallback(() => {
@@ -707,39 +747,41 @@ export function TimePicker({
                   style={styles.inputTextInput}
                 />
               </View>
-              <View style={styles.periodRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: period === 'AM' }}
-                  onPress={() => setPeriod('AM')}
-                  style={[
-                    styles.periodBtn,
-                    styles.periodBtnTop,
-                    period === 'AM' && styles.periodBtnActive,
-                  ]}>
-                  <Text style={[
-                    styles.periodText,
-                    period === 'AM' && styles.periodTextActive,
-                  ]}>
-                    {t('modals.timePicker.am')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: period === 'PM' }}
-                  onPress={() => setPeriod('PM')}
-                  style={[
-                    styles.periodBtn,
-                    period === 'PM' && styles.periodBtnActive,
-                  ]}>
-                  <Text style={[
-                    styles.periodText,
-                    period === 'PM' && styles.periodTextActive,
-                  ]}>
-                    {t('modals.timePicker.pm')}
-                  </Text>
-                </Pressable>
-              </View>
+              {!use24Hour ? (
+                <View style={styles.periodRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: period === 'AM' }}
+                    onPress={() => setPeriod('AM')}
+                    style={[
+                      styles.periodBtn,
+                      styles.periodBtnTop,
+                      period === 'AM' && styles.periodBtnActive,
+                    ]}>
+                    <Text style={[
+                      styles.periodText,
+                      period === 'AM' && styles.periodTextActive,
+                    ]}>
+                      {t('modals.timePicker.am')}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: period === 'PM' }}
+                    onPress={() => setPeriod('PM')}
+                    style={[
+                      styles.periodBtn,
+                      period === 'PM' && styles.periodBtnActive,
+                    ]}>
+                    <Text style={[
+                      styles.periodText,
+                      period === 'PM' && styles.periodTextActive,
+                    ]}>
+                      {t('modals.timePicker.pm')}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.inputLabels}>
@@ -758,9 +800,9 @@ export function TimePicker({
 
             <View style={styles.wheelsRow}>
               <Wheel
-                data={HOURS_12}
-                selected={hour12}
-                onSelect={setHour12}
+                data={use24Hour ? HOURS_24 : HOURS_12}
+                selected={use24Hour ? hour24Direct : hour12}
+                onSelect={use24Hour ? setHour24Direct : setHour12}
                 formatItem={formatHourItem}
                 isDisabled={isHourDisabled}
                 styles={styles}
@@ -815,6 +857,11 @@ export function TimePicker({
 export type UseTimePickerOptions = {
   initialValue?: string;
   onConfirm?: (time: string) => void;
+  use24Hour?: boolean;
+  title?: string;
+  cancelLabel?: string;
+  confirmLabel?: string;
+  minuteStep?: number;
 };
 
 export function useTimePicker(opts: UseTimePickerOptions = {}) {
@@ -838,6 +885,11 @@ export function useTimePicker(opts: UseTimePickerOptions = {}) {
     value,
     onDismiss: dismiss,
     onConfirm: handleConfirm,
+    use24Hour: opts.use24Hour,
+    title: opts.title,
+    cancelLabel: opts.cancelLabel,
+    confirmLabel: opts.confirmLabel,
+    minuteStep: opts.minuteStep,
   };
 
   return { value, setValue, visible, present, dismiss, pickerProps };
