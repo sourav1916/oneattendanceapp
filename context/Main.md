@@ -22,6 +22,7 @@ This folder (`context/`) holds **documentation for AI and humans**, not runtime 
 | [**alerts.md**](./alerts.md) | `ConfirmAlert`, `StatusAlert`, confirms and success/error popups |
 | [**profile.md**](./profile.md) | Profile / EditProfile, avatar upload, update-profile, profile-role cache |
 | [**home.md**](./home.md) | HomeScreen, MainTopBar, company switcher arrow, pull-to-refresh |
+| [**leave-management.md**](./leave-management.md) | Manager leave requests, approve/reject, hub, employee `LeaveRequest` |
 
 ---
 
@@ -30,7 +31,7 @@ This folder (`context/`) holds **documentation for AI and humans**, not runtime 
 **One Attendance** is a **React Native 0.85** mobile app (Android / iOS) for attendance and related HR-style workflows. Product site: `https://attendance.onesaas.in` (`APP_PORTAL_URL` in `src/utils/config.ts`). REST API: `https://api-attendance.onesaas.in` (`API_ENDPOINT`).
 
 - **Auth**: Email/password + OTP verification; session stored locally.
-- **Shell after login**: Bottom tabs (**Home**, **Attendance**, **Settings**) + a **custom top bar** (company + profile entry).
+- **Shell after login**: Bottom tabs (**Home**, **Attendance** or **Attendance Management** for owners, optional **Face Attendance**, **Settings**) + a **custom top bar** (company + profile entry).
 - **Company**: Users with multiple companies from `/users/profile-role` must pick one (`CompanySelectionGate` + pickers).
 - **i18n**: Many Indian languages + English (`src/i18n`, `src/locales/*`).
 - **Theming**: Light / dark / system, persisted (`ThemeContext`, `src/theme/palettes.ts`).

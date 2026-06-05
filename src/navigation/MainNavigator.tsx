@@ -16,12 +16,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { CompanySelectionGate } from '@src/components/CompanySelectionGate';
+import { useAuth } from '@src/context/AuthContext';
 import { useThemeColors } from '@src/context/ThemeContext';
+import { FaceAttendanceNavigator } from '@src/navigation/FaceAttendanceNavigator';
 import { HomeNavigator } from '@src/navigation/HomeNavigator';
 import { SettingsNavigator } from '@src/navigation/SettingsNavigator';
 import { TabSlideTransition } from '@src/navigation/tabSlideTransition';
 import type { MainTabParamList } from '@src/navigation/types';
 import { AttendanceScreen } from '@src/screens/attendance/AttendanceScreen';
+import { AttendanceManagementScreen } from '@src/screens/company/AttendanceManagement';
+import { canShowFaceAttendanceTab } from '@src/utils/faceAttendanceAccess';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -168,6 +172,12 @@ function MainTabNavigator() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const { profileRole, selectedCompany } = useAuth();
+  const isOwnerCompany = selectedCompany?.relation === 'owned';
+  const showFaceAttendanceTab = useMemo(
+    () => canShowFaceAttendanceTab(profileRole, selectedCompany),
+    [profileRole, selectedCompany],
+  );
   const screenOptions = useMemo((): BottomTabNavigationOptions => {
     const paddingBottom = insets.bottom + TAB_BAR_LABEL_BOTTOM_GAP;
     const paddingTop = Platform.OS === 'ios' ? 8 : 6;
@@ -203,14 +213,39 @@ function MainTabNavigator() {
           tabBarIcon: tabBarIconMci('home-outline', 'home'),
         }}
       />
-      <Tab.Screen
-        name="Attendance"
-        component={AttendanceScreen}
-        options={{
-          title: t('tabs.attendance'),
-          tabBarIcon: tabBarIconMci('calendar-clock-outline', 'calendar-clock'),
-        }}
-      />
+      {isOwnerCompany ? (
+        <Tab.Screen
+          name="AttendanceManagement"
+          component={AttendanceManagementScreen}
+          options={{
+            title: t('tabs.attendanceManagement'),
+            tabBarIcon: tabBarIconMci(
+              'clipboard-text-clock-outline',
+              'clipboard-text-clock',
+            ),
+          }}
+        />
+      ) : (
+        <Tab.Screen
+          name="Attendance"
+          component={AttendanceScreen}
+          options={{
+            title: t('tabs.attendance'),
+            tabBarIcon: tabBarIconMci('calendar-clock-outline', 'calendar-clock'),
+          }}
+        />
+      )}
+      {showFaceAttendanceTab ? (
+        <Tab.Screen
+          name="FaceAttendance"
+          component={FaceAttendanceNavigator}
+          listeners={nestedStackResetOnTabFocus('FaceAttendance', 'FaceAttendance')}
+          options={{
+            title: t('tabs.faceAttendance'),
+            tabBarIcon: tabBarIconMci('face-recognition', 'face-recognition'),
+          }}
+        />
+      ) : null}
       <Tab.Screen
         name="Settings"
         component={SettingsNavigator}

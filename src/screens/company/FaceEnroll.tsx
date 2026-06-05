@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { deleteEmployeeFaceEnroll } from '@src/api/deleteEmployeeFaceEnroll';
+import { FaceEnrollCaptureModal } from '@src/components/modals/FaceEnrollCaptureModal';
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
 import {
   StatusAlert,
@@ -32,13 +33,20 @@ import {
   TAB_SCREEN_SAFE_AREA_EDGES,
   TAB_SCREEN_SCROLL_PADDING_BOTTOM,
 } from '@src/constants/tabScreenLayout';
-import type { HomeStackParamList } from '@src/navigation/types';
+import type { PendingStatusAlert } from '@src/navigation/faceCaptureNavigation';
+import type { FaceAttendanceFlowParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { FaceEnrollListItem } from '@src/types/faceEnrollList';
 import { API_ENDPOINT } from '@src/utils/config';
 import { readApiError } from '@src/utils/readApiError';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'FaceEnrollList'>;
+type Props = NativeStackScreenProps<FaceAttendanceFlowParamList, 'FaceEnroll'>;
+
+type FaceEnrollCaptureSession = {
+  employeeId: number;
+  employeeName: string;
+  mode: 'enroll' | 'check';
+};
 
 const SKELETON_ROWS = 6;
 const ACCENT = '#7c3aed';
@@ -525,7 +533,7 @@ const FaceEnrollRow = React.memo(function FaceEnrollRow({
   );
 });
 
-export function FaceEnrollListScreen({ navigation }: Props) {
+export function FaceEnrollScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
@@ -535,7 +543,35 @@ export function FaceEnrollListScreen({ navigation }: Props) {
   );
   const { selectedCompany } = useAuth();
   const companyId = selectedCompany?.id ?? null;
-  const { props: statusProps, presentError, presentSuccess } = useStatusAlert();
+  const { props: statusProps, presentError, presentWarning, presentSuccess } =
+    useStatusAlert();
+
+  const [captureSession, setCaptureSession] =
+    useState<FaceEnrollCaptureSession | null>(null);
+
+  const closeCapture = useCallback(() => {
+    setCaptureSession(null);
+  }, []);
+
+  const handleCaptureAlert = useCallback(
+    (alert: PendingStatusAlert) => {
+      const config = {
+        title: alert.title,
+        message: alert.message,
+        showMessage: true,
+      };
+      if (alert.tone === 'error') {
+        presentError(config);
+        return;
+      }
+      if (alert.tone === 'warning') {
+        presentWarning(config);
+        return;
+      }
+      presentSuccess(config);
+    },
+    [presentError, presentSuccess, presentWarning],
+  );
   const { props: confirmProps, present: presentConfirm, dismiss: dismissConfirm } =
     useConfirmAlert();
   const [deletingEmployeeId, setDeletingEmployeeId] = useState<number | null>(
@@ -579,13 +615,13 @@ export function FaceEnrollListScreen({ navigation }: Props) {
 
   const openFaceCapture = useCallback(
     (item: FaceEnrollListItem, captureMode: 'enroll' | 'check') => {
-      navigation.navigate('FaceEnrollCapture', {
+      setCaptureSession({
         employeeId: item.employee_id,
         employeeName: item.name,
         mode: captureMode,
       });
     },
-    [navigation],
+    [],
   );
 
   const confirmDeleteFace = useCallback(
@@ -837,6 +873,18 @@ export function FaceEnrollListScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       />
+      {captureSession != null ? (
+        <FaceEnrollCaptureModal
+          visible
+          employeeId={captureSession.employeeId}
+          employeeName={captureSession.employeeName}
+          mode={captureSession.mode}
+          onDismiss={closeCapture}
+          onAlert={handleCaptureAlert}
+          onEnrollSuccess={refresh}
+        />
+      ) : null}
+
       <StatusAlert {...statusProps} />
       <ConfirmAlert {...confirmProps} />
     </SafeAreaView>

@@ -303,7 +303,7 @@ export function EmployeeManagementScreen({ navigation }: Props) {
         return;
       }
       if (itemId === 'face') {
-        navigation.navigate('FaceEnrollList');
+        navigation.navigate('FaceEnroll');
         return;
       }
       if (itemId === 'ledger') {

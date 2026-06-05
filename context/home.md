@@ -60,7 +60,14 @@ Tap → **`navigation.navigate('Settings')`** (not Profile directly).
 
 ### Menu grid
 
-Tiles: Attendance (tab), Calendar, Company list, Staff, Leave request, Leave management (coming soon). See **`home.menu.*`** i18n.
+Tiles (owner vs employee varies): Attendance tab or **Attendance Management** stack, Calendar, Company list, Employee management, **Leave request** (self), **Leave management** (manager hub), Ledger, Onboarding, Face attendance, etc. See **`home.menu.*`** i18n.
+
+| Tile | Route | Notes |
+|------|-------|-------|
+| Leave request | `LeaveRequest` | Employee own applications — [**leave-management.md**](./leave-management.md) |
+| Leave management | `LeaveManagement` | Manager hub → **Leave requests** live |
+| Attendance (owners) | Tab `AttendanceManagement` | Company attendance list |
+| Attendance (employees) | Tab `Attendance` | Self punch |
 
 ---
 
@@ -80,3 +87,4 @@ Tiles: Attendance (tab), Calendar, Company list, Staff, Leave request, Leave man
 - [**modals.md**](./modals.md) — `CompanySwitcher`, `CreateCompany`
 - [**profile.md**](./profile.md) — profile-role cache, avatar upload
 - [**alerts.md**](./alerts.md) — `StatusAlert` on create-from-switcher success
+- [**leave-management.md**](./leave-management.md) — Leave Management hub, Leave Requests, APIs

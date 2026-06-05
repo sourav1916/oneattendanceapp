@@ -1,5 +1,4 @@
 import type { LoginType } from '@src/types/loginAuth';
-import type { FaceAttendanceActionType } from '@src/types/faceAttendance';
 
 export type VerifyOtpRouteParams = {
   loginType: LoginType;
@@ -24,6 +23,7 @@ export type SettingsStackParamList = {
   ChangePassword: undefined;
   MyCalendar: undefined;
   Support: undefined;
+  Subscription: undefined;
 };
 
 /** Stack inside the Home tab (dashboard + leave balance, etc.). */
@@ -34,17 +34,13 @@ export type HomeStackParamList = {
   CompanyList: undefined;
   AttendanceManagement: undefined;
   EmployeeManagement: undefined;
+  LeaveManagement: undefined;
+  LeaveRequests: undefined;
+  LeaveBalance: undefined;
+  LeaveConfig: undefined;
   EmployeeList: undefined;
-  FaceEnrollList: undefined;
+  FaceEnroll: undefined;
   FaceAttendance: undefined;
-  FaceAttendanceCapture: {
-    action: FaceAttendanceActionType;
-  };
-  FaceEnrollCapture: {
-    employeeId: number;
-    employeeName: string;
-    mode?: 'enroll' | 'check';
-  };
   InvitePackages: undefined;
   CompanyInvites: undefined;
   PermissionManagement: undefined;
@@ -55,9 +51,17 @@ export type HomeStackParamList = {
   CreateEmployee: undefined;
 };
 
+/** Face attendance flow (Home stack + Face Attendance tab). */
+export type FaceAttendanceFlowParamList = {
+  FaceAttendance: undefined;
+  FaceEnroll: undefined;
+};
+
 /** Main app shell: bottom tabs after login. */
 export type MainTabParamList = {
   Home: undefined;
   Attendance: undefined;
+  AttendanceManagement: undefined;
+  FaceAttendance: undefined;
   Settings: undefined;
 };

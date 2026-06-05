@@ -1,13 +1,13 @@
 import type { Image } from 'react-native-nitro-image';
 import type { CameraOrientation, Photo } from 'react-native-vision-camera';
 
-/** Target upload size for face enrollment (~100 KB). */
-const TARGET_MAX_BYTES = 100 * 1024;
-const MAX_EDGE_PX = 640;
-const FALLBACK_MAX_EDGE_PX = 480;
-const START_JPEG_QUALITY = 75;
-const MIN_JPEG_QUALITY = 40;
-const QUALITY_STEP = 8;
+/** Target upload size for face APIs (~35–40 KB, keeps 520–600px faces sharp). */
+const TARGET_MAX_BYTES = 40 * 1024;
+const MAX_EDGE_PX = 600;
+const FALLBACK_MAX_EDGE_PX = 520;
+const START_JPEG_QUALITY = 84;
+const MIN_JPEG_QUALITY = 68;
+const QUALITY_STEP = 4;
 
 /** Matches Vision Camera Android `HybridPhoto.toImage()` (counterRotated). */
 const COUNTER_ORIENTATION: Record<CameraOrientation, CameraOrientation> = {
@@ -100,7 +100,7 @@ async function normalizeFaceUploadImage(
 
 /**
  * Writes a captured photo to JPEG with orientation and mirroring baked into pixels,
- * then resizes and compresses for fast face-enrollment upload (~100 KB).
+ * then resizes and compresses for fast face upload (~40 KB, recognition-safe).
  * Avoids `Photo.saveToTemporaryFileAsync()`, which keeps rotation in EXIF and often
  * displays sideways on servers that ignore EXIF.
  */

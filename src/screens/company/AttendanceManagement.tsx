@@ -648,6 +648,7 @@ function CountsRow({
 
 export function AttendanceManagementScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
+  const showBack = navigation.canGoBack();
   const searchInputRef = useRef<TextInput>(null);
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
@@ -1105,12 +1106,14 @@ export function AttendanceManagementScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
         <View style={styles.stackHeader}>
-          <HeaderBackButton
-            onPress={() => navigation.goBack()}
-            tintColor={colors.primary}
-            displayMode="minimal"
-            accessibilityLabel={t('home.attendanceManagement.back')}
-          />
+          {showBack ? (
+            <HeaderBackButton
+              onPress={() => navigation.goBack()}
+              tintColor={colors.primary}
+              displayMode="minimal"
+              accessibilityLabel={t('home.attendanceManagement.back')}
+            />
+          ) : null}
           <Text style={styles.stackHeaderTitle} numberOfLines={1} accessibilityRole="header">
             {t('home.attendanceManagement.title')}
           </Text>
@@ -1126,12 +1129,14 @@ export function AttendanceManagementScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
         <View style={styles.stackHeader}>
-          <HeaderBackButton
-            onPress={() => navigation.goBack()}
-            tintColor={colors.primary}
-            displayMode="minimal"
-            accessibilityLabel={t('home.attendanceManagement.back')}
-          />
+          {showBack ? (
+            <HeaderBackButton
+              onPress={() => navigation.goBack()}
+              tintColor={colors.primary}
+              displayMode="minimal"
+              accessibilityLabel={t('home.attendanceManagement.back')}
+            />
+          ) : null}
           <Text style={styles.stackHeaderTitle} numberOfLines={1} accessibilityRole="header">
             {t('home.attendanceManagement.title')}
           </Text>
@@ -1153,12 +1158,14 @@ export function AttendanceManagementScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
       <View style={styles.stackHeader}>
-        <HeaderBackButton
-          onPress={() => navigation.goBack()}
-          tintColor={colors.primary}
-          displayMode="minimal"
-          accessibilityLabel={t('home.attendanceManagement.back')}
-        />
+        {showBack ? (
+          <HeaderBackButton
+            onPress={() => navigation.goBack()}
+            tintColor={colors.primary}
+            displayMode="minimal"
+            accessibilityLabel={t('home.attendanceManagement.back')}
+          />
+        ) : null}
         <Text style={styles.stackHeaderTitle} numberOfLines={1} accessibilityRole="header">
           {t('home.attendanceManagement.title')}
         </Text>

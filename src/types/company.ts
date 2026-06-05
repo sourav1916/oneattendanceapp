@@ -11,11 +11,20 @@ export type StoredSelectedCompany = {
   relation: 'owned' | 'employee';
 };
 
+export type ProfileCompanyPermission = {
+  id?: number;
+  action?: string;
+  code?: string;
+  name?: string;
+  is_allowed?: number | boolean;
+};
+
 export type ProfileOwnedCompany = {
   id: number;
   name?: string;
   logo_url?: string | null;
   role?: string;
+  permissions?: ProfileCompanyPermission[];
   [key: string]: unknown;
 };
 
@@ -24,6 +33,7 @@ export type ProfileEmployeeCompany = {
   name?: string;
   logo_url?: string | null;
   role?: string;
+  permissions?: ProfileCompanyPermission[];
   [key: string]: unknown;
 };
 

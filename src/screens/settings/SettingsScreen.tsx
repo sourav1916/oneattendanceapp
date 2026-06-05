@@ -39,6 +39,11 @@ const MENU_ROW_ICONS: Record<string, MenuRowIcon> = {
   theme: { name: 'theme-light-dark', color: '#6366f1', backgroundColor: '#e0e7ff' },
   language: { name: 'translate', color: '#db2777', backgroundColor: '#fce7f3' },
   notifications: { name: 'bell-outline', color: '#ca8a04', backgroundColor: '#fef9c3' },
+  subscription: {
+    name: 'credit-card-outline',
+    color: '#4f46e5',
+    backgroundColor: '#e0e7ff',
+  },
   help: { name: 'lifebuoy', color: '#4f46e5', backgroundColor: '#e0e7ff' },
   about: { name: 'information-outline', color: '#64748b', backgroundColor: '#f1f5f9' },
   logout: { name: 'logout', color: '#dc2626', backgroundColor: '#fee2e2' },
@@ -269,6 +274,11 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             t('settings.rows.profile.subtitle'),
           ),
           menuRowWithIcon(
+            'subscription',
+            t('settings.rows.subscription.title'),
+            t('settings.rows.subscription.subtitle'),
+          ),
+          menuRowWithIcon(
             'sessions',
             t('settings.rows.sessions.title'),
             t('settings.rows.sessions.subtitle'),
@@ -331,6 +341,10 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       }
       if (id === 'profile') {
         navigation.navigate('Profile');
+        return;
+      }
+      if (id === 'subscription') {
+        navigation.navigate('Subscription');
         return;
       }
       if (id === 'security') {

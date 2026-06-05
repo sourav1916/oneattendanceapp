@@ -15,7 +15,9 @@ Users can browse companies they have access to, create new companies, and manage
 | Create (no companies yet) | **`CompanySwitcher`** empty state → `CreateCompany` | Same API + `refreshProfileRole` |
 | Employee hub | `EmployeeManagement.tsx` | (sub-routes) |
 | Employee list | `EmployeeList.tsx` | `GET /employees/list` (+ `company` header) |
-| Face enrollment | `FaceEnrollList.tsx` → `FaceEnrollCapture.tsx` | `/employees/face-enroll/*` — see [**face-enroll.md**](./face-enroll.md) |
+| **Leave hub** | **`LeaveManagement.tsx`** | → **`LeaveRequests`** (live); see [**leave-management.md**](./leave-management.md) |
+| Attendance mgmt | `AttendanceManagement.tsx` | Company attendance list + bulk approve |
+| Face enrollment | `FaceEnroll.tsx` | `/employees/face-enroll/*` — see [**face-enroll.md**](./face-enroll.md) |
 
 ---
 
@@ -101,6 +103,8 @@ Keys under **`home.companyList`** and **`home.companyList.createModal`** in `src
 ## Employee management (related)
 
 - **`EmployeeManagement.tsx`**: menu hub (add employee, employee list, face enrollment, etc.; some items “coming soon”).
+- **`LeaveManagement.tsx`**: menu hub for company leave admin — **Leave requests** navigates to **`LeaveRequests.tsx`**; create leave, balances, policies, reports → coming soon.
+- **`LeaveRequests.tsx`**: manager list from **`GET /leave/emp-leaves`**; approve / reject / bulk; requires **`LEAVE.MNG`** — full detail in [**leave-management.md**](./leave-management.md).
 - **`EmployeeList.tsx`**: paginated employees; requires **`useAuth().selectedCompany`** and sends **`company`** header — see [**theme-api.md**](./theme-api.md).
 - **Face enrollment**: [**face-enroll.md**](./face-enroll.md) — list, capture, upload image URL, enroll/check/delete APIs.
 
@@ -138,9 +142,10 @@ src/
 │   ├── CompanyList.tsx
 │   ├── EmployeeManagement.tsx
 │   ├── EmployeeList.tsx
-│   ├── FaceEnrollList.tsx
-│   ├── FaceEnrollCapture.tsx
-│   └── … (AttendanceManagement, Invites, Permissions, …)
+│   ├── FaceEnroll.tsx
+│   ├── LeaveManagement.tsx
+│   ├── LeaveRequests.tsx
+│   └── … (AttendanceManagement, Invites, Permissions, CompanyLedger, …)
 ├── screens/home/
 │   └── HomeScreen.tsx          # Company tile → CompanyList
 └── types/
@@ -166,4 +171,5 @@ src/
 - [**alerts.md**](./alerts.md) — `StatusAlert` / `ConfirmAlert` after create
 - [**navigation.md**](./navigation.md) — `HomeStackParamList`.
 - [**face-enroll.md**](./face-enroll.md) — capture, upload, enroll/check APIs.
+- [**leave-management.md**](./leave-management.md) — manager leave list, approve-edit, reject, bulk.
 - [**theme-api.md**](./theme-api.md) — `authHttpClient`, `company` header on employee routes.

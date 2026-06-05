@@ -24,21 +24,32 @@ const FACE_DETECTOR_FALLBACK_WIDTH = 360;
 const FACE_DETECTOR_FALLBACK_HEIGHT = 640;
 /** Avoid racing CameraX torch with session configure/unbind. */
 const TORCH_APPLY_DELAY_MS = 150;
+/** Hold a stable face before auto-capture. */
+const AUTO_CAPTURE_STABLE_MS = 750;
 
-export const FACE_GUIDE_OFFSET_UP = -56;
+export { FACE_GUIDE_OFFSET_UP } from '@src/constants/faceCaptureLayout';
 
 type UseFaceCaptureCameraOptions = {
   /** When true, face detection and capture button are disabled. */
   captureBusy: boolean;
   /** When false, camera preview is not started (e.g. confirm step). */
   cameraEnabled?: boolean;
+  /** When false, camera session stays off (e.g. full-screen modal closed). */
+  sessionActive?: boolean;
+  /** Fire capture after the face stays valid for {@link AUTO_CAPTURE_STABLE_MS}. */
+  autoCapture?: boolean;
+  onAutoCapture?: () => void;
 };
 
 export function useFaceCaptureCamera({
   captureBusy,
   cameraEnabled = true,
+  sessionActive = true,
+  autoCapture = false,
+  onAutoCapture,
 }: UseFaceCaptureCameraOptions) {
-  const isFocused = useIsFocused();
+  const routeFocused = useIsFocused();
+  const isFocused = routeFocused && sessionActive;
   const { hasPermission, requestPermission, canRequestPermission } =
     useCameraPermission();
   const photoOutput = usePhotoOutput({ qualityPrioritization: 'balanced' });
@@ -54,10 +65,14 @@ export function useFaceCaptureCamera({
 
   const captureBusyRef = useRef(captureBusy);
   captureBusyRef.current = captureBusy;
+  const cameraActiveRef = useRef(false);
 
   const cameraRef = useRef<CameraRef>(null);
   const torchApplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const torchEnabledOnDeviceRef = useRef(false);
+  const autoCaptureFiredRef = useRef(false);
+  const onAutoCaptureRef = useRef(onAutoCapture);
+  onAutoCaptureRef.current = onAutoCapture;
 
   const device = useCameraDevice(cameraPosition);
 
@@ -133,6 +148,7 @@ export function useFaceCaptureCamera({
   const previewReady = previewWidth > 0 && previewHeight > 0;
 
   const cameraActive =
+    sessionActive &&
     cameraEnabled &&
     isFocused &&
     appState === 'active' &&
@@ -140,6 +156,8 @@ export function useFaceCaptureCamera({
     device != null &&
     previewReady &&
     preferenceLoaded;
+
+  cameraActiveRef.current = cameraActive;
 
   const clearTorchApplyTimer = useCallback(() => {
     if (torchApplyTimerRef.current != null) {
@@ -191,6 +209,39 @@ export function useFaceCaptureCamera({
 
   const canCapture =
     faceReady && !multipleFaces && previewReady && !captureBusy;
+
+  useEffect(() => {
+    if (!faceReady || multipleFaces || captureBusy) {
+      autoCaptureFiredRef.current = false;
+    }
+  }, [captureBusy, faceReady, multipleFaces]);
+
+  useEffect(() => {
+    if (!autoCapture || onAutoCaptureRef.current == null) {
+      return;
+    }
+    if (!canCapture || autoCaptureFiredRef.current) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (
+        captureBusyRef.current ||
+        autoCaptureFiredRef.current ||
+        !cameraActiveRef.current ||
+        !faceReady ||
+        multipleFaces
+      ) {
+        return;
+      }
+      autoCaptureFiredRef.current = true;
+      onAutoCaptureRef.current?.();
+    }, AUTO_CAPTURE_STABLE_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [autoCapture, canCapture, faceReady, multipleFaces]);
 
   const resetFaceStability = useCallback(() => {
     setFaceReady(false);
@@ -290,6 +341,8 @@ export function useFaceCaptureCamera({
     requestPermission,
     preferenceLoaded,
     previewReady,
+    previewWidth,
+    previewHeight,
     cameraActive,
     faceReady,
     multipleFaces,

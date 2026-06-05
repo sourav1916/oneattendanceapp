@@ -196,6 +196,11 @@ export function CompanyLedgerScreen({ navigation }: Props) {
     setToDate(null);
   }, []);
 
+  const handleDateRangeClear = useCallback(() => {
+    clearDateRange();
+    setDateRangePickerVisible(false);
+  }, [clearDateRange]);
+
   const dateRangeLabel = useMemo(() => {
     if (fromDate != null && toDate != null) {
       return `${formatLedgerShortDate(fromDate)} – ${formatLedgerShortDate(toDate)}`;
@@ -642,6 +647,7 @@ export function CompanyLedgerScreen({ navigation }: Props) {
         locale={i18n.language}
         onDismiss={() => setDateRangePickerVisible(false)}
         onConfirm={handleDateRangeConfirm}
+        onClear={handleDateRangeClear}
       />
 
       <LedgerTransactionDetailModal

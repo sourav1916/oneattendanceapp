@@ -29,6 +29,26 @@ export function isTruecallerConfigured(): boolean {
 /** Product / marketing site (web app). */
 export const APP_PORTAL_URL = 'https://attendance.onesaas.in';
 
+/**
+ * Zwitch PG access key (public) — same as web `Layer.checkout({ accesskey })`.
+ * Dashboard → Developers → **PG API Keys** (not API Keys). Must match the environment
+ * your server uses when creating `payment_token` (sandbox vs live).
+ */
+export const ZWITCH_OPEN_ACCESS_KEY = 'ebab5ff3-8ff5-423c-b1bf-4f5a0f99fec0';
+
+/**
+ * Must match web Layer script: sandbox → `sandbox-payments.open.money/layer`,
+ * live → `payments.open.money/layer` (see test.html / Zwitch docs).
+ */
+export const ZWITCH_PAYMENT_ENVIRONMENT: 'sandbox' | 'live' = 'live';
+
+/**
+ * Shown on the Zwitch checkout screen (`setCompanyLogo`).
+ * Keep in sync with `COMPANY_LOGO_URL` in `ZwitchPaymentModule.kt`.
+ */
+export const ZWITCH_COMPANY_LOGO_URL =
+    'https://ooms.in/uploads/ooms/logo.png';
+
 /** Shown in the main app top bar when no company is selected. */
 export const COMPANY_DISPLAY_NAME = 'One Attendance';
 

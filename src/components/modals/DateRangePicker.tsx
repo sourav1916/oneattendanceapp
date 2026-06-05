@@ -52,6 +52,8 @@ export type DateRangePickerProps = {
   toDate: string | null;
   onDismiss: () => void;
   onConfirm: (fromDate: string, toDate: string) => void;
+  /** Clears the applied range and typically closes the picker. */
+  onClear?: () => void;
   title?: string;
   cancelLabel?: string;
   confirmLabel?: string;
@@ -420,6 +422,7 @@ export function DateRangePicker({
   toDate,
   onDismiss,
   onConfirm,
+  onClear,
   title,
   cancelLabel,
   confirmLabel,
@@ -441,7 +444,7 @@ export function DateRangePicker({
   const resolvedConfirm = confirmLabel ?? t('modals.dateRangePicker.confirm');
   const resolvedClear = clearLabel ?? t('modals.dateRangePicker.clear');
 
-  const effectiveMax = maxDate ?? today;
+  const effectiveMax = maxDate;
   const fallbackView = useMemo(
     () =>
       viewFromIso(fromDate ?? toDate ?? today, {
@@ -581,7 +584,7 @@ export function DateRangePicker({
       if (minDate && compareIso(lastOfMonth, minDate) < 0) {
         return true;
       }
-      return compareIso(firstOfMonth, effectiveMax) > 0;
+      return effectiveMax != null && compareIso(firstOfMonth, effectiveMax) > 0;
     },
     [effectiveMax, minDate, viewYear],
   );
@@ -593,7 +596,7 @@ export function DateRangePicker({
       if (minDate && compareIso(lastOfYear, minDate) < 0) {
         return true;
       }
-      return compareIso(firstOfYear, effectiveMax) > 0;
+      return effectiveMax != null && compareIso(firstOfYear, effectiveMax) > 0;
     },
     [effectiveMax, minDate],
   );
@@ -670,6 +673,9 @@ export function DateRangePicker({
   }, [minDate, viewMonth, viewYear]);
 
   const canNextMonth = useMemo(() => {
+    if (effectiveMax == null) {
+      return true;
+    }
     const { y, m } = shiftMonth(viewYear, viewMonth, 1);
     const firstNext = toIsoDateParts(y, m, 1);
     return compareIso(firstNext, effectiveMax) <= 0;
@@ -804,7 +810,7 @@ export function DateRangePicker({
 
   const handleDayPress = useCallback(
     (iso: string) => {
-      if (compareIso(iso, effectiveMax) > 0) {
+      if (effectiveMax != null && compareIso(iso, effectiveMax) > 0) {
         return;
       }
       if (minDate && compareIso(iso, minDate) < 0) {
@@ -828,7 +834,8 @@ export function DateRangePicker({
   const handleClear = useCallback(() => {
     setDraftFrom(null);
     setDraftTo(null);
-  }, []);
+    onClear?.();
+  }, [onClear]);
 
   const handleConfirm = useCallback(() => {
     if (draftFrom == null || draftTo == null) {

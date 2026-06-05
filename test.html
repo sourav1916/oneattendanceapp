@@ -1,0 +1,51 @@
+<html>
+<!-- To make Layer checkout responsive on your checkout page.-->
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!--Please add either of the following script to your HTML depending up on your environment-->
+
+<script id="context" type="text/javascript" src="https://payments.open.money/layer"></script>
+
+<body>
+    <script>
+
+        //You can bind the Layer.checkout initialization script to a button click event.
+        //Binding inside a click event Zwitch Layer payment page on click of a button
+        //setTimeout is optional. You can replace it with any event listener such as button click.
+
+        setTimeout(() => {
+            Layer.checkout({
+                token: "pt_8B6A21E0a461AAE",
+                accesskey: "ebab5ff3-8ff5-423c-b1bf-4f5a0f99fec0",
+                theme: {
+                    logo: "https://ooms.in/uploads/ooms/logo.png",
+                    color: "#3d9080",
+                    error_color: "#ff2b2b"
+                }
+            },
+                function (response) {
+                    if (response.status == "captured") {
+                        // response.payment_token_id
+                        // response.payment_id
+                        window.location.href = "https://ooms.in/admin/subscription";
+
+                    } else if (response.status == "created") {
+
+
+                    } else if (response.status == "pending") {
+
+
+                    } else if (response.status == "failed") {
+                        window.location.href = "https://ooms.in/admin/subscription";
+
+                    } else if (response.status == "cancelled") {
+                        window.location.href = "https://ooms.in/admin/subscription";
+                    }
+                },
+                function (err) {
+                    //integration errors
+                }
+            );
+        }, 1000);
+    </script>
+</body>

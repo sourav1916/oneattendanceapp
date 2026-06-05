@@ -1,10 +1,10 @@
 import { HeaderBackButton } from '@react-navigation/elements';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Image,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -16,18 +16,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Camera } from 'react-native-vision-camera';
 
-import { FaceCaptureCameraToolbar } from '@src/components/face/FaceCaptureCameraToolbar';
 import { postFaceAttendance } from '@src/api/postFaceAttendance';
 import { postFaceAttendanceCheck } from '@src/api/postFaceAttendanceCheck';
+import { FaceCaptureCameraToolbar } from '@src/components/face/FaceCaptureCameraToolbar';
+import { FaceCaptureGuideOverlay } from '@src/components/face/FaceCaptureGuideOverlay';
 import {
   StatusAlert,
   useStatusAlert,
 } from '@src/components/modals/StatusAlert';
+import type {
+  FaceAttendancePendingDenied,
+  PendingStatusAlert,
+} from '@src/navigation/faceCaptureNavigation';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import { useFaceCaptureCamera } from '@src/hooks/useFaceCaptureCamera';
-import type { HomeStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
+import type { FaceAttendanceActionType } from '@src/types/faceAttendance';
 import {
   uploadFileToOneSaas,
   type UploadableFile,
@@ -41,9 +46,16 @@ import {
 } from '@src/utils/parseFaceAttendanceCheck';
 import { readApiError } from '@src/utils/readApiError';
 import { resolveMediaUrl } from '@src/utils/resolveMediaUrl';
+import { isCameraCaptureFailure } from '@src/utils/isCameraCaptureFailure';
 import { saveCameraPhotoForUpload } from '@src/utils/saveCameraPhotoForUpload';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'FaceAttendanceCapture'>;
+export type FaceAttendanceCaptureModalProps = {
+  visible: boolean;
+  action: FaceAttendanceActionType;
+  onDismiss: () => void;
+  onCheckDenied: (result: FaceAttendancePendingDenied) => void;
+  onAlert: (alert: PendingStatusAlert) => void;
+};
 
 const ACCENT = '#0d9488';
 const CONFIRM_COUNTDOWN_SEC = 5;
@@ -101,22 +113,11 @@ function buildCameraStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       color: colors.textMuted,
       marginTop: 1,
     },
-    cameraWrap: { flex: 1, backgroundColor: '#000' },
-    overlay: {
-      ...StyleSheet.absoluteFill,
-      alignItems: 'center',
-      justifyContent: 'center',
+    cameraWrap: {
+      flex: 1,
+      overflow: 'hidden',
+      backgroundColor: '#0f172a',
     },
-    guide: {
-      width: 240,
-      height: 300,
-      borderRadius: 120,
-      borderWidth: 2,
-      borderColor: 'rgba(255,255,255,0.85)',
-      marginTop: -56,
-    },
-    guideReady: { borderColor: '#4ade80' },
-    guideMultiple: { borderColor: '#fbbf24' },
     bottomPanel: {
       paddingHorizontal: 20,
       paddingTop: 16,
@@ -365,8 +366,13 @@ function DetailRow({ icon, label, value, styles, colors }: DetailRowProps) {
   );
 }
 
-export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
-  const { action } = route.params;
+export function FaceAttendanceCaptureModal({
+  visible,
+  action,
+  onDismiss,
+  onCheckDenied,
+  onAlert,
+}: FaceAttendanceCaptureModalProps) {
   const { t } = useTranslation();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
@@ -380,12 +386,7 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
   );
   const { selectedCompany } = useAuth();
   const companyId = selectedCompany?.id ?? null;
-  const {
-    props: statusProps,
-    presentError,
-    presentSuccess,
-    presentWarning,
-  } = useStatusAlert();
+  const { props: statusProps, presentSuccess } = useStatusAlert();
 
   const [phase, setPhase] = useState<ScreenPhase>('camera');
   const [pendingMatch, setPendingMatch] = useState<PendingMatch | null>(null);
@@ -404,13 +405,37 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
   const pipelineBusy = pipelineStage !== 'idle';
   const captureBusy = pipelineBusy;
 
-  const exitToFaceAttendanceHub = useCallback(() => {
-    navigation.navigate('FaceAttendance');
-  }, [navigation]);
+  const closeCapture = useCallback(() => {
+    captureBusyRef.current = true;
+    onDismiss();
+  }, [onDismiss]);
+
+  const closeWithAlert = useCallback(
+    (alert: PendingStatusAlert) => {
+      closeCapture();
+      onAlert(alert);
+    },
+    [closeCapture, onAlert],
+  );
+
+  const closeWithDenied = useCallback(
+    (denied: FaceAttendancePendingDenied) => {
+      closeCapture();
+      onCheckDenied(denied);
+    },
+    [closeCapture, onCheckDenied],
+  );
+
+  const handleCapturePressRef = useRef<() => void>(() => {});
 
   const faceCamera = useFaceCaptureCamera({
     captureBusy,
+    sessionActive: visible,
     cameraEnabled: phase === 'camera',
+    autoCapture: visible && phase === 'camera',
+    onAutoCapture: () => {
+      handleCapturePressRef.current();
+    },
   });
   const {
     photoOutput,
@@ -425,6 +450,8 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
     requestPermission,
     preferenceLoaded,
     previewReady,
+    previewWidth,
+    previewHeight,
     cameraActive,
     faceReady,
     multipleFaces,
@@ -456,6 +483,25 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
     setMarking(false);
     markingInFlightRef.current = false;
   }, [resetConfirmTimer]);
+
+  useEffect(() => {
+    if (visible) {
+      return;
+    }
+    captureBusyRef.current = false;
+    pipelineStageRef.current = 'photo';
+    markingInFlightRef.current = false;
+    autoConfirmRef.current = false;
+    setPhase('camera');
+    setPendingMatch(null);
+    setPipelineStage('idle');
+    setMarking(false);
+    setSecondsLeft(CONFIRM_COUNTDOWN_SEC);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (phase !== 'confirm' || marking) {
@@ -523,24 +569,22 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
         return;
       }
       if (parsed.kind === 'not_allowed') {
-        presentWarning({
-          title: t('home.faceAttendance.errors.notAllowedTitle'),
+        closeWithDenied({
+          employee: parsed.employee,
           message: parsed.message,
-          showMessage: true,
-          onAfterDismiss: exitToFaceAttendanceHub,
+          action,
         });
         return;
       }
-      presentError({
+      closeWithAlert({
+        tone: 'error',
         title: t('home.faceAttendance.errors.identifyFailedTitle'),
         message:
           parsed.message ||
           t('home.faceAttendance.errors.identifyFailedMessage'),
-        showMessage: true,
-        onAfterDismiss: exitToFaceAttendanceHub,
       });
     },
-    [action, companyId, exitToFaceAttendanceHub, presentError, presentWarning, t],
+    [action, closeWithAlert, closeWithDenied, companyId, t],
   );
 
   const handleCapturePress = useCallback(() => {
@@ -569,9 +613,9 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
         const stage = pipelineStageRef.current;
         const message = readApiError(err);
         const captureFailed =
-          stage === 'photo' ||
-          /abortRequests|Camera is closed|ImageCapture/i.test(message);
-        presentError({
+          stage === 'photo' || isCameraCaptureFailure(err);
+        closeWithAlert({
+          tone: 'error',
           title: captureFailed
             ? t('home.faceAttendance.errors.captureTitle')
             : stage === 'upload'
@@ -580,8 +624,6 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
           message: captureFailed
             ? t('home.faceAttendance.errors.captureMessage')
             : message,
-          showMessage: true,
-          onAfterDismiss: exitToFaceAttendanceHub,
         });
       })
       .finally(() => {
@@ -592,12 +634,13 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
   }, [
     canCapture,
     capturePhotoSettings,
-    exitToFaceAttendanceHub,
+    closeWithAlert,
     photoOutput,
-    presentError,
     runFaceCheck,
     t,
   ]);
+
+  handleCapturePressRef.current = handleCapturePress;
 
   const markAttendance = useCallback(async () => {
     if (
@@ -620,21 +663,20 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
         employee_id: pendingMatch.employeeId,
       });
       if (!res.success) {
-        presentError({
+        closeWithAlert({
+          tone: 'error',
           title: t('home.faceAttendance.errors.markFailedTitle'),
           message:
             res.message?.trim() ||
             t('home.faceAttendance.errors.markFailedMessage'),
-          showMessage: true,
-          onAfterDismiss: exitToFaceAttendanceHub,
         });
         return;
       }
       const detail = res.data
         ? t('home.faceAttendance.successDetail', {
-            date: res.data.attendance_date,
-            time: res.data.time,
-          })
+          date: res.data.attendance_date,
+          time: res.data.time,
+        })
         : '';
       const message = res.message?.trim()
         ? detail
@@ -645,14 +687,13 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
         title: t('home.faceAttendance.successTitle'),
         message,
         showMessage: true,
-        onAfterDismiss: () => navigation.navigate('FaceAttendance'),
+        onAfterDismiss: closeCapture,
       });
     } catch (err) {
-      presentError({
+      closeWithAlert({
+        tone: 'error',
         title: t('home.faceAttendance.errors.markFailedTitle'),
         message: readApiError(err),
-        showMessage: true,
-        onAfterDismiss: exitToFaceAttendanceHub,
       });
     } finally {
       markingInFlightRef.current = false;
@@ -660,11 +701,10 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
     }
   }, [
     action,
+    closeCapture,
+    closeWithAlert,
     companyId,
-    exitToFaceAttendanceHub,
-    navigation,
     pendingMatch,
-    presentError,
     presentSuccess,
     t,
   ]);
@@ -678,7 +718,7 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
       pendingMatch != null
     ) {
       autoConfirmRef.current = true;
-      markAttendance().catch(() => {});
+      markAttendance().catch(() => { });
     }
   }, [markAttendance, marking, pendingMatch, phase, secondsLeft]);
 
@@ -687,27 +727,39 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
       retakePhoto();
       return;
     }
-    navigation.goBack();
-  }, [navigation, phase, retakePhoto]);
+    closeCapture();
+  }, [closeCapture, phase, retakePhoto]);
+
+  if (!visible) {
+    return null;
+  }
 
   if (companyId == null) {
     return (
-      <SafeAreaView style={cameraStyles.safe} edges={['top', 'bottom']}>
-        <View style={cameraStyles.header}>
-          <HeaderBackButton
-            tintColor={colors.text}
-            onPress={() => navigation.goBack()}
-          />
-          <Text style={cameraStyles.headerTitle}>
-            {t('home.faceAttendance.captureTitle')}
-          </Text>
-        </View>
-        <View style={cameraStyles.permissionBox}>
-          <Text style={cameraStyles.permissionText}>
-            {t('home.faceAttendance.noCompany')}
-          </Text>
-        </View>
-      </SafeAreaView>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+        onRequestClose={closeCapture}
+      >
+        <SafeAreaView style={cameraStyles.safe} edges={['top', 'bottom']}>
+          <View style={cameraStyles.header}>
+            <HeaderBackButton
+              tintColor={colors.text}
+              onPress={closeCapture}
+            />
+            <Text style={cameraStyles.headerTitle}>
+              {t('home.faceAttendance.captureTitle')}
+            </Text>
+          </View>
+          <View style={cameraStyles.permissionBox}>
+            <Text style={cameraStyles.permissionText}>
+              {t('home.faceAttendance.noCompany')}
+            </Text>
+          </View>
+        </SafeAreaView>
+      </Modal>
     );
   }
 
@@ -719,12 +771,19 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
     const similarityLabel =
       pendingMatch.similarity != null && Number.isFinite(pendingMatch.similarity)
         ? t('home.faceAttendance.similarity', {
-            value: (pendingMatch.similarity * 100).toFixed(0),
-          })
+          value: (pendingMatch.similarity * 100).toFixed(0),
+        })
         : null;
 
     return (
-      <SafeAreaView style={confirmStyles.safe} edges={['top', 'bottom']}>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+        onRequestClose={handleBack}
+      >
+        <SafeAreaView style={confirmStyles.safe} edges={['top', 'bottom']}>
         <View style={confirmStyles.header}>
           <HeaderBackButton
             tintColor={colors.text}
@@ -834,7 +893,7 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
                 accessibilityRole="button"
                 disabled={marking}
                 onPress={() => {
-                  markAttendance().catch(() => {});
+                  markAttendance().catch(() => { });
                 }}
                 style={({ pressed }) => [
                   confirmStyles.confirmBtn,
@@ -854,11 +913,19 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
           </View>
         </ScrollView>
         <StatusAlert {...statusProps} />
-      </SafeAreaView>
+        </SafeAreaView>
+      </Modal>
     );
   }
 
   return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      statusBarTranslucent
+      onRequestClose={handleBack}
+    >
     <SafeAreaView style={cameraStyles.safe} edges={['top', 'bottom']}>
       <View style={cameraStyles.header}>
         <HeaderBackButton
@@ -890,7 +957,7 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
             <Pressable
               accessibilityRole="button"
               onPress={() => {
-                requestPermission().catch(() => {});
+                requestPermission().catch(() => { });
               }}
               style={cameraStyles.secondaryBtn}
             >
@@ -937,17 +1004,14 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
                 </Text>
               </View>
             ) : null}
-            <View style={cameraStyles.overlay} pointerEvents="none">
-              <View
-                style={[
-                  cameraStyles.guide,
-                  faceReady &&
-                    !multipleFaces &&
-                    cameraStyles.guideReady,
-                  multipleFaces && cameraStyles.guideMultiple,
-                ]}
+            {previewReady ? (
+              <FaceCaptureGuideOverlay
+                width={previewWidth}
+                height={previewHeight}
+                faceReady={faceReady && !multipleFaces}
+                multipleFaces={multipleFaces}
               />
-            </View>
+            ) : null}
           </View>
           <View style={cameraStyles.bottomPanel}>
             <Text style={cameraStyles.hint}>
@@ -957,6 +1021,11 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
                   ? t('home.faceAttendance.hintReady')
                   : t('home.faceAttendance.hintAlign')}
             </Text>
+            {faceReady && !multipleFaces && !captureBusy ? (
+              <Text style={cameraStyles.hintMuted}>
+                {t('home.faceAttendance.hintManual')}
+              </Text>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               disabled={!canCapture}
@@ -987,5 +1056,6 @@ export function FaceAttendanceCaptureScreen({ navigation, route }: Props) {
       )}
       <StatusAlert {...statusProps} />
     </SafeAreaView>
+    </Modal>
   );
 }

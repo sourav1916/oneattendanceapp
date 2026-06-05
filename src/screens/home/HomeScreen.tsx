@@ -23,7 +23,6 @@ import type { IconProps } from 'react-native-vector-icons/Icon';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { MainTopBar } from '@src/components/MainTopBar';
-import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
 import { TAB_SCREEN_SCROLL_PADDING_BOTTOM } from '@src/constants/tabScreenLayout';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
@@ -91,7 +90,9 @@ function actionCardWithIcon(id: string, title: string, onPress: () => void): Act
 export function HomeScreen(): React.JSX.Element {
   const { t } = useTranslation();
   const navigation = useNavigation<HomeMainNavigation>();
-  const { name, email, cachedUserProfile, profileRoleUser, refreshProfileRole, selectedCompany } = useAuth();
+  const { name, email, cachedUserProfile, profileRoleUser, refreshProfileRole, selectedCompany } =
+    useAuth();
+  const isOwnerCompany = selectedCompany?.relation === 'owned';
   const [refreshing, setRefreshing] = useState(false);
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
@@ -99,8 +100,6 @@ export function HomeScreen(): React.JSX.Element {
     () => buildHomeStyles(colors, resolvedScheme),
     [colors, resolvedScheme],
   );
-  const { props: confirmProps, present } = useConfirmAlert();
-
   const { width: windowWidth } = useWindowDimensions();
 
   const cardWidth = useMemo(() => {
@@ -137,23 +136,20 @@ export function HomeScreen(): React.JSX.Element {
     }
   }, [refreshProfileRole]);
 
-  const openComingSoon = useCallback(() => {
-    present({
-      title: t('settings.alerts.comingSoonTitle'),
-      message: t('settings.alerts.comingSoonMessage'),
-      buttons: [{ text: t('settings.alerts.ok'), variant: 'primary' }],
-    });
-  }, [present, t]);
-
-  const isEmployeeCompany = selectedCompany?.relation === 'employee';
-  const isManagerCompany = !isEmployeeCompany;
-
   const actionCards = useMemo((): ActionCard[] => {
-    const cards: ActionCard[] = [
+    return [
       actionCardWithIcon(
-        'attendance',
-        t('home.menu.attendance'),
-        () => navigation.navigate('Attendance'),
+        isOwnerCompany ? 'attendanceMgmt' : 'attendance',
+        isOwnerCompany
+          ? t('home.menu.attendanceManagement')
+          : t('home.menu.attendance'),
+        () => {
+          if (isOwnerCompany) {
+            navigation.getParent()?.navigate('AttendanceManagement');
+            return;
+          }
+          navigation.navigate('Attendance');
+        },
       ),
       actionCardWithIcon(
         'calendar',
@@ -166,23 +162,24 @@ export function HomeScreen(): React.JSX.Element {
         () => navigation.navigate('CompanyList'),
       ),
       actionCardWithIcon(
-        'attendanceMgmt',
-        t('home.menu.attendanceManagement'),
-        () => navigation.navigate('AttendanceManagement'),
+        'ledger',
+        t('home.menu.ledger'),
+        () => navigation.navigate('Ledger'),
       ),
-    ];
-
-    if (isManagerCompany) {
-      cards.push(
-        actionCardWithIcon(
-          'faceAttendance',
-          t('home.menu.faceAttendance'),
-          () => navigation.navigate('FaceAttendance'),
-        ),
-      );
-    }
-
-    cards.push(
+      ...(isOwnerCompany
+        ? []
+        : [
+            actionCardWithIcon(
+              'attendanceMgmt',
+              t('home.menu.attendanceManagement'),
+              () => navigation.navigate('AttendanceManagement'),
+            ),
+          ]),
+      actionCardWithIcon(
+        'faceAttendance',
+        t('home.menu.faceAttendance'),
+        () => navigation.navigate('FaceAttendance'),
+      ),
       actionCardWithIcon(
         'employee',
         t('home.menu.employeeManagement'),
@@ -193,24 +190,18 @@ export function HomeScreen(): React.JSX.Element {
         t('home.menu.leaveRequest'),
         () => navigation.navigate('LeaveRequest'),
       ),
-      actionCardWithIcon('leaveMgmt', t('home.menu.leaveManagement'), openComingSoon),
+      actionCardWithIcon(
+        'leaveMgmt',
+        t('home.menu.leaveManagement'),
+        () => navigation.navigate('LeaveManagement'),
+      ),
       actionCardWithIcon(
         'onboarding',
         t('home.menu.onboarding'),
         () => navigation.navigate('OnboardingRequest'),
       ),
-    );
-
-    if (isEmployeeCompany) {
-      cards.splice(2, 0, actionCardWithIcon(
-        'ledger',
-        t('home.menu.ledger'),
-        () => navigation.navigate('Ledger'),
-      ));
-    }
-
-    return cards;
-  }, [isEmployeeCompany, isManagerCompany, navigation, openComingSoon, t]);
+    ];
+  }, [isOwnerCompany, navigation, t]);
 
   return (
     <View style={styles.root}>
@@ -289,7 +280,6 @@ export function HomeScreen(): React.JSX.Element {
             ))}
           </View>
         </ScrollView>
-        <ConfirmAlert {...confirmProps} />
       </SafeAreaView>
     </View>
   );
