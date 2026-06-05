@@ -40,3 +40,7 @@ Configured via `tsconfig.json` paths + `babel.config.js` module-resolver.
 - API calls through `authHttpClient` (Axios instance with Bearer token)
 - Company-scoped endpoints send `company: <id>` custom header
 - Types in `src/types/`, one file per domain
+
+## Feature context docs (`context/`)
+
+Attach topic files when working on a domain — e.g. **`context/leave-management.md`** (hub, balances, leave types), **`context/modals.md`** (sheet layout, keyboard-aware bottom sheets), **`context/navigation.md`** (routes). Index: **`context/Main.md`**.

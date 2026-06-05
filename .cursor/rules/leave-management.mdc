@@ -1,0 +1,67 @@
+---
+description: Leave management — hub, requests, balances, leave types, APIs, modals
+globs: "src/screens/company/LeaveManagement.tsx,src/screens/company/LeaveRequests.tsx,src/screens/company/LeaveBalance.tsx,src/screens/company/LeaveConfig.tsx,src/screens/home/LeaveRequest.tsx,src/components/modals/LeaveConfigFormModal.tsx,src/components/modals/AssignLeaveBalanceModal.tsx,src/components/modals/UpdateLeaveBalanceModal.tsx,src/components/modals/CreateManagementLeaveModal.tsx,src/components/modals/EmpLeaveDetailModal.tsx,src/components/modals/ApproveLeaveModal.tsx,src/components/modals/RejectLeaveModal.tsx,src/components/modals/BulkLeaveActionModal.tsx,src/api/leaveApi.ts,src/hooks/useEmpLeaves.ts,src/hooks/useEmpLeaveBalances.ts,src/hooks/useLeaveConfigs.ts,src/types/leaveConfig.ts,src/types/empLeaveBalance.ts,src/types/employeeLeave.ts,src/types/leaveManagement.ts,src/utils/formatLeaveDays.ts,src/utils/leaveApprovePayload.ts"
+alwaysApply: false
+---
+
+# Leave Management
+
+Full feature docs: **`context/leave-management.md`**. Modal keyboard pattern: **`context/modals.md`** (Keyboard-aware bottom sheets).
+
+## Hub routes (`LeaveManagement.tsx`)
+
+| Menu id | Destination |
+|---------|-------------|
+| `create` | `CreateManagementLeaveModal` (on hub) |
+| `requests` | `LeaveRequests` |
+| `balances` | `LeaveBalance` |
+| `configs` | `LeaveConfig` |
+
+## API summary (`leaveApi.ts`)
+
+| Endpoint | Screen / modal |
+|----------|----------------|
+| `GET /leave/emp-leaves` | LeaveRequests |
+| `PUT /leave/management/approve-edit` | ApproveLeaveModal |
+| `PUT /leave/reject` | RejectLeaveModal |
+| `PUT /leave/management/bulk-approve-reject` | BulkLeaveActionModal |
+| `GET /leave/emp-balances` | LeaveBalance |
+| `POST /leave/assign-balance` | AssignLeaveBalanceModal |
+| `PUT /leave/update-balance` | UpdateLeaveBalanceModal |
+| `DELETE /leave/delete-balance` | LeaveBalance |
+| `GET /leave/company` | LeaveConfig list + config hooks |
+| `POST /leave/create` | LeaveConfigFormModal (create) |
+| `PUT /leave/update` | LeaveConfigFormModal (edit) |
+| `DELETE /leave/delete` | LeaveConfig |
+
+All company-scoped calls use `company: String(companyId)` header.
+
+## Bottom-sheet modals with inputs
+
+Use **keyboard listeners only** — no `KeyboardAvoidingView` + listeners stack.
+
+```tsx
+scroll: { flexGrow: 0, flexShrink: 1 },
+scrollKeyboardOpen: { flex: 1, minHeight: 0 },
+
+<ScrollView
+  style={[styles.scroll, keyboardHeight > 0 && styles.scrollKeyboardOpen]}
+/>
+```
+
+Canonical reference: **`LeaveConfigFormModal.tsx`**.
+
+## Leave config create defaults
+
+- `allow_half_day`: **false**
+- `is_paid`: true
+- `exclude_weekends`: true
+- `carry_forward_limit`: 0
+
+## Day formatting
+
+Always use **`formatLeaveDays`** / **`coerceLeaveDays`** — API may return numeric strings.
+
+## Confirm / status
+
+Mutations: **`ConfirmAlert`** before submit → **`StatusAlert`** on result. Refetch list on success.

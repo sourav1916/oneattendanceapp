@@ -65,7 +65,7 @@ Tiles (owner vs employee varies): Attendance tab or **Attendance Management** st
 | Tile | Route | Notes |
 |------|-------|-------|
 | Leave request | `LeaveRequest` | Employee own applications — [**leave-management.md**](./leave-management.md) |
-| Leave management | `LeaveManagement` | Manager hub → **Leave requests** live |
+| Leave management | `LeaveManagement` | Manager hub → requests, balances, leave types, create leave — [**leave-management.md**](./leave-management.md) |
 | Attendance (owners) | Tab `AttendanceManagement` | Company attendance list |
 | Attendance (employees) | Tab `Attendance` | Self punch |
 

@@ -22,7 +22,7 @@ This folder (`context/`) holds **documentation for AI and humans**, not runtime 
 | [**alerts.md**](./alerts.md) | `ConfirmAlert`, `StatusAlert`, confirms and success/error popups |
 | [**profile.md**](./profile.md) | Profile / EditProfile, avatar upload, update-profile, profile-role cache |
 | [**home.md**](./home.md) | HomeScreen, MainTopBar, company switcher arrow, pull-to-refresh |
-| [**leave-management.md**](./leave-management.md) | Manager leave requests, approve/reject, hub, employee `LeaveRequest` |
+| [**leave-management.md**](./leave-management.md) | Manager leave hub, requests, balances, leave types (config), employee `LeaveRequest` |
 
 ---
 

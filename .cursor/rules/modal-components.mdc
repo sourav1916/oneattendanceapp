@@ -1,59 +1,72 @@
 ---
-description: Modal component patterns — bottom sheets, centered dialogs, hooks
+description: Modal component patterns — bottom sheets, centered dialogs, keyboard layout, hooks
 globs: "src/components/modals/**"
 alwaysApply: false
 ---
 
 # Modal Components
 
-All custom modals live in `src/components/modals/` and follow a consistent pattern.
+All custom modals live in `src/components/modals/`. Full docs: **`context/modals.md`**.
 
-## Bottom Sheet Modal (MarkAttendanceModal, BulkApproveModal)
+## Bottom Sheet Modal (slide-up)
 
 ```tsx
 <Modal visible={visible} animationType="slide" transparent statusBarTranslucent onRequestClose={onDismiss}>
-  <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+  <SafeAreaView style={styles.safe} edges={['top']}>
     <Pressable style={styles.backdrop} onPress={onDismiss} />
-    <View style={styles.sheetWrap} pointerEvents="box-none">
-      <View style={styles.sheet}>
-        {/* handle bar → header → ScrollView body → fixed footer */}
+    <View style={[styles.sheetWrap, layout.wrapStyle]} pointerEvents="box-none">
+      <View style={[styles.sheet, sheetSizeStyle]} accessibilityViewIsModal>
+        {/* handle → header (fixed) → ScrollView body → footer (fixed) */}
       </View>
     </View>
   </SafeAreaView>
 </Modal>
 ```
 
-- `safe` has `backgroundColor: colors.overlay`
-- `sheet` has `borderTopLeftRadius: 24, borderTopRightRadius: 24`
-- Body uses `ScrollView` with `nestedScrollEnabled`, `bounces={false}`
-- Footer has submit (primary bg) + cancel (text button)
+- `safe` → `backgroundColor: colors.overlay`
+- `sheet` → `borderTopLeftRadius: 24`, `flexDirection: 'column'`, `overflow: 'hidden'`
+- Footer: primary + secondary `Pressable` buttons
 
-## Centered Dialog (DatePicker, TimePicker)
+## Keyboard-aware bottom sheets (with TextInput)
+
+**Reference**: `LeaveConfigFormModal.tsx`, `AssignLeaveBalanceModal.tsx`, `UpdateLeaveBalanceModal.tsx`.
+
+**Do not** combine `KeyboardAvoidingView`, keyboard listeners, and `automaticallyAdjustKeyboardInsets` on the same modal.
+
+1. Track `keyboardHeight` via `keyboardWillShow`/`DidShow` + hide events while `visible`.
+2. `resolveSheetLayout(windowHeight, keyboardHeight, topInset)` → `wrapStyle`, optional `sheetHeight`, `sheetMaxHeight`.
+3. **Conditional ScrollView flex** (critical — avoids collapsed body):
+   - Keyboard closed: `{ flexGrow: 0, flexShrink: 1 }`
+   - Keyboard open: `{ flex: 1, minHeight: 0 }`
+4. `keyboardShouldPersistTaps="handled"`, `keyboardDismissMode="on-drag"`, `bounces={false}`.
+5. Lower fields: `scrollRef` + `scrollToEnd` on `onFocus` (optional).
+
+Copy `resolveSheetLayout` from **`context/modals.md`**.
+
+## Centered Dialog (LanguagePicker, DatePicker)
 
 ```tsx
 <Modal visible={visible} animationType="fade" transparent statusBarTranslucent>
-  <SafeAreaView style={styles.safe}>
+  <SafeAreaView style={styles.safe} edges={['top','right','left','bottom']}>
     <Pressable style={styles.backdrop} onPress={onDismiss} />
     <View style={styles.sheetWrap} pointerEvents="box-none">
-      <View style={styles.sheet}>{/* centered card content */}</View>
+      <View style={styles.sheet}>{/* centered card */}</View>
     </View>
   </SafeAreaView>
 </Modal>
 ```
 
-## Imperative Hook Pattern
+Centered forms with inputs: keyboard listeners + shrink sheet height — see `ChangeEmailModal.tsx`, `CountryCodePicker.tsx`.
 
-Modals use a `useXxx()` hook returning `{ props, present, dismiss }`:
+## Imperative Hook Pattern
 
 ```tsx
 const { props: statusAlertProps, presentError, presentSuccess } = useStatusAlert();
 const { props: confirmAlertProps, present: presentConfirm } = useConfirmAlert();
-// Render: <StatusAlert {...statusAlertProps} />
+// <StatusAlert {...statusAlertProps} />
 ```
 
 ## Chip Selectors
-
-Reusable chip pattern for multi-option selection inside modals:
 
 ```tsx
 <Pressable style={[styles.chip, active && styles.chipActive]}>
@@ -61,4 +74,8 @@ Reusable chip pattern for multi-option selection inside modals:
 </Pressable>
 ```
 
-Active chip: `borderColor: colors.primary`, light primary bg.
+Active chip: `borderColor: colors.primary`, light primary background.
+
+## Scroll indicators
+
+Default: `showsVerticalScrollIndicator={false}` on modals. Exception: bottom sheets may show indicator when `keyboardHeight > 0`.

@@ -1,6 +1,8 @@
 # One Attendance — Modals (`context/modals.md`)
 
-Attach when adding or restyling **modal dialogs** (language, theme, company, session details, etc.).
+Attach when adding or restyling **modal dialogs** (language, theme, company, leave forms, session details, etc.).
+
+**Quick attach for new bottom-sheet forms with inputs:** jump to [Keyboard-aware bottom sheets](#keyboard-aware-bottom-sheets-fixed-header--scroll-body--footer) below.
 
 ---
 

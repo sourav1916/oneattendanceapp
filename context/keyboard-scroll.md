@@ -10,6 +10,8 @@ Use this pattern so inputs stay visible when the keyboard opens. Users can scrol
 | Fixed header + scroll body           | Change password | `src/screens/auth/ChangePassword.tsx` |
 | Fixed header + scroll body (simpler) | Edit profile    | `src/screens/profile/EditProfile.tsx` |
 
+**Bottom-sheet modals** (fixed header + scroll body + footer) use a **different** layout recipe — see [**modals.md** → Keyboard-aware bottom sheets](./modals.md#keyboard-aware-bottom-sheets-fixed-header--scroll-body--footer). Reference: `LeaveConfigFormModal.tsx`, `AssignLeaveBalanceModal.tsx`, `UpdateLeaveBalanceModal.tsx`.
+
 **Android requirement:** `android/app/src/main/AndroidManifest.xml` must use `android:windowSoftInputMode="adjustResize"` on the main activity (already set in this project).
 
 ---

@@ -1,6 +1,6 @@
 # One Attendance — Leave management (`context/leave-management.md`)
 
-Attach when working on **manager leave requests**, **approve/reject**, **leave hub**, or employee **my leaves** (`LeaveRequest`).
+Attach when working on **manager leave hub**, **leave requests**, **leave balances**, **leave types (config)**, or employee **my leaves** (`LeaveRequest`).
 
 ---
 
@@ -9,10 +9,12 @@ Attach when working on **manager leave requests**, **approve/reject**, **leave h
 | Audience | Screen | Route | Permission / notes |
 |----------|--------|-------|-------------------|
 | **Employee** | `LeaveRequest.tsx` | `Home` → `LeaveRequest` | Own applications + balances (`/leave/my-applications`, `/leave/apply`, …) |
-| **Manager** | `LeaveManagement.tsx` | `Home` → `LeaveManagement` | Hub menu (most items coming soon) |
-| **Manager** | `LeaveRequests.tsx` | `LeaveManagement` → `LeaveRequests` | **`LEAVE.MNG`** — list + actions on team requests |
+| **Manager** | `LeaveManagement.tsx` | `Home` → `LeaveManagement` | Hub menu — create leave, requests, balances, leave types |
+| **Manager** | `LeaveRequests.tsx` | `LeaveManagement` → `LeaveRequests` | **`LEAVE.MNG`** — list + approve/reject team requests |
+| **Manager** | `LeaveBalance.tsx` | `LeaveManagement` → `LeaveBalance` | Employee leave balances — assign / update / delete |
+| **Manager** | `LeaveConfig.tsx` | `LeaveManagement` → `LeaveConfig` | Company leave types — create / edit / delete |
 
-Home tile **Leave Management** → `navigation.navigate('LeaveManagement')` (no longer “coming soon”). See [**home.md**](./home.md).
+Home tile **Leave Management** → `navigation.navigate('LeaveManagement')`. See [**home.md**](./home.md).
 
 ---
 
@@ -22,9 +24,11 @@ Home tile **Leave Management** → `navigation.navigate('LeaveManagement')` (no 
 
 - `LeaveRequest` — employee self-service
 - `LeaveManagement` — company hub
-- `LeaveRequests` — manager list
+- `LeaveRequests` — manager request list
+- `LeaveBalance` — manager balance CRUD
+- `LeaveConfig` — manager leave-type CRUD
 
-Registered in **`src/navigation/HomeNavigator.tsx`**. Hub pattern matches **`EmployeeManagement.tsx`** (menu card rows + `ConfirmAlert` for coming soon).
+Registered in **`src/navigation/HomeNavigator.tsx`**. Hub pattern matches **`EmployeeManagement.tsx`** (menu card rows).
 
 ---
 
@@ -32,10 +36,89 @@ Registered in **`src/navigation/HomeNavigator.tsx`**. Hub pattern matches **`Emp
 
 Menu items (i18n `home.leaveManagement.items.*`):
 
-| id | Navigates | Status |
-|----|-----------|--------|
-| `requests` | `LeaveRequests` | **Live** |
-| `create`, `balances`, `policies`, `reports` | — | Coming soon (`ConfirmAlert`) |
+| id | Action | Status |
+|----|--------|--------|
+| `create` | Opens **`CreateManagementLeaveModal`** on hub | **Live** |
+| `requests` | `navigation.navigate('LeaveRequests')` | **Live** |
+| `balances` | `navigation.navigate('LeaveBalance')` | **Live** |
+| `configs` | `navigation.navigate('LeaveConfig')` | **Live** |
+
+**Removed** from hub: policies, reports (no menu rows).
+
+Hub loads **`attendanceApi.fetchLeaveConfigs`** for the create-leave modal chip picker (`LeaveConfigEntry[]`).
+
+---
+
+## Leave types — config CRUD (`LeaveConfig.tsx`)
+
+### API
+
+| Action | Method | Endpoint | Notes |
+|--------|--------|----------|-------|
+| List | GET | `/leave/company` | Query: `page`, `limit` (max 100), `search`, `is_active`, `is_paid` |
+| Create | POST | `/leave/create` | 201; response has `message` only — refetch list |
+| Update | PUT | `/leave/update` | Partial fields incl. `is_active` |
+| Delete | DELETE | `/leave/delete` | Body `{ id }`; only if type never used |
+
+**Auth**: Bearer + **`company: String(companyId)`** header.  
+**Hook**: `useLeaveConfigs` (`src/hooks/useLeaveConfigs.ts`) — search, active/paid filters, pagination, 403 → `accessDenied`.  
+**Types**: `src/types/leaveConfig.ts`.
+
+### UI
+
+- Colorful card list (search, active/paid filter chips, pagination).
+- Header **+** button → create modal.
+- Per-card **Edit** / **Delete** (delete only when allowed).
+- **`ConfirmAlert`** before create/update/delete; **`StatusAlert`** for outcomes.
+
+### Modal — `LeaveConfigFormModal.tsx`
+
+Keyboard-aware bottom sheet — see [**modals.md** → Keyboard-aware bottom sheets](./modals.md#keyboard-aware-bottom-sheets-fixed-header--scroll-body--footer).
+
+**Create defaults** (when opening fresh form):
+
+| Field | Default |
+|-------|---------|
+| `is_paid` | `true` |
+| `allow_half_day` | **`false`** |
+| `carry_forward_limit` | `0` |
+| `exclude_weekends` | `true` |
+| `is_active` | `true` (create only; edit loads from API) |
+
+**i18n**: `home.leaveConfig.*`, `home.leaveConfig.formModal.*`
+
+---
+
+## Leave balances (`LeaveBalance.tsx`)
+
+### API
+
+| Action | Method | Endpoint | Notes |
+|--------|--------|----------|-------|
+| List | GET | `/leave/emp-balances` | Query: `year`, `page`, `limit` (max 50), `search` |
+| Assign | POST | `/leave/assign-balance` | `{ employee_id, leaves: [{ leave_config_id, total_allocated }] }` |
+| Update | PUT | `/leave/update-balance` | `{ employee_id, leaves: [{ leave_config_id, total_allocated }] }` |
+| Delete | DELETE | `/leave/delete-balance` | `{ employee_id, leave_config_id }` |
+
+**Hook**: `useEmpLeaveBalances` (`src/hooks/useEmpLeaveBalances.ts`) — normalizes numeric fields from API strings via **`formatLeaveDays`** / **`coerceLeaveDays`**.  
+**Types**: `src/types/empLeaveBalance.ts`.
+
+### UI
+
+- Year selector + search + pagination.
+- Per-employee expandable cards with leave-type rows (allocated / used / remaining).
+- **Assign** (per employee or header) → **`AssignLeaveBalanceModal`**.
+- Per-row **Edit** → **`UpdateLeaveBalanceModal`**; **Delete** → **`ConfirmAlert`**.
+- Loads leave config chips from **`attendanceApi.fetchLeaveConfigs`** for assign modal.
+
+### Modals
+
+| Modal | Keyboard pattern | Purpose |
+|-------|------------------|---------|
+| **`AssignLeaveBalanceModal.tsx`** | Bottom-sheet listeners — [**modals.md**](./modals.md) | Pick employee (unless preselected), multi-row type + allocated days |
+| **`UpdateLeaveBalanceModal.tsx`** | Same | Edit `total_allocated`; validates ≥ used, ≤ max_balance |
+
+**i18n**: `home.leaveBalances.*`
 
 ---
 
@@ -70,6 +153,8 @@ Tap card body → **`EmpLeaveDetailModal`**.
 
 **Bulk bar** (when selection non-empty): floating bottom bar with extra list `paddingBottom` (+80px) so last row checkbox is not covered. Actions: **Bulk action** (selected IDs), **All pending** (when status filter = pending, `ids: "all"`).
 
+Hub also hosts **`CreateManagementLeaveModal`** for manager-created leaves (same modal as hub **Create leave** item).
+
 ### UI — detail modal (`EmpLeaveDetailModal.tsx`)
 
 Fixed layout (do **not** use `flex: 1` on middle `ScrollView` without height — use **`maxHeight`** on scroll body):
@@ -92,7 +177,8 @@ All destructive/API actions use **`ConfirmAlert`** before submit; success/errors
 
 ## Manager action APIs (`src/api/leaveApi.ts`)
 
-Types: **`src/types/leaveManagement.ts`**. Payload builder: **`src/utils/leaveApprovePayload.ts`**.
+Types: **`src/types/leaveManagement.ts`**, **`src/types/leaveConfig.ts`**, **`src/types/empLeaveBalance.ts`**.  
+Payload builder: **`src/utils/leaveApprovePayload.ts`**.
 
 ### `PUT /leave/management/approve-edit` — `leaveApi.approveEdit`
 
@@ -130,20 +216,41 @@ Single pending leave; optional `remarks` (max 1000). **`RejectLeaveModal.tsx`**.
 | **`ApproveLeaveModal.tsx`** | Edit dates / half-day + approve (pending only) |
 | **`RejectLeaveModal.tsx`** | Reject one leave with remarks |
 | **`BulkLeaveActionModal.tsx`** | Bulk approve or reject selected / all pending |
+| **`CreateManagementLeaveModal.tsx`** | Manager: create leave on behalf of employee |
+| **`LeaveConfigFormModal.tsx`** | Create/edit leave type — **keyboard-aware bottom sheet** |
+| **`AssignLeaveBalanceModal.tsx`** | Assign balance — keyboard-aware bottom sheet |
+| **`UpdateLeaveBalanceModal.tsx`** | Update allocated days — keyboard-aware bottom sheet |
 | **`DateRangePicker.tsx`** | List date filter (shared with Ledger) |
 | **`ConfirmAlert`** / **`StatusAlert`** | Confirm before actions; toast outcomes — [**alerts.md**](./alerts.md) |
 
 Employee-side leave modals: **`ApplyLeave.tsx`**, **`LeaveDetailModal.tsx`** on **`LeaveRequest.tsx`**.
 
+**Bottom-sheet keyboard pattern**: [**modals.md**](./modals.md) — do not use `KeyboardAvoidingView` + listeners together; use conditional `ScrollView` flex.
+
+---
+
+## Utilities
+
+**`src/utils/formatLeaveDays.ts`** — safe formatting when API returns numbers or strings:
+
+- `coerceLeaveDays(value)` → number
+- `formatLeaveDays(value)` → display string (no `.toFixed` on non-numbers)
+
+Use in balance/config forms and list cards.
+
 ---
 
 ## i18n
 
-Primary keys under **`home.leaveRequests.*`** and **`home.leaveManagement.*`** in `src/locales/en.ts`.
+| Area | Keys |
+|------|------|
+| Hub | `home.leaveManagement.*` |
+| Requests | `home.leaveRequests.*` |
+| Balances | `home.leaveBalances.*` |
+| Leave types | `home.leaveConfig.*` |
+| Employee | `home.leaveRequest.*` (my applications) |
 
-Employee keys remain under **`home.leaveRequest.*`** (my applications screen).
-
-Confirm copy: **`home.leaveRequests.actions.confirm.*`**.
+Primary locale: `src/locales/en.ts` (extend `hi`, `ta`, `te` when adding keys).
 
 ---
 
@@ -151,23 +258,38 @@ Confirm copy: **`home.leaveRequests.actions.confirm.*`**.
 
 ```
 src/
-├── api/leaveApi.ts              # getEmpLeaves, approveEdit, bulkApproveReject, rejectLeave + employee CRUD
-├── hooks/useEmpLeaves.ts
+├── api/
+│   ├── leaveApi.ts              # emp leaves, balances, configs, approve/reject/bulk
+│   └── attendanceApi.ts         # fetchLeaveConfigs (chip picker — lighter type)
+├── hooks/
+│   ├── useEmpLeaves.ts
+│   ├── useEmpLeaveBalances.ts
+│   └── useLeaveConfigs.ts
 ├── types/
-│   ├── employeeLeave.ts         # list row + meta
-│   └── leaveManagement.ts       # approve/reject/bulk payloads + responses
-├── utils/leaveApprovePayload.ts # buildApproveEditPayload
+│   ├── employeeLeave.ts
+│   ├── empLeaveBalance.ts
+│   ├── leaveConfig.ts
+│   └── leaveManagement.ts
+├── utils/
+│   ├── leaveApprovePayload.ts
+│   └── formatLeaveDays.ts
 ├── screens/
 │   ├── company/
-│   │   ├── LeaveManagement.tsx  # hub
-│   │   └── LeaveRequests.tsx    # manager list + actions
+│   │   ├── LeaveManagement.tsx  # hub + CreateManagementLeaveModal host
+│   │   ├── LeaveRequests.tsx
+│   │   ├── LeaveBalance.tsx
+│   │   └── LeaveConfig.tsx
 │   └── home/
-│       └── LeaveRequest.tsx     # employee my leaves
+│       └── LeaveRequest.tsx
 └── components/modals/
     ├── EmpLeaveDetailModal.tsx
     ├── ApproveLeaveModal.tsx
     ├── RejectLeaveModal.tsx
-    └── BulkLeaveActionModal.tsx
+    ├── BulkLeaveActionModal.tsx
+    ├── CreateManagementLeaveModal.tsx
+    ├── LeaveConfigFormModal.tsx
+    ├── AssignLeaveBalanceModal.tsx
+    └── UpdateLeaveBalanceModal.tsx
 ```
 
 ---
@@ -177,6 +299,7 @@ src/
 - [**home.md**](./home.md) — Home grid tile → `LeaveManagement`
 - [**company.md**](./company.md) — tab layout, `EmployeeManagement` hub pattern
 - [**navigation.md**](./navigation.md) — `HomeStackParamList` routes
-- [**modals.md**](./modals.md) — sheet patterns, modal inventory
+- [**modals.md**](./modals.md) — sheet patterns, keyboard-aware bottom sheets, modal inventory
 - [**alerts.md**](./alerts.md) — `ConfirmAlert`, `StatusAlert`
 - [**theme-api.md**](./theme-api.md) — `company` header, `authHttpClient`
+- [**keyboard-scroll.md**](./keyboard-scroll.md) — full-screen scroll patterns (screens, not modals)

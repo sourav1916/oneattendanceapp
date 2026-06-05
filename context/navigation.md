@@ -10,7 +10,7 @@ Attach when changing **routes**, **headers**, **tabs**, or **deep linking**.
 
 - **`AuthStackParamList`**: `Login`, `Register`, `ForgotPassword`, `VerifyEmailOtp` (+ params where needed).
 - **`SettingsStackParamList`**: `SettingsHome`, `Profile`, **`EditProfile`**, `Sessions`, `ChangePassword`, **`MyCalendar`**.
-- **`HomeStackParamList`**: `HomeMain`, `LeaveRequest`, **`LeaveManagement`**, **`LeaveRequests`**, **`MyCalendar`**, **`CompanyList`**, **`AttendanceManagement`**, **`EmployeeManagement`**, **`EmployeeList`**, `FaceEnroll`, `FaceAttendance`, `CompanyLedger`, `Ledger`, `OnboardingRequest`, `CreateEmployee`, invite/permission routes, etc.
+- **`HomeStackParamList`**: `HomeMain`, `LeaveRequest`, **`LeaveManagement`**, **`LeaveRequests`**, **`LeaveBalance`**, **`LeaveConfig`**, **`MyCalendar`**, **`CompanyList`**, **`AttendanceManagement`**, **`EmployeeManagement`**, **`EmployeeList`**, `FaceEnroll`, `FaceAttendance`, `CompanyLedger`, `Ledger`, `OnboardingRequest`, `CreateEmployee`, invite/permission routes, etc.
 - **`MainTabParamList`**: `Home`, `Attendance`, **`AttendanceManagement`** (owners), **`FaceAttendance`** (conditional), `Settings`.
 - **`FaceAttendanceFlowParamList`**: `FaceAttendance`, `FaceEnroll`.
 
@@ -37,7 +37,7 @@ Use these with `NativeStackScreenProps<..., 'RouteName'>` etc.
 
 - **Native stack**, **`headerShown: false`**.
 - **`HomeMain`**: dashboard grid (`HomeScreen.tsx`).
-- **`LeaveRequest`**, **`LeaveManagement`**, **`LeaveRequests`**, **`CompanyList`**, **`EmployeeManagement`**, **`EmployeeList`**, **`AttendanceManagement`**, **`OnboardingRequest`**, **`Ledger`**, etc.: sub-screens from home tiles or cross-links.
+- **`LeaveRequest`**, **`LeaveManagement`**, **`LeaveRequests`**, **`LeaveBalance`**, **`LeaveConfig`**, **`CompanyList`**, **`EmployeeManagement`**, **`EmployeeList`**, **`AttendanceManagement`**, **`OnboardingRequest`**, **`Ledger`**, etc.: sub-screens from home tiles or cross-links.
 - **`MyCalendar`**: **`MyCalendarScreen`** from `src/screens/report/Calendar.tsx` (same component as Settings route).
 
 ### `SettingsNavigator` (`src/navigation/SettingsNavigator.tsx`)
