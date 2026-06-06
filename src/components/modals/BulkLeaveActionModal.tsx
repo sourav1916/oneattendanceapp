@@ -5,6 +5,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { useKeyboardCenteredSheet } from '@src/hooks/useKeyboardCenteredSheet';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { BulkLeaveAction } from '@src/types/leaveManagement';
 
@@ -38,7 +40,6 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     backdrop: { ...StyleSheet.absoluteFill },
     centerWrap: {
       flex: 1,
-      justifyContent: 'center',
       paddingHorizontal: 16,
     },
     card: {
@@ -49,7 +50,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: 20,
+      overflow: 'hidden',
       ...Platform.select({
         ios: {
           shadowColor: '#000',
@@ -60,6 +61,8 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         android: { elevation: 12 },
       }),
     },
+    cardBody: { padding: 20 },
+    cardBodyScroll: { padding: 20, flexGrow: 1 },
     title: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 6 },
     subtitle: { fontSize: 14, color: colors.textMuted, lineHeight: 20, marginBottom: 14 },
     actionRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
@@ -147,6 +150,15 @@ export function BulkLeaveActionModal({
     () => buildStyles(colors, resolvedScheme),
     [colors, resolvedScheme],
   );
+  const {
+    keyboardHeight,
+    layout,
+    sheetSizeStyle,
+    scrollStyle,
+    scrollViewProps,
+    scrollContentPaddingBottom,
+  } = useKeyboardCenteredSheet(visible);
+
   const [action, setAction] = useState<BulkLeaveAction>('approve');
   const [remarks, setRemarks] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +190,83 @@ export function BulkLeaveActionModal({
       ? t(`${T}allPending`)
       : t(`${T}selectedCount`, { count: target.count });
 
+  const bodyContent = (
+    <>
+      <Text style={styles.title}>{t(`${T}title`)}</Text>
+      <Text style={styles.subtitle}>{countLabel}</Text>
+
+      <Text style={styles.label}>{t(`${T}actionLabel`)}</Text>
+      <View style={styles.actionRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: action === 'approve' }}
+          onPress={() => setAction('approve')}
+          style={[
+            styles.actionChip,
+            action === 'approve' && styles.actionChipApprove,
+          ]}>
+          <Text
+            style={[
+              styles.actionChipText,
+              action === 'approve' && styles.actionChipTextApprove,
+            ]}>
+            {t(`${T}approve`)}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: action === 'reject' }}
+          onPress={() => setAction('reject')}
+          style={[
+            styles.actionChip,
+            action === 'reject' && styles.actionChipReject,
+          ]}>
+          <Text
+            style={[
+              styles.actionChipText,
+              action === 'reject' && styles.actionChipTextReject,
+            ]}>
+            {t(`${T}reject`)}
+          </Text>
+        </Pressable>
+      </View>
+
+      <Text style={styles.label}>{t(`${T}remarksLabel`)}</Text>
+      <TextInput
+        value={remarks}
+        onChangeText={setRemarks}
+        placeholder={t(`${T}remarksPlaceholder`)}
+        placeholderTextColor={colors.textMuted}
+        multiline
+        maxLength={REMARKS_MAX}
+        style={styles.input}
+      />
+      <Text style={styles.charCount}>{remarks.length}/{REMARKS_MAX}</Text>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <View style={styles.actions}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={submitting}
+          onPress={onDismiss}
+          style={[styles.btnSecondary, submitting && styles.btnDisabled]}>
+          <Text style={styles.btnSecondaryLabel}>{t(`${T}cancel`)}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          disabled={submitting}
+          onPress={handleSubmit}
+          style={[styles.btnPrimary, submitting && styles.btnDisabled]}>
+          {submitting ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.btnPrimaryLabel}>{t(`${T}confirm`)}</Text>
+          )}
+        </Pressable>
+      </View>
+    </>
+  );
+
   return (
     <Modal
       transparent
@@ -185,87 +274,28 @@ export function BulkLeaveActionModal({
       animationType="fade"
       statusBarTranslucent
       onRequestClose={onDismiss}>
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <Pressable
           style={styles.backdrop}
           accessibilityRole="button"
           accessibilityLabel={t('modals.common.closeDialog')}
           onPress={onDismiss}
         />
-        <View style={styles.centerWrap} pointerEvents="box-none">
-          <View style={styles.card} accessibilityViewIsModal>
-            <Text style={styles.title}>{t(`${T}title`)}</Text>
-            <Text style={styles.subtitle}>{countLabel}</Text>
-
-            <Text style={styles.label}>{t(`${T}actionLabel`)}</Text>
-            <View style={styles.actionRow}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: action === 'approve' }}
-                onPress={() => setAction('approve')}
-                style={[
-                  styles.actionChip,
-                  action === 'approve' && styles.actionChipApprove,
-                ]}>
-                <Text
-                  style={[
-                    styles.actionChipText,
-                    action === 'approve' && styles.actionChipTextApprove,
-                  ]}>
-                  {t(`${T}approve`)}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: action === 'reject' }}
-                onPress={() => setAction('reject')}
-                style={[
-                  styles.actionChip,
-                  action === 'reject' && styles.actionChipReject,
-                ]}>
-                <Text
-                  style={[
-                    styles.actionChipText,
-                    action === 'reject' && styles.actionChipTextReject,
-                  ]}>
-                  {t(`${T}reject`)}
-                </Text>
-              </Pressable>
-            </View>
-
-            <Text style={styles.label}>{t(`${T}remarksLabel`)}</Text>
-            <TextInput
-              value={remarks}
-              onChangeText={setRemarks}
-              placeholder={t(`${T}remarksPlaceholder`)}
-              placeholderTextColor={colors.textMuted}
-              multiline
-              maxLength={REMARKS_MAX}
-              style={styles.input}
-            />
-            <Text style={styles.charCount}>{remarks.length}/{REMARKS_MAX}</Text>
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-
-            <View style={styles.actions}>
-              <Pressable
-                accessibilityRole="button"
-                disabled={submitting}
-                onPress={onDismiss}
-                style={[styles.btnSecondary, submitting && styles.btnDisabled]}>
-                <Text style={styles.btnSecondaryLabel}>{t(`${T}cancel`)}</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                disabled={submitting}
-                onPress={handleSubmit}
-                style={[styles.btnPrimary, submitting && styles.btnDisabled]}>
-                {submitting ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.btnPrimaryLabel}>{t(`${T}confirm`)}</Text>
-                )}
-              </Pressable>
-            </View>
+        <View style={[styles.centerWrap, layout.wrapStyle]} pointerEvents="box-none">
+          <View style={[styles.card, sheetSizeStyle]} accessibilityViewIsModal>
+            {keyboardHeight > 0 ? (
+              <ScrollView
+                style={scrollStyle}
+                contentContainerStyle={[
+                  styles.cardBodyScroll,
+                  { paddingBottom: scrollContentPaddingBottom },
+                ]}
+                {...scrollViewProps}>
+                {bodyContent}
+              </ScrollView>
+            ) : (
+              <View style={styles.cardBody}>{bodyContent}</View>
+            )}
           </View>
         </View>
       </SafeAreaView>

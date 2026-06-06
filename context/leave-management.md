@@ -275,10 +275,12 @@ src/
 │   └── formatLeaveDays.ts
 ├── screens/
 │   ├── company/
-│   │   ├── LeaveManagement.tsx  # hub + CreateManagementLeaveModal host
-│   │   ├── LeaveRequests.tsx
-│   │   ├── LeaveBalance.tsx
-│   │   └── LeaveConfig.tsx
+│   │   ├── leave/
+│   │   │   ├── LeaveManagement.tsx  # hub + CreateManagementLeaveModal host
+│   │   │   ├── LeaveRequests.tsx
+│   │   │   ├── LeaveBalance.tsx
+│   │   │   └── LeaveConfig.tsx
+│   │   └── …
 │   └── home/
 │       └── LeaveRequest.tsx
 └── components/modals/

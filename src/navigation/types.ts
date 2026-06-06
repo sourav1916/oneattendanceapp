@@ -48,12 +48,14 @@ export type HomeStackParamList = {
   OnboardingRequest: undefined;
   CompanyLedger: undefined;
   Ledger: undefined;
+  PayrollManagement: undefined;
+  ShiftManagement: undefined;
   CreateEmployee: undefined;
 };
 
-/** Face attendance flow (Home stack + Face Attendance tab). */
+/** Face attendance flow (Face Attendance tab stack). */
 export type FaceAttendanceFlowParamList = {
-  FaceAttendance: undefined;
+  FaceAttendanceMain: undefined;
   FaceEnroll: undefined;
 };
 

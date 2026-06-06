@@ -12,7 +12,7 @@ Attach when changing **routes**, **headers**, **tabs**, or **deep linking**.
 - **`SettingsStackParamList`**: `SettingsHome`, `Profile`, **`EditProfile`**, `Sessions`, `ChangePassword`, **`MyCalendar`**.
 - **`HomeStackParamList`**: `HomeMain`, `LeaveRequest`, **`LeaveManagement`**, **`LeaveRequests`**, **`LeaveBalance`**, **`LeaveConfig`**, **`MyCalendar`**, **`CompanyList`**, **`AttendanceManagement`**, **`EmployeeManagement`**, **`EmployeeList`**, `FaceEnroll`, `FaceAttendance`, `CompanyLedger`, `Ledger`, `OnboardingRequest`, `CreateEmployee`, invite/permission routes, etc.
 - **`MainTabParamList`**: `Home`, `Attendance`, **`AttendanceManagement`** (owners), **`FaceAttendance`** (conditional), `Settings`.
-- **`FaceAttendanceFlowParamList`**: `FaceAttendance`, `FaceEnroll`.
+- **`FaceAttendanceFlowParamList`**: `FaceAttendanceMain` (root), `FaceEnroll`. Tab route name remains **`FaceAttendance`** on `MainTabParamList` — do not reuse that name for the inner stack screen.
 
 Use these with `NativeStackScreenProps<..., 'RouteName'>` etc.
 

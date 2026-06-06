@@ -310,6 +310,14 @@ export function EmployeeManagementScreen({ navigation }: Props) {
         navigation.navigate('CompanyLedger');
         return;
       }
+      if (itemId === 'salary') {
+        navigation.navigate('PayrollManagement');
+        return;
+      }
+      if (itemId === 'shift') {
+        navigation.navigate('ShiftManagement');
+        return;
+      }
       openComingSoon();
     },
     [navigation, openComingSoon],

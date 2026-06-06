@@ -4,12 +4,12 @@ import React, {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Dimensions,
   FlatList,
   Modal,
   Platform,
@@ -35,6 +35,7 @@ import {
   useTimePicker,
 } from '@src/components/modals/TimePicker';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { useKeyboardBottomSheet } from '@src/hooks/useKeyboardBottomSheet';
 import { useOnboardInviteFormData } from '@src/hooks/useOnboardInviteFormData';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { InvitePackageItem } from '@src/types/invitePackage';
@@ -62,7 +63,6 @@ import {
 } from '@src/utils/onboardInviteForm';
 import { readApiError } from '@src/utils/readApiError';
 
-const SHEET_MAX_HEIGHT = Dimensions.get('window').height * 0.92;
 
 const ALL_WEEKDAYS = [
   'monday',
@@ -133,13 +133,13 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   return StyleSheet.create({
     modalSafe: { flex: 1, backgroundColor: colors.overlay },
     modalBackdrop: { ...StyleSheet.absoluteFill },
-    sheetWrap: { flex: 1, justifyContent: 'flex-end' },
+    sheetWrap: { flex: 1 },
     sheet: {
       backgroundColor: colors.surface,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      maxHeight: SHEET_MAX_HEIGHT,
       flexDirection: 'column',
+      overflow: 'hidden',
       ...Platform.select({
         ios: {
           shadowColor: '#000',
@@ -150,8 +150,9 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         android: { elevation: 12 },
       }),
     },
-    sheetForm: { height: SHEET_MAX_HEIGHT },
-    sheetScroll: { flex: 1, minHeight: 0 },
+    sheetForm: {},
+    sheetScroll: { flexGrow: 0, flexShrink: 1 },
+    sheetScrollKeyboardOpen: { flex: 1, minHeight: 0 },
     sheetHandle: {
       alignSelf: 'center',
       width: 40,
@@ -624,6 +625,7 @@ type InviteFormStepProps = {
   styles: Styles;
   colors: AppThemeColors;
   t: TFunction;
+  onFieldFocus?: () => void;
 };
 
 function InviteFormStep({
@@ -639,6 +641,7 @@ function InviteFormStep({
   styles,
   colors,
   t,
+  onFieldFocus,
 }: InviteFormStepProps) {
   const [dropdownField, setDropdownField] = useState<string | null>(null);
   const [invitePackageField, setInvitePackageField] = useState(false);
@@ -1095,6 +1098,7 @@ function InviteFormStep({
               style={styles.durationInput}
               value={form.break_minutes}
               onChangeText={v => setForm(f => ({ ...f, break_minutes: v }))}
+              onFocus={onFieldFocus}
               placeholder="00:30"
               placeholderTextColor={colors.textMuted}
               keyboardType="numbers-and-punctuation"
@@ -1109,6 +1113,7 @@ function InviteFormStep({
               style={styles.durationInput}
               value={form.grace_minutes}
               onChangeText={v => setForm(f => ({ ...f, grace_minutes: v }))}
+              onFocus={onFieldFocus}
               placeholder="00:15"
               placeholderTextColor={colors.textMuted}
               keyboardType="numbers-and-punctuation"
@@ -1187,6 +1192,20 @@ export function OnboardEmployeeModal({
     () => buildStyles(colors, resolvedScheme),
     [colors, resolvedScheme],
   );
+  const scrollRef = useRef<ScrollView>(null);
+  const {
+    keyboardHeight,
+    layout,
+    sheetSizeStyle,
+    scrollViewProps,
+    scrollContentPaddingBottom,
+  } = useKeyboardBottomSheet(visible);
+
+  const scrollToFocusedField = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+  }, []);
 
   const [step, setStep] = useState<OnboardStep>('lookup');
   const [identifierType, setIdentifierType] =
@@ -1425,12 +1444,10 @@ export function OnboardEmployeeModal({
         animationType="slide"
         statusBarTranslucent
         onRequestClose={onDismiss}>
-        <SafeAreaView
-          style={styles.modalSafe}
-          edges={TAB_SCREEN_SAFE_AREA_EDGES}>
+        <SafeAreaView style={styles.modalSafe} edges={['top']}>
           <Pressable style={styles.modalBackdrop} onPress={onDismiss} />
-          <View style={styles.sheetWrap} pointerEvents="box-none">
-            <View style={[styles.sheet, styles.sheetForm]}>
+          <View style={[styles.sheetWrap, layout.wrapStyle]} pointerEvents="box-none">
+            <View style={[styles.sheet, sheetSizeStyle]}>
               <View style={styles.sheetHandle} />
               <View style={styles.sheetHeader}>
                 <Text style={styles.sheetTitle}>{sheetTitle}</Text>
@@ -1448,11 +1465,16 @@ export function OnboardEmployeeModal({
               </View>
 
               <ScrollView
-                style={styles.sheetScroll}
-                contentContainerStyle={styles.sheetBody}
-                bounces={false}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled">
+                ref={scrollRef}
+                style={[
+                  styles.sheetScroll,
+                  keyboardHeight > 0 && styles.sheetScrollKeyboardOpen,
+                ]}
+                contentContainerStyle={[
+                  styles.sheetBody,
+                  { paddingBottom: scrollContentPaddingBottom },
+                ]}
+                {...scrollViewProps}>
                 {step === 'lookup' ? (
                   foundUser ? (
                     <>
@@ -1660,6 +1682,7 @@ export function OnboardEmployeeModal({
                     styles={styles}
                     colors={colors}
                     t={t}
+                    onFieldFocus={scrollToFocusedField}
                   />
                 ) : formDataError ? (
                   <View style={styles.onboardErrorBanner}>

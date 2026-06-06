@@ -3,8 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     Animated,
-    Dimensions,
-    KeyboardAvoidingView,
     Modal,
     Platform,
     Pressable,
@@ -20,6 +18,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 import { DatePicker } from '@src/components/modals/DatePicker';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { useKeyboardBottomSheet } from '@src/hooks/useKeyboardBottomSheet';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type {
     ApplyLeaveApiPayload,
@@ -30,9 +29,6 @@ import type {
 import { uploadFileToOneSaas } from '@src/utils/FileUpload';
 
 export type { ApplyLeaveApiPayload, UpdateLeaveApiPayload };
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SHEET_MAX_HEIGHT = SCREEN_HEIGHT * 0.92;
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const FAR_FUTURE = '2099-12-31';
@@ -87,16 +83,17 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         overlay: {
             flex: 1,
             backgroundColor: colors.overlay,
-            justifyContent: 'flex-end',
         },
         backdrop: {
             ...StyleSheet.absoluteFill,
         },
+        sheetWrap: { flex: 1 },
         sheet: {
-            maxHeight: SHEET_MAX_HEIGHT,
             backgroundColor: colors.surface,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
+            flexDirection: 'column',
+            overflow: 'hidden',
             ...Platform.select({
                 ios: {
                     shadowColor: '#000',
@@ -138,6 +135,8 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
             justifyContent: 'center',
             backgroundColor: colors.secondaryButton,
         },
+        scroll: { flexGrow: 0, flexShrink: 1 },
+        scrollKeyboardOpen: { flex: 1, minHeight: 0 },
         body: {
             paddingHorizontal: 20,
             paddingTop: 16,
@@ -505,6 +504,20 @@ export function ApplyLeaveModal({
     const colors = useThemeColors();
     const { resolvedScheme } = useAppTheme();
     const styles = useMemo(() => buildStyles(colors, resolvedScheme), [colors, resolvedScheme]);
+    const scrollRef = useRef<ScrollView>(null);
+    const {
+        keyboardHeight,
+        layout,
+        sheetSizeStyle,
+        scrollViewProps,
+        scrollContentPaddingBottom,
+    } = useKeyboardBottomSheet(visible);
+
+    const scrollToFocusedField = useCallback(() => {
+        requestAnimationFrame(() => {
+            scrollRef.current?.scrollToEnd({ animated: true });
+        });
+    }, []);
 
     const isEdit = initialLeave != null;
 
@@ -714,7 +727,7 @@ export function ApplyLeaveModal({
             animationType="slide"
             statusBarTranslucent
             onRequestClose={onDismiss}>
-            <SafeAreaView style={styles.overlay} edges={['top', 'bottom']}>
+            <SafeAreaView style={styles.overlay} edges={['top']}>
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t(`${T}cancel`)}
@@ -722,10 +735,8 @@ export function ApplyLeaveModal({
                     onPress={onDismiss}
                 />
 
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    keyboardVerticalOffset={0}>
-                    <View style={styles.sheet}>
+                <View style={[styles.sheetWrap, layout.wrapStyle]} pointerEvents="box-none">
+                    <View style={[styles.sheet, sheetSizeStyle]}>
                         <View style={styles.handleBar} />
 
                         <View style={styles.header}>
@@ -742,10 +753,16 @@ export function ApplyLeaveModal({
                         </View>
 
                         <ScrollView
-                            contentContainerStyle={styles.body}
-                            keyboardShouldPersistTaps="handled"
-                            showsVerticalScrollIndicator={false}
-                            bounces={false}>
+                            ref={scrollRef}
+                            style={[
+                                styles.scroll,
+                                keyboardHeight > 0 && styles.scrollKeyboardOpen,
+                            ]}
+                            contentContainerStyle={[
+                                styles.body,
+                                { paddingBottom: scrollContentPaddingBottom },
+                            ]}
+                            {...scrollViewProps}>
 
                             {/* Leave Type Chips */}
                             <Text style={styles.sectionLabel}>{t(`${T}leaveTypeLabel`)}</Text>
@@ -924,6 +941,7 @@ export function ApplyLeaveModal({
                             <TextInput
                                 value={reason}
                                 onChangeText={setReason}
+                                onFocus={scrollToFocusedField}
                                 placeholder={t(`${T}reasonPlaceholder`)}
                                 placeholderTextColor={colors.textMuted}
                                 multiline
@@ -1028,7 +1046,7 @@ export function ApplyLeaveModal({
                             </Pressable>
                         </View>
                     </View>
-                </KeyboardAvoidingView>
+                </View>
             </SafeAreaView>
 
             <DatePicker

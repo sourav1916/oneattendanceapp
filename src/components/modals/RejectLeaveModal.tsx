@@ -5,6 +5,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { useKeyboardCenteredSheet } from '@src/hooks/useKeyboardCenteredSheet';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { EmployeeLeaveRow } from '@src/types/employeeLeave';
 
@@ -33,7 +35,6 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     backdrop: { ...StyleSheet.absoluteFill },
     centerWrap: {
       flex: 1,
-      justifyContent: 'center',
       paddingHorizontal: 16,
     },
     card: {
@@ -44,7 +45,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: 20,
+      overflow: 'hidden',
       ...Platform.select({
         ios: {
           shadowColor: '#000',
@@ -54,6 +55,13 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         },
         android: { elevation: 12 },
       }),
+    },
+    cardBody: {
+      padding: 20,
+    },
+    cardBodyScroll: {
+      padding: 20,
+      flexGrow: 1,
     },
     title: {
       fontSize: 18,
@@ -131,6 +139,15 @@ export function RejectLeaveModal({
     () => buildStyles(colors, resolvedScheme),
     [colors, resolvedScheme],
   );
+  const {
+    keyboardHeight,
+    layout,
+    sheetSizeStyle,
+    scrollStyle,
+    scrollViewProps,
+    scrollContentPaddingBottom,
+  } = useKeyboardCenteredSheet(visible);
+
   const [remarks, setRemarks] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -155,6 +172,49 @@ export function RejectLeaveModal({
     return null;
   }
 
+  const bodyContent = (
+    <>
+      <Text style={styles.title}>{t(`${T}title`)}</Text>
+      <Text style={styles.subtitle}>
+        {t(`${T}message`, { name: leave.employee_name })}
+      </Text>
+      <Text style={styles.label}>{t(`${T}remarksLabel`)}</Text>
+      <TextInput
+        value={remarks}
+        onChangeText={setRemarks}
+        placeholder={t(`${T}remarksPlaceholder`)}
+        placeholderTextColor={colors.textMuted}
+        multiline
+        maxLength={REMARKS_MAX}
+        style={styles.input}
+      />
+      <Text style={styles.charCount}>
+        {remarks.length}/{REMARKS_MAX}
+      </Text>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <View style={styles.actions}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={submitting}
+          onPress={onDismiss}
+          style={[styles.btnSecondary, submitting && styles.btnDisabled]}>
+          <Text style={styles.btnSecondaryLabel}>{t(`${T}cancel`)}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          disabled={submitting}
+          onPress={handleSubmit}
+          style={[styles.btnDanger, submitting && styles.btnDisabled]}>
+          {submitting ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.btnDangerLabel}>{t(`${T}confirm`)}</Text>
+          )}
+        </Pressable>
+      </View>
+    </>
+  );
+
   return (
     <Modal
       transparent
@@ -162,53 +222,28 @@ export function RejectLeaveModal({
       animationType="fade"
       statusBarTranslucent
       onRequestClose={onDismiss}>
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <Pressable
           style={styles.backdrop}
           accessibilityRole="button"
           accessibilityLabel={t('modals.common.closeDialog')}
           onPress={onDismiss}
         />
-        <View style={styles.centerWrap} pointerEvents="box-none">
-          <View style={styles.card} accessibilityViewIsModal>
-            <Text style={styles.title}>{t(`${T}title`)}</Text>
-            <Text style={styles.subtitle}>
-              {t(`${T}message`, { name: leave.employee_name })}
-            </Text>
-            <Text style={styles.label}>{t(`${T}remarksLabel`)}</Text>
-            <TextInput
-              value={remarks}
-              onChangeText={setRemarks}
-              placeholder={t(`${T}remarksPlaceholder`)}
-              placeholderTextColor={colors.textMuted}
-              multiline
-              maxLength={REMARKS_MAX}
-              style={styles.input}
-            />
-            <Text style={styles.charCount}>
-              {remarks.length}/{REMARKS_MAX}
-            </Text>
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            <View style={styles.actions}>
-              <Pressable
-                accessibilityRole="button"
-                disabled={submitting}
-                onPress={onDismiss}
-                style={[styles.btnSecondary, submitting && styles.btnDisabled]}>
-                <Text style={styles.btnSecondaryLabel}>{t(`${T}cancel`)}</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                disabled={submitting}
-                onPress={handleSubmit}
-                style={[styles.btnDanger, submitting && styles.btnDisabled]}>
-                {submitting ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.btnDangerLabel}>{t(`${T}confirm`)}</Text>
-                )}
-              </Pressable>
-            </View>
+        <View style={[styles.centerWrap, layout.wrapStyle]} pointerEvents="box-none">
+          <View style={[styles.card, sheetSizeStyle]} accessibilityViewIsModal>
+            {keyboardHeight > 0 ? (
+              <ScrollView
+                style={scrollStyle}
+                contentContainerStyle={[
+                  styles.cardBodyScroll,
+                  { paddingBottom: scrollContentPaddingBottom },
+                ]}
+                {...scrollViewProps}>
+                {bodyContent}
+              </ScrollView>
+            ) : (
+              <View style={styles.cardBody}>{bodyContent}</View>
+            )}
           </View>
         </View>
       </SafeAreaView>

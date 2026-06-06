@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -19,6 +18,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 import { DatePicker } from '@src/components/modals/DatePicker';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { useKeyboardBottomSheet } from '@src/hooks/useKeyboardBottomSheet';
 import { useEmployeePickerList } from '@src/hooks/useEmployeePickerList';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { EmployeeListItem } from '@src/types/employeeList';
@@ -115,7 +115,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.overlay },
     backdrop: { ...StyleSheet.absoluteFill },
-    sheetWrap: { flex: 1, justifyContent: 'flex-end', paddingTop: 48 },
+    sheetWrap: { flex: 1 },
     sheet: {
       backgroundColor: colors.surface,
       borderTopLeftRadius: 24,
@@ -123,7 +123,8 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderWidth: 1,
       borderBottomWidth: 0,
       borderColor: colors.border,
-      maxHeight: '92%',
+      flexDirection: 'column',
+      overflow: 'hidden',
     },
     handle: {
       alignSelf: 'center',
@@ -143,6 +144,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     title: { fontSize: 18, fontWeight: '700', color: colors.text },
     subtitle: { fontSize: 13, color: colors.textMuted, marginTop: 4 },
     scroll: { flexGrow: 0, flexShrink: 1 },
+    scrollKeyboardOpen: { flex: 1, minHeight: 0 },
     scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
     label: {
       fontSize: 12,
@@ -429,6 +431,20 @@ export function CreateManagementLeaveModal({
     () => buildStyles(colors, resolvedScheme),
     [colors, resolvedScheme],
   );
+  const scrollRef = useRef<ScrollView>(null);
+  const {
+    keyboardHeight,
+    layout,
+    sheetSizeStyle,
+    scrollViewProps,
+    scrollContentPaddingBottom,
+  } = useKeyboardBottomSheet(visible);
+
+  const scrollToFocusedField = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+  }, []);
 
   const [selectedEmployee, setSelectedEmployee] = useState<SelectedEmployee | null>(null);
   const [leaveConfigId, setLeaveConfigId] = useState<number | null>(null);
@@ -703,18 +719,15 @@ export function CreateManagementLeaveModal({
         animationType="slide"
         statusBarTranslucent
         onRequestClose={onDismiss}>
-        <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <SafeAreaView style={styles.safe} edges={['top']}>
           <Pressable
             style={styles.backdrop}
             accessibilityRole="button"
             accessibilityLabel={t('modals.common.closeDialog')}
             onPress={onDismiss}
           />
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.sheetWrap}
-            pointerEvents="box-none">
-            <View style={styles.sheet} accessibilityViewIsModal>
+          <View style={[styles.sheetWrap, layout.wrapStyle]} pointerEvents="box-none">
+            <View style={[styles.sheet, sheetSizeStyle]} accessibilityViewIsModal>
               <View style={styles.handle} />
               <View style={styles.header}>
                 <Text style={styles.title}>{t(`${T}title`)}</Text>
@@ -722,10 +735,16 @@ export function CreateManagementLeaveModal({
               </View>
 
               <ScrollView
-                style={styles.scroll}
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-                bounces={false}>
+                ref={scrollRef}
+                style={[
+                  styles.scroll,
+                  keyboardHeight > 0 && styles.scrollKeyboardOpen,
+                ]}
+                contentContainerStyle={[
+                  styles.scrollContent,
+                  { paddingBottom: scrollContentPaddingBottom },
+                ]}
+                {...scrollViewProps}>
                 <View style={styles.fieldGroup}>
                   <Text style={styles.label}>{t(`${T}employeeLabel`)}</Text>
                   <Pressable
@@ -945,6 +964,7 @@ export function CreateManagementLeaveModal({
                   <TextInput
                     value={reason}
                     onChangeText={setReason}
+                    onFocus={scrollToFocusedField}
                     placeholder={t(`${T}reasonPlaceholder`)}
                     placeholderTextColor={colors.textMuted}
                     multiline
@@ -965,6 +985,7 @@ export function CreateManagementLeaveModal({
                   <TextInput
                     value={remarks}
                     onChangeText={setRemarks}
+                    onFocus={scrollToFocusedField}
                     placeholder={t(`${T}remarksPlaceholder`)}
                     placeholderTextColor={colors.textMuted}
                     multiline
@@ -1059,7 +1080,7 @@ export function CreateManagementLeaveModal({
                 </Pressable>
               </View>
             </View>
-          </KeyboardAvoidingView>
+          </View>
         </SafeAreaView>
 
         <DatePicker

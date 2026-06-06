@@ -1,6 +1,6 @@
 ---
 description: Attendance Management feature — API endpoints, data model, flows
-globs: "src/screens/company/AttendanceManagement.tsx,src/components/modals/MarkAttendanceModal.tsx,src/components/modals/BulkApproveModal.tsx,src/api/attendanceApi.ts,src/types/attendanceList.ts,src/types/markAttendance.ts"
+globs: "src/screens/company/attendance/**,src/components/modals/MarkAttendanceModal.tsx,src/components/modals/BulkApproveModal.tsx,src/api/attendanceApi.ts,src/types/attendanceList.ts,src/types/markAttendance.ts"
 alwaysApply: false
 ---
 

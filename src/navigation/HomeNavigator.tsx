@@ -1,22 +1,24 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import type { HomeStackParamList } from '@src/navigation/types';
-import { AttendanceManagementScreen } from '@src/screens/company/AttendanceManagement';
-import { CompanyInvitesScreen } from '@src/screens/company/CompanyInvites';
+import { AttendanceManagementScreen } from '@src/screens/company/attendance/AttendanceManagement';
+import { FaceAttendanceScreen } from '@src/screens/company/attendance/FaceAttendance';
+import { CompanyInvitesScreen } from '@src/screens/company/employee/CompanyInvites';
+import { CreateEmployeeScreen } from '@src/screens/company/employee/CreateEmployee';
+import { EmployeeListScreen } from '@src/screens/company/employee/EmployeeList';
+import { EmployeeManagementScreen } from '@src/screens/company/employee/EmployeeManagement';
+import { EmployeeProfileScreen } from '@src/screens/company/employee/EmployeeProfile';
+import { FaceEnrollScreen } from '@src/screens/company/employee/FaceEnroll';
+import { PayrollManagementScreen } from '@src/screens/company/employee/PayrollManagement';
+import { PermissionManagementScreen } from '@src/screens/company/employee/PermissionManagement';
+import { ShiftManagementScreen } from '@src/screens/company/employee/ShiftManagement';
+import { LeaveBalanceScreen } from '@src/screens/company/leave/LeaveBalance';
+import { LeaveConfigScreen } from '@src/screens/company/leave/LeaveConfig';
+import { LeaveManagementScreen } from '@src/screens/company/leave/LeaveManagement';
+import { LeaveRequestsScreen } from '@src/screens/company/leave/LeaveRequests';
 import { CompanyListScreen } from '@src/screens/company/CompanyList';
-import { InvitePackagesScreen } from '@src/screens/company/InvitePackages';
-import { PermissionManagementScreen } from '@src/screens/company/PermissionManagement';
+import { InvitePackagesScreen } from '@src/screens/company/employee/InvitePackages';
 import { CompanyLedgerScreen } from '@src/screens/company/CompanyLedger';
-import { CreateEmployeeScreen } from '@src/screens/company/CreateEmployee';
-import { EmployeeListScreen } from '@src/screens/company/EmployeeList';
-import { FaceAttendanceScreen } from '@src/screens/company/FaceAttendance';
-import { FaceEnrollScreen } from '@src/screens/company/FaceEnroll';
-import { EmployeeManagementScreen } from '@src/screens/company/EmployeeManagement';
-import { LeaveManagementScreen } from '@src/screens/company/LeaveManagement';
-import { LeaveBalanceScreen } from '@src/screens/company/LeaveBalance';
-import { LeaveConfigScreen } from '@src/screens/company/LeaveConfig';
-import { LeaveRequestsScreen } from '@src/screens/company/LeaveRequests';
-import { EmployeeProfileScreen } from '@src/screens/company/EmployeeProfile';
 import { HomeScreen } from '@src/screens/home/HomeScreen';
 import { LedgerScreen } from '@src/screens/home/Ledger';
 import { LeaveRequestScreen } from '@src/screens/home/LeaveRequest';
@@ -59,6 +61,8 @@ export function HomeNavigator() {
         name="PermissionManagement"
         component={PermissionManagementScreen}
       />
+      <Stack.Screen name="PayrollManagement" component={PayrollManagementScreen} />
+      <Stack.Screen name="ShiftManagement" component={ShiftManagementScreen} />
       <Stack.Screen name="EmployeeProfile" component={EmployeeProfileScreen} />
       <Stack.Screen
         name="OnboardingRequest"

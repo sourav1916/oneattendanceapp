@@ -19,13 +19,18 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 import { createCompany } from '@src/api/createCompany';
 import { fetchCompanyList } from '@src/api/fetchCompanyList';
+import { updateCompany } from '@src/api/updateCompany';
 import { CreateCompany, type CreateCompanyFormPayload } from '@src/components/modals/CreateCompany';
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
+import { StatusAlert, useStatusAlert } from '@src/components/modals/StatusAlert';
+import { UpdateCompanyModal } from '@src/components/modals/UpdateCompanyModal';
+import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import { TAB_SCREEN_SAFE_AREA_EDGES } from '@src/constants/tabScreenLayout';
 import type { HomeStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { CompanyListItem, CompanyListMeta } from '@src/types/companyList';
+import type { UpdateCompanyPayload } from '@src/types/updateCompany';
 import { API_ENDPOINT } from '@src/utils/config';
 import { readApiError } from '@src/utils/readApiError';
 
@@ -299,6 +304,20 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
             fontWeight: '600',
             color: colors.text,
         },
+        cardActions: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            marginLeft: 4,
+        },
+        rowActionBtn: {
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: scheme === 'dark' ? '#334155' : colors.secondaryButton,
+        },
         footerBox: {
             paddingVertical: 16,
             alignItems: 'center',
@@ -394,13 +413,30 @@ function CompanyListSkeleton({
 type RowProps = {
     item: CompanyListItem;
     styles: ReturnType<typeof buildStyles>;
+    colors: AppThemeColors;
     activeLabel: string;
     inactiveLabel: string;
     methodsLabel: string;
     currencyLabel: string;
+    editLabel: string;
+    deleteLabel: string;
+    onEdit: () => void;
+    onDelete: () => void;
 };
 
-function CompanyRow({ item, styles, activeLabel, inactiveLabel, methodsLabel, currencyLabel }: RowProps) {
+function CompanyRow({
+    item,
+    styles,
+    colors,
+    activeLabel,
+    inactiveLabel,
+    methodsLabel,
+    currencyLabel,
+    editLabel,
+    deleteLabel,
+    onEdit,
+    onDelete,
+}: RowProps) {
     const uri = resolveLogoUrl(item.logo_url);
     const location = formatLocation(item);
     const methods =
@@ -440,6 +476,22 @@ function CompanyRow({ item, styles, activeLabel, inactiveLabel, methodsLabel, cu
                         {item.is_active ? activeLabel : inactiveLabel}
                     </Text>
                 </View>
+                <View style={styles.cardActions}>
+                    <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={editLabel}
+                        onPress={onEdit}
+                        style={styles.rowActionBtn}>
+                        <MaterialCommunityIcons name="pencil-outline" size={16} color={colors.primary} />
+                    </Pressable>
+                    <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={deleteLabel}
+                        onPress={onDelete}
+                        style={styles.rowActionBtn}>
+                        <MaterialCommunityIcons name="archive-off-outline" size={16} color={colors.danger} />
+                    </Pressable>
+                </View>
             </View>
             {location ? <Text style={styles.metaLine}>{location}</Text> : null}
             <View style={styles.tagRow}>
@@ -466,10 +518,16 @@ export function CompanyListScreen({ navigation }: Props) {
     const { t } = useTranslation();
     const colors = useThemeColors();
     const { resolvedScheme } = useAppTheme();
+    const { selectedCompany, refreshProfileRole } = useAuth();
     const styles = useMemo(() => buildStyles(colors, resolvedScheme), [colors, resolvedScheme]);
     const { props: confirmProps, present } = useConfirmAlert();
+    const { props: statusAlertProps, presentSuccess, presentError } = useStatusAlert();
 
     const [createOpen, setCreateOpen] = useState(false);
+    const [editCompany, setEditCompany] = useState<CompanyListItem | null>(null);
+    const [updateSubmitting, setUpdateSubmitting] = useState(false);
+    const pendingUpdateRef = useRef<UpdateCompanyPayload | null>(null);
+    const pendingDeleteRef = useRef<CompanyListItem | null>(null);
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [companies, setCompanies] = useState<CompanyListItem[]>([]);
@@ -607,6 +665,113 @@ export function CompanyListScreen({ navigation }: Props) {
         [handleCreateCompany, present, t],
     );
 
+    const runUpdate = useCallback(
+        async (payload: UpdateCompanyPayload) => {
+            setUpdateSubmitting(true);
+            try {
+                const res = await updateCompany(payload);
+                if (!res.success) {
+                    throw new Error(res.message?.trim() || t('home.companyList.actions.updateFailed'));
+                }
+                setEditCompany(null);
+                presentSuccess(res.message?.trim() || t('home.companyList.actions.updateSuccess'));
+                if (selectedCompany?.id === payload.id) {
+                    await refreshProfileRole({ silent: true }).catch(() => {});
+                }
+                await loadFirst();
+            } catch (e) {
+                presentError(
+                    e instanceof Error && e.message
+                        ? e.message
+                        : readApiError(e) || t('home.companyList.actions.updateFailed'),
+                );
+            } finally {
+                setUpdateSubmitting(false);
+                pendingUpdateRef.current = null;
+            }
+        },
+        [loadFirst, presentError, presentSuccess, refreshProfileRole, selectedCompany?.id, t],
+    );
+
+    const runDeactivate = useCallback(
+        async (company: CompanyListItem) => {
+            try {
+                const res = await updateCompany({ id: company.id, is_active: false });
+                if (!res.success) {
+                    throw new Error(res.message?.trim() || t('home.companyList.actions.deleteFailed'));
+                }
+                presentSuccess(res.message?.trim() || t('home.companyList.actions.deleteSuccess'));
+                if (selectedCompany?.id === company.id) {
+                    await refreshProfileRole({ silent: true }).catch(() => {});
+                }
+                await loadFirst();
+            } catch (e) {
+                presentError(
+                    e instanceof Error && e.message
+                        ? e.message
+                        : readApiError(e) || t('home.companyList.actions.deleteFailed'),
+                );
+            } finally {
+                pendingDeleteRef.current = null;
+            }
+        },
+        [loadFirst, presentError, presentSuccess, refreshProfileRole, selectedCompany?.id, t],
+    );
+
+    const openEditModal = useCallback((company: CompanyListItem) => {
+        setEditCompany(company);
+    }, []);
+
+    const handleUpdateSubmit = useCallback(
+        (payload: UpdateCompanyPayload) => {
+            pendingUpdateRef.current = payload;
+            present({
+                title: t('home.companyList.actions.confirmUpdateTitle'),
+                message: t('home.companyList.actions.confirmUpdateMessage', {
+                    name: editCompany?.name ?? '',
+                }),
+                buttons: [
+                    { text: t('home.companyList.actions.cancel'), variant: 'secondary' },
+                    {
+                        text: t('home.companyList.actions.confirmUpdateConfirm'),
+                        variant: 'primary',
+                        onPress: () => {
+                            const p = pendingUpdateRef.current;
+                            if (p) {
+                                runUpdate(p).catch(() => {});
+                            }
+                        },
+                    },
+                ],
+            });
+        },
+        [editCompany?.name, present, runUpdate, t],
+    );
+
+    const handleDeletePress = useCallback(
+        (company: CompanyListItem) => {
+            pendingDeleteRef.current = company;
+            present({
+                title: t('home.companyList.actions.confirmDeleteTitle'),
+                message: t('home.companyList.actions.confirmDeleteMessage', { name: company.name }),
+                buttons: [
+                    { text: t('home.companyList.actions.cancel'), variant: 'secondary' },
+                    {
+                        text: t('home.companyList.actions.confirmDeleteConfirm'),
+                        variant: 'danger',
+                        onPress: () => {
+                            const c = pendingDeleteRef.current;
+                            if (c) {
+                                runDeactivate(c).catch(() => {});
+                            }
+                        },
+                    },
+                ],
+            });
+        },
+        [present, runDeactivate, t],
+    );
+
     const onEndReached = useCallback(() => {
         if (endReachedLock.current || loading || loadingMore || meta == null) {
             return;
@@ -674,13 +839,18 @@ export function CompanyListScreen({ navigation }: Props) {
             <CompanyRow
                 item={item}
                 styles={styles}
+                colors={colors}
                 activeLabel={t('home.companyList.active')}
                 inactiveLabel={t('home.companyList.inactive')}
                 methodsLabel={t('home.companyList.methods')}
                 currencyLabel={t('home.companyList.currency')}
+                editLabel={t('home.companyList.editCompany')}
+                deleteLabel={t('home.companyList.deleteCompany')}
+                onEdit={() => openEditModal(item)}
+                onDelete={() => handleDeletePress(item)}
             />
         ),
-        [styles, t],
+        [colors, handleDeletePress, openEditModal, styles, t],
     );
 
     const listEmpty = useMemo(() => {
@@ -741,6 +911,7 @@ export function CompanyListScreen({ navigation }: Props) {
                     onSubmit={onCreateSubmit}
                 />
                 <ConfirmAlert {...confirmProps} />
+                <StatusAlert {...statusAlertProps} />
             </SafeAreaView>
         );
     }
@@ -771,7 +942,15 @@ export function CompanyListScreen({ navigation }: Props) {
                 onDismiss={() => setCreateOpen(false)}
                 onSubmit={onCreateSubmit}
             />
+            <UpdateCompanyModal
+                visible={editCompany != null}
+                company={editCompany}
+                submitting={updateSubmitting}
+                onDismiss={() => setEditCompany(null)}
+                onSubmit={handleUpdateSubmit}
+            />
             <ConfirmAlert {...confirmProps} />
+            <StatusAlert {...statusAlertProps} />
         </SafeAreaView>
     );
 }

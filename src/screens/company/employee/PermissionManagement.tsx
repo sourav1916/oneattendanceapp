@@ -177,6 +177,19 @@ function categorySelectionState(
   };
 }
 
+function groupPermissionsByCategory<T extends { category?: string }>(
+  permissions: T[],
+): Array<[string, T[]]> {
+  const map = new Map<string, T[]>();
+  for (const p of permissions) {
+    const cat = p.category || 'other';
+    const list = map.get(cat) ?? [];
+    list.push(p);
+    map.set(cat, list);
+  }
+  return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+}
+
 function buildFormFromPackage(
     pkg: PermissionPackageListItem,
 ): PermissionPackageFormData {
@@ -917,14 +930,7 @@ function PackageFormModal({
                     p.category.toLowerCase().includes(q),
             )
             : allPermissions;
-        const map = new Map<string, PermissionListItem[]>();
-        for (const p of filtered) {
-            const cat = p.category || 'other';
-            const list = map.get(cat) ?? [];
-            list.push(p);
-            map.set(cat, list);
-        }
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+        return groupPermissionsByCategory(filtered);
   }, [allPermissions, permFilter]);
 
   const visiblePermissionIds = useMemo(
@@ -1447,15 +1453,37 @@ function ViewPackageModal({
   t,
 }: ViewPackageModalProps) {
   const { resolvedScheme } = useAppTheme();
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+
+  const groupedPermissions = useMemo(
+    () => groupPermissionsByCategory(pkg?.permissions ?? []),
+    [pkg?.permissions],
+  );
+
+  useEffect(() => {
+    if (visible) {
+      setExpandedCategories([]);
+    }
+  }, [visible, pkg?.id]);
+
+  const toggleCategoryExpanded = useCallback((category: string) => {
+    setExpandedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category],
+    );
+  }, []);
+
+  const isCategoryExpanded = useCallback(
+    (category: string) => expandedCategories.includes(category),
+    [expandedCategories],
+  );
 
   if (!pkg) {
     return null;
   }
 
-  const palette = getCategoryPalette(
-    (pkg.permissions?.[0]?.category as string | undefined) ?? 'other',
-    resolvedScheme,
-  );
+  const palette = getCategoryPalette('permission package', resolvedScheme);
 
   return (
     <Modal
@@ -1551,45 +1579,133 @@ function ViewPackageModal({
                 </View>
 
                 <View style={[styles.permList, styles.chipWrapTop]}>
-                  {(pkg.permissions ?? []).map(p => (
-                    <View
-                      key={p.id}
-                      style={[
-                        styles.permRow,
-                        styles.permRowLast,
-                        { borderBottomColor: palette.border },
-                      ]}>
-                      <View style={styles.permRowMain}>
-                        <Text
-                          style={[
-                            styles.permRowName,
-                            styles.permRowNameSelected,
-                          ]}
-                          numberOfLines={2}>
-                          {p.name}
-                        </Text>
-                        <Text style={styles.permRowCode} numberOfLines={1}>
-                          {p.code}
-                        </Text>
-                      </View>
-                      {p.action ? (
+                  {groupedPermissions.length === 0 ? (
+                    <Text style={styles.muted}>
+                      {t('home.permissionManagement.viewModal.noPermissions')}
+                    </Text>
+                  ) : (
+                    groupedPermissions.map(([category, perms]) => {
+                      const categoryPalette = getCategoryPalette(
+                        category,
+                        resolvedScheme,
+                      );
+                      const expanded = isCategoryExpanded(category);
+                      return (
                         <View
+                          key={category}
                           style={[
-                            styles.permActionBadge,
-                            { borderColor: palette.border },
+                            styles.permCategoryCard,
+                            {
+                              borderColor: categoryPalette.border,
+                              backgroundColor: categoryPalette.bg,
+                            },
                           ]}>
-                          <Text
+                          <Pressable
                             style={[
-                              styles.permActionBadgeText,
-                              { color: palette.accent },
+                              styles.permCategoryHeader,
+                              {
+                                backgroundColor: categoryPalette.header,
+                                borderBottomColor: categoryPalette.border,
+                              },
                             ]}
-                            numberOfLines={1}>
-                            {formatLabel(p.action)}
-                          </Text>
+                            onPress={() => toggleCategoryExpanded(category)}
+                            accessibilityRole="button"
+                            accessibilityState={{ expanded }}>
+                            <View style={styles.permCategoryIconWrap}>
+                              <MaterialCommunityIcons
+                                name={categoryPalette.icon}
+                                size={18}
+                                color={categoryPalette.accent}
+                              />
+                            </View>
+                            <View style={styles.permCategoryHeaderMain}>
+                              <Text
+                                style={[
+                                  styles.permCategoryTitle,
+                                  { color: categoryPalette.accent },
+                                ]}>
+                                {formatLabel(category)}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.permCategoryMeta,
+                                  { color: colors.textMuted },
+                                ]}>
+                                {t(
+                                  'home.permissionManagement.viewModal.groupCount',
+                                  { count: perms.length },
+                                )}
+                              </Text>
+                            </View>
+                            <MaterialCommunityIcons
+                              name={expanded ? 'chevron-up' : 'chevron-down'}
+                              size={20}
+                              color={categoryPalette.accent}
+                            />
+                          </Pressable>
+
+                          {expanded ? (
+                            <View style={styles.permList}>
+                              {perms.map((p, index) => {
+                                const isLast = index === perms.length - 1;
+                                return (
+                                  <View
+                                    key={p.id}
+                                    style={[
+                                      styles.permRow,
+                                      styles.permRowSelected,
+                                      isLast && styles.permRowLast,
+                                      {
+                                        borderBottomColor: categoryPalette.border,
+                                      },
+                                    ]}>
+                                    <MaterialCommunityIcons
+                                      name="check-circle"
+                                      size={20}
+                                      color={categoryPalette.accent}
+                                    />
+                                    <View style={styles.permRowMain}>
+                                      <Text
+                                        style={[
+                                          styles.permRowName,
+                                          styles.permRowNameSelected,
+                                        ]}
+                                        numberOfLines={2}>
+                                        {p.name}
+                                      </Text>
+                                      <Text
+                                        style={styles.permRowCode}
+                                        numberOfLines={1}>
+                                        {p.code}
+                                      </Text>
+                                    </View>
+                                    {p.action ? (
+                                      <View
+                                        style={[
+                                          styles.permActionBadge,
+                                          {
+                                            borderColor: categoryPalette.border,
+                                          },
+                                        ]}>
+                                        <Text
+                                          style={[
+                                            styles.permActionBadgeText,
+                                            { color: categoryPalette.accent },
+                                          ]}
+                                          numberOfLines={1}>
+                                          {formatLabel(p.action)}
+                                        </Text>
+                                      </View>
+                                    ) : null}
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          ) : null}
                         </View>
-                      ) : null}
-                    </View>
-                  ))}
+                      );
+                    })
+                  )}
                 </View>
               </View>
             </ScrollView>

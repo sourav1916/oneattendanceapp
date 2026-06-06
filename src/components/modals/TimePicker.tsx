@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { useKeyboardCenteredSheet } from '@src/hooks/useKeyboardCenteredSheet';
 import type { AppThemeColors } from '@src/theme/palettes';
 
 const ITEM_H = 52;
@@ -116,7 +117,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.overlay },
     backdrop: { ...StyleSheet.absoluteFill },
-    sheetWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
+    sheetWrap: { flex: 1, paddingHorizontal: 20 },
     sheet: {
       alignSelf: 'center',
       width: '100%',
@@ -125,9 +126,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderRadius: 20,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingTop: 20,
-      paddingBottom: 16,
-      paddingHorizontal: 16,
+      overflow: 'hidden',
       ...Platform.select({
         ios: {
           shadowColor: '#000',
@@ -137,6 +136,11 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         },
         android: { elevation: 10 },
       }),
+    },
+    sheetInner: {
+      paddingTop: 20,
+      paddingBottom: 16,
+      paddingHorizontal: 16,
     },
     title: {
       fontSize: 18,
@@ -474,6 +478,10 @@ export function TimePicker({
     () => buildStyles(colors, resolvedScheme),
     [colors, resolvedScheme],
   );
+  const { layout, sheetSizeStyle } = useKeyboardCenteredSheet(visible, {
+    minSheetHeight: 320,
+    maxHeight: 480,
+  });
 
   const resolvedTitle = titleProp ?? t('modals.timePicker.title');
   const resolvedCancel = cancelProp ?? t('modals.timePicker.cancel');
@@ -703,17 +711,16 @@ export function TimePicker({
       animationType="fade"
       statusBarTranslucent
       onRequestClose={onDismiss}>
-      <SafeAreaView
-        style={styles.safe}
-        edges={['top', 'right', 'left', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <Pressable
           style={styles.backdrop}
           accessibilityRole="button"
           accessibilityLabel={resolvedCancel}
           onPress={dismissOnBackdropPress ? onDismiss : undefined}
         />
-        <View style={styles.sheetWrap} pointerEvents="box-none">
-          <View style={styles.sheet}>
+        <View style={[styles.sheetWrap, layout.wrapStyle]} pointerEvents="box-none">
+          <View style={[styles.sheet, sheetSizeStyle]}>
+            <View style={styles.sheetInner}>
             <Text style={styles.title}>{resolvedTitle}</Text>
 
             <View style={styles.inputRow}>
@@ -846,6 +853,7 @@ export function TimePicker({
                 ]}>
                 <Text style={styles.confirmLabel}>{resolvedConfirm}</Text>
               </Pressable>
+            </View>
             </View>
           </View>
         </View>

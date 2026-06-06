@@ -66,7 +66,7 @@ import {
 
 type Props = NativeStackScreenProps<
   FaceAttendanceFlowParamList,
-  'FaceAttendance'
+  'FaceAttendanceMain'
 >;
 
 

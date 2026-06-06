@@ -48,7 +48,7 @@ import type {
   CompanyInviteWeekend,
 } from '@src/types/companyInvite';
 import { API_ENDPOINT } from '@src/utils/config';
-import { OnboardEmployeeModal } from '@src/screens/company/OnboardEmployeeModal';
+import { OnboardEmployeeModal } from '@src/components/modals/OnboardEmployeeModal';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'CompanyInvites'>;
 

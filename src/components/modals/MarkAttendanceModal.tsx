@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -17,6 +17,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 import { TimePicker, formatTime12h } from '@src/components/modals/TimePicker';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
+import { useKeyboardBottomSheet } from '@src/hooks/useKeyboardBottomSheet';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { AttendanceDayRecord, ShiftInfo } from '@src/types/attendanceList';
 import type {
@@ -66,7 +67,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.overlay },
     backdrop: { ...StyleSheet.absoluteFillObject },
-    sheetWrap: { flex: 1, justifyContent: 'flex-end', paddingTop: 48 },
+    sheetWrap: { flex: 1 },
     sheet: {
       backgroundColor: colors.surface,
       borderTopLeftRadius: 24,
@@ -74,7 +75,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderWidth: 1,
       borderBottomWidth: 0,
       borderColor: colors.border,
-      maxHeight: '92%',
+      flexDirection: 'column',
       overflow: 'hidden',
     },
     header: {
@@ -103,6 +104,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       color: colors.textMuted,
     },
     scroll: { flexGrow: 0, flexShrink: 1 },
+    scrollKeyboardOpen: { flex: 1, minHeight: 0 },
     scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 },
     sectionLabel: {
       fontSize: 12,
@@ -333,6 +335,20 @@ export function MarkAttendanceModal({
     () => buildStyles(colors, resolvedScheme),
     [colors, resolvedScheme],
   );
+  const scrollRef = useRef<ScrollView>(null);
+  const {
+    keyboardHeight,
+    layout,
+    sheetSizeStyle,
+    scrollViewProps,
+    scrollContentPaddingBottom,
+  } = useKeyboardBottomSheet(visible);
+
+  const scrollToFocusedField = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+  }, []);
 
   const [type, setType] = useState<MarkAttendanceType>('attendance');
   const [status, setStatus] = useState<MarkAttendanceStatus>('present');
@@ -562,17 +578,15 @@ export function MarkAttendanceModal({
       transparent
       statusBarTranslucent
       onRequestClose={onDismiss}>
-      <SafeAreaView
-        style={styles.safe}
-        edges={['top', 'left', 'right', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t(`${tk}.close`)}
           style={styles.backdrop}
           onPress={onDismiss}
         />
-        <View style={styles.sheetWrap} pointerEvents="box-none">
-          <View style={styles.sheet}>
+        <View style={[styles.sheetWrap, layout.wrapStyle]} pointerEvents="box-none">
+          <View style={[styles.sheet, sheetSizeStyle]}>
             <View style={styles.header}>
               <View style={styles.handle} />
               <Text style={styles.headerTitle} accessibilityRole="header">
@@ -584,12 +598,17 @@ export function MarkAttendanceModal({
             </View>
 
             <ScrollView
-              style={styles.scroll}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator
-              keyboardShouldPersistTaps="handled"
+              ref={scrollRef}
+              style={[
+                styles.scroll,
+                keyboardHeight > 0 && styles.scrollKeyboardOpen,
+              ]}
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingBottom: scrollContentPaddingBottom },
+              ]}
               nestedScrollEnabled
-              bounces={false}>
+              {...scrollViewProps}>
               <Text style={[styles.sectionLabel, styles.sectionLabelFirst]}>
                 {t(`${tk}.type`)}
               </Text>
@@ -823,6 +842,7 @@ export function MarkAttendanceModal({
               <TextInput
                 value={notes}
                 onChangeText={setNotes}
+                onFocus={scrollToFocusedField}
                 placeholder={t(`${tk}.notesPlaceholder`)}
                 placeholderTextColor={colors.textMuted}
                 multiline

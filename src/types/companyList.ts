@@ -2,22 +2,23 @@ export type CompanyListItem = {
   id: number;
   owner_user_id: number;
   name: string;
-  legal_name: string;
+  legal_name: string | null;
   logo_url: string | null;
-  address_line1: string;
+  address_line1: string | null;
   address_line2: string | null;
-  city: string;
-  state: string;
-  postal_code: string;
-  country: string;
-  latitude: string | null;
-  longitude: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
   updated_at: string;
   is_active: boolean;
   company_ips: string[];
   attendance_methods: string[];
-  transaction_currency: string;
+  transaction_currency: string | null;
+  max_distance: number | null;
 };
 
 export type CompanyListMeta = {

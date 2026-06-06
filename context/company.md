@@ -16,8 +16,8 @@ Users can browse companies they have access to, create new companies, and manage
 | Employee hub | `EmployeeManagement.tsx` | (sub-routes) |
 | Employee list | `EmployeeList.tsx` | `GET /employees/list` (+ `company` header) |
 | **Leave hub** | **`LeaveManagement.tsx`** | → **`LeaveRequests`** (live); see [**leave-management.md**](./leave-management.md) |
-| Attendance mgmt | `AttendanceManagement.tsx` | Company attendance list + bulk approve |
-| Face enrollment | `FaceEnroll.tsx` | `/employees/face-enroll/*` — see [**face-enroll.md**](./face-enroll.md) |
+| Attendance mgmt | `attendance/AttendanceManagement.tsx` | Company attendance list + bulk approve |
+| Face enrollment | `employee/FaceEnroll.tsx` | `/employees/face-enroll/*` — see [**face-enroll.md**](./face-enroll.md) |
 
 ---
 
@@ -135,17 +135,30 @@ src/
 │   ├── fetchCompanyList.ts
 │   └── createCompany.ts
 ├── components/modals/
-│   └── CreateCompany.tsx
+│   ├── CreateCompany.tsx
+│   └── OnboardEmployeeModal.tsx
 ├── constants/
 │   └── tabScreenLayout.ts
 ├── screens/company/
 │   ├── CompanyList.tsx
-│   ├── EmployeeManagement.tsx
-│   ├── EmployeeList.tsx
-│   ├── FaceEnroll.tsx
-│   ├── LeaveManagement.tsx
-│   ├── LeaveRequests.tsx
-│   └── … (AttendanceManagement, Invites, Permissions, CompanyLedger, …)
+│   ├── employee/
+│   │   ├── EmployeeManagement.tsx
+│   │   ├── EmployeeList.tsx
+│   │   ├── CreateEmployee.tsx
+│   │   ├── CompanyInvites.tsx
+│   │   ├── PermissionManagement.tsx
+│   │   ├── EmployeeProfile.jsx
+│   │   ├── FaceEnroll.tsx
+│   │   └── InvitePackages.tsx
+│   ├── attendance/
+│   │   ├── AttendanceManagement.tsx
+│   │   └── FaceAttendance.tsx
+│   ├── leave/
+│   │   ├── LeaveManagement.tsx
+│   │   ├── LeaveRequests.tsx
+│   │   ├── LeaveBalance.tsx
+│   │   └── LeaveConfig.tsx
+│   └── … (CompanyList, CompanyLedger, …)
 ├── screens/home/
 │   └── HomeScreen.tsx          # Company tile → CompanyList
 └── types/

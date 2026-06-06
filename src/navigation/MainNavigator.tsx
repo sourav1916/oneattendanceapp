@@ -24,7 +24,7 @@ import { SettingsNavigator } from '@src/navigation/SettingsNavigator';
 import { TabSlideTransition } from '@src/navigation/tabSlideTransition';
 import type { MainTabParamList } from '@src/navigation/types';
 import { AttendanceScreen } from '@src/screens/attendance/AttendanceScreen';
-import { AttendanceManagementScreen } from '@src/screens/company/AttendanceManagement';
+import { AttendanceManagementScreen } from '@src/screens/company/attendance/AttendanceManagement';
 import { canShowFaceAttendanceTab } from '@src/utils/faceAttendanceAccess';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -239,7 +239,7 @@ function MainTabNavigator() {
         <Tab.Screen
           name="FaceAttendance"
           component={FaceAttendanceNavigator}
-          listeners={nestedStackResetOnTabFocus('FaceAttendance', 'FaceAttendance')}
+          listeners={nestedStackResetOnTabFocus('FaceAttendance', 'FaceAttendanceMain')}
           options={{
             title: t('tabs.faceAttendance'),
             tabBarIcon: tabBarIconMci('face-recognition', 'face-recognition'),
