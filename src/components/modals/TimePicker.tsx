@@ -13,13 +13,12 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
-import { useKeyboardCenteredSheet } from '@src/hooks/useKeyboardCenteredSheet';
 import type { AppThemeColors } from '@src/theme/palettes';
 
 const ITEM_H = 52;
@@ -80,6 +79,10 @@ function parseHHmm(s: string | undefined): [number, number] | null {
   return [h, m];
 }
 
+function toTotalMinutes(h24: number, minute: number): number {
+  return h24 * 60 + minute;
+}
+
 export function formatTime12h(hhmm: string): string {
   const parsed = parseHHmm(hhmm);
   if (!parsed) {
@@ -105,7 +108,9 @@ export type TimePickerProps = {
   title?: string;
   cancelLabel?: string;
   confirmLabel?: string;
+  /** Inclusive lower bound (`HH:mm`). */
   minTime?: string;
+  /** Inclusive upper bound (`HH:mm`). */
   maxTime?: string;
   minuteStep?: number;
   dismissOnBackdropPress?: boolean;
@@ -117,7 +122,11 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.overlay },
     backdrop: { ...StyleSheet.absoluteFill },
-    sheetWrap: { flex: 1, paddingHorizontal: 20 },
+    sheetWrap: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: 20,
+    },
     sheet: {
       alignSelf: 'center',
       width: '100%',
@@ -127,6 +136,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderWidth: 1,
       borderColor: colors.border,
       overflow: 'hidden',
+      flexDirection: 'column',
       ...Platform.select({
         ios: {
           shadowColor: '#000',
@@ -137,9 +147,9 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         android: { elevation: 10 },
       }),
     },
-    sheetInner: {
+    sheetBody: {
+      flexShrink: 1,
       paddingTop: 20,
-      paddingBottom: 16,
       paddingHorizontal: 16,
     },
     title: {
@@ -147,47 +157,21 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 16,
-    },
-
-    inputRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
       marginBottom: 6,
     },
-    inputBox: {
-      width: 68,
-      height: 60,
-      borderRadius: 14,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      backgroundColor: scheme === 'dark' ? '#0f172a' : colors.background,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    inputBoxFocused: {
-      borderColor: colors.primary,
-      borderWidth: 2,
-      backgroundColor: scheme === 'dark' ? 'rgba(59, 130, 246, 0.08)' : '#eff6ff',
-    },
-    inputTextInput: {
+    selectedTime: {
       fontSize: 28,
       fontWeight: '800',
-      color: colors.text,
+      color: colors.primary,
       textAlign: 'center',
-      width: '100%',
-      height: '100%',
-      padding: 0,
+      letterSpacing: 0.5,
+      marginBottom: 16,
     },
-    inputColon: {
-      fontSize: 28,
-      fontWeight: '800',
-      color: colors.textMuted,
+    selectedTimeInvalid: {
+      color: colors.danger,
     },
     periodRow: {
-      marginLeft: 10,
+      marginLeft: 8,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
@@ -217,27 +201,11 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     periodTextActive: {
       color: '#fff',
     },
-    inputLabels: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      marginBottom: 14,
-      gap: 6,
-    },
-    inputLabelBox: { width: 68, alignItems: 'center' },
-    inputLabelText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.3,
-    },
-    inputLabelSpacer: { width: 18 },
-
     wheelsRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 12,
+      marginBottom: 8,
     },
     wheelOuter: {
       width: 76,
@@ -301,18 +269,23 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       fontWeight: '800',
       color: colors.textMuted,
     },
-
     rangeError: {
       textAlign: 'center',
       fontSize: 13,
       fontWeight: '600',
       color: colors.danger,
-      marginBottom: 12,
+      marginTop: 4,
+      marginBottom: 4,
       paddingHorizontal: 8,
     },
     footer: {
       flexDirection: 'row',
       gap: 10,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      backgroundColor: colors.surface,
     },
     footerBtn: {
       flex: 1,
@@ -363,44 +336,110 @@ function Wheel({
 }: WheelProps) {
   const ref = useRef<FlatList<number>>(null);
   const isUserScrolling = useRef(false);
+  const lastScrollValue = useRef<number | null>(null);
 
   const selectedIdx = useMemo(() => {
     const idx = data.indexOf(selected);
     return idx >= 0 ? idx : 0;
   }, [data, selected]);
 
+  const indexFromOffset = useCallback(
+    (y: number) => {
+      const idx = Math.round(y / ITEM_H);
+      return Math.max(0, Math.min(data.length - 1, idx));
+    },
+    [data.length],
+  );
+
+  const valueAtOffset = useCallback(
+    (y: number) => {
+      const idx = indexFromOffset(y);
+      return data[idx];
+    },
+    [data, indexFromOffset],
+  );
+
+  const snapToOffset = useCallback(
+    (y: number, animated: boolean) => {
+      const idx = indexFromOffset(y);
+      ref.current?.scrollToOffset({
+        offset: idx * ITEM_H,
+        animated,
+      });
+      return data[idx];
+    },
+    [data, indexFromOffset],
+  );
+
+  const reportSelection = useCallback(
+    (val: number | undefined) => {
+      if (val !== undefined && val !== lastScrollValue.current) {
+        lastScrollValue.current = val;
+        onSelect(val);
+      }
+    },
+    [onSelect],
+  );
+
   useEffect(() => {
     if (!isUserScrolling.current) {
+      lastScrollValue.current = selected;
       ref.current?.scrollToOffset({
         offset: selectedIdx * ITEM_H,
-        animated: true,
+        animated: false,
       });
     }
-  }, [selectedIdx]);
+  }, [selected, selectedIdx]);
 
   const scrollToSelected = useCallback(() => {
+    lastScrollValue.current = selected;
     ref.current?.scrollToOffset({
       offset: selectedIdx * ITEM_H,
       animated: false,
     });
-  }, [selectedIdx]);
+  }, [selected, selectedIdx]);
 
   const handleBegin = useCallback(() => {
     isUserScrolling.current = true;
-  }, []);
+    lastScrollValue.current = selected;
+  }, [selected]);
 
-  const handleEnd = useCallback(
+  const handleScroll = useCallback(
     (e: { nativeEvent: { contentOffset: { y: number } } }) => {
-      isUserScrolling.current = false;
-      const y = e.nativeEvent.contentOffset.y;
-      const idx = Math.round(y / ITEM_H);
-      const clamped = Math.max(0, Math.min(data.length - 1, idx));
-      const val = data[clamped];
-      if (val !== undefined && val !== selected) {
-        onSelect(val);
+      if (!isUserScrolling.current) {
+        return;
       }
+      const val = valueAtOffset(e.nativeEvent.contentOffset.y);
+      reportSelection(val);
     },
-    [data, onSelect, selected],
+    [reportSelection, valueAtOffset],
+  );
+
+  const finalizeScroll = useCallback(
+    (y: number) => {
+      isUserScrolling.current = false;
+      const val = snapToOffset(y, true);
+      reportSelection(val);
+    },
+    [reportSelection, snapToOffset],
+  );
+
+  const handleScrollEndDrag = useCallback(
+    (e: { nativeEvent: { contentOffset: { y: number }; velocity?: { y?: number } } }) => {
+      const velocityY = e.nativeEvent.velocity?.y ?? 0;
+      if (Math.abs(velocityY) > 0.25) {
+        return;
+      }
+      finalizeScroll(e.nativeEvent.contentOffset.y);
+    },
+    [finalizeScroll],
+  );
+
+  const handleMomentumScrollEnd = useCallback(
+    (e: { nativeEvent: { contentOffset: { y: number } } }) => {
+      finalizeScroll(e.nativeEvent.contentOffset.y);
+    },
+    [finalizeScroll],
   );
 
   const renderItem = useCallback(
@@ -442,16 +481,17 @@ function Wheel({
         renderItem={renderItem}
         getItemLayout={getLayout}
         snapToInterval={ITEM_H}
-        decelerationRate="normal"
+        decelerationRate="fast"
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
         onScrollBeginDrag={handleBegin}
-        onMomentumScrollEnd={handleEnd}
-        onScrollEndDrag={handleEnd}
+        onScroll={handleScroll}
+        onScrollEndDrag={handleScrollEndDrag}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
         onLayout={scrollToSelected}
         contentContainerStyle={{ paddingVertical: CENTER_PAD }}
         bounces={false}
         overScrollMode="never"
-        nestedScrollEnabled
       />
     </View>
   );
@@ -474,14 +514,14 @@ export function TimePicker({
   const { t } = useTranslation();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const styles = useMemo(
     () => buildStyles(colors, resolvedScheme),
     [colors, resolvedScheme],
   );
-  const { layout, sheetSizeStyle } = useKeyboardCenteredSheet(visible, {
-    minSheetHeight: 320,
-    maxHeight: 480,
-  });
+
+  const sheetMaxHeight = Math.min(520, windowHeight * 0.85 - insets.top - 16);
 
   const resolvedTitle = titleProp ?? t('modals.timePicker.title');
   const resolvedCancel = cancelProp ?? t('modals.timePicker.cancel');
@@ -496,13 +536,6 @@ export function TimePicker({
   const [minute, setMinute] = useState(0);
   const [period, setPeriod] = useState<Period>('AM');
 
-  const [hourText, setHourText] = useState('09');
-  const [minuteText, setMinuteText] = useState('00');
-  const [hourFocused, setHourFocused] = useState(false);
-  const [minuteFocused, setMinuteFocused] = useState(false);
-
-  const minuteInputRef = useRef<TextInput>(null);
-
   useEffect(() => {
     if (!visible) {
       return;
@@ -513,41 +546,23 @@ export function TimePicker({
         Math.abs(m - parsed[1]) < Math.abs(best - parsed[1]) ? m : best,
       );
       setMinute(nearest);
-      setMinuteText(pad2(nearest));
       if (use24Hour) {
         setHour24Direct(parsed[0]);
-        setHourText(pad2(parsed[0]));
       } else {
         const conv = from24(parsed[0]);
         setHour12(conv.h12);
         setPeriod(conv.period);
-        setHourText(String(conv.h12));
       }
     } else {
       setMinute(0);
-      setMinuteText('00');
       if (use24Hour) {
         setHour24Direct(9);
-        setHourText('09');
       } else {
         setHour12(9);
         setPeriod('AM');
-        setHourText('9');
       }
     }
   }, [visible, value, minutes, use24Hour]);
-
-  useEffect(() => {
-    if (!hourFocused) {
-      setHourText(use24Hour ? pad2(hour24Direct) : String(hour12));
-    }
-  }, [hour12, hour24Direct, hourFocused, use24Hour]);
-
-  useEffect(() => {
-    if (!minuteFocused) {
-      setMinuteText(pad2(minute));
-    }
-  }, [minute, minuteFocused]);
 
   const hour24 = useMemo(
     () => (use24Hour ? hour24Direct : to24(hour12, period)),
@@ -555,20 +570,25 @@ export function TimePicker({
   );
 
   const totalMinutes = useMemo(
-    () => hour24 * 60 + minute,
+    () => toTotalMinutes(hour24, minute),
     [hour24, minute],
   );
 
-  const minTotal = useMemo(
-    () => (minParsed ? minParsed[0] * 60 + minParsed[1] : 0),
-    [minParsed],
-  );
-  const maxTotal = useMemo(
-    () => (maxParsed ? maxParsed[0] * 60 + maxParsed[1] : 23 * 60 + 59),
-    [maxParsed],
-  );
-
-  const isInRange = totalMinutes >= minTotal && totalMinutes <= maxTotal;
+  const isInRange = useMemo(() => {
+    if (minParsed) {
+      const minTotal = toTotalMinutes(minParsed[0], minParsed[1]);
+      if (totalMinutes < minTotal) {
+        return false;
+      }
+    }
+    if (maxParsed) {
+      const maxTotal = toTotalMinutes(maxParsed[0], maxParsed[1]);
+      if (totalMinutes > maxTotal) {
+        return false;
+      }
+    }
+    return true;
+  }, [maxParsed, minParsed, totalMinutes]);
 
   const rangeErrorText = useMemo(() => {
     if (isInRange) {
@@ -623,74 +643,6 @@ export function TimePicker({
     [hour24, maxParsed, minParsed],
   );
 
-  const handleHourTextChange = useCallback(
-    (text: string) => {
-      const digits = text.replace(/\D/g, '').slice(0, 2);
-      setHourText(digits);
-      const num = parseInt(digits, 10);
-      if (use24Hour) {
-        if (num >= 0 && num <= 23) {
-          setHour24Direct(num);
-        }
-      } else if (num >= 1 && num <= 12) {
-        setHour12(num);
-      }
-    },
-    [use24Hour],
-  );
-
-  const handleMinuteTextChange = useCallback(
-    (text: string) => {
-      const digits = text.replace(/\D/g, '').slice(0, 2);
-      setMinuteText(digits);
-      const num = parseInt(digits, 10);
-      if (!isNaN(num) && num >= 0 && num <= 59) {
-        const nearest = minutes.reduce((best, m) =>
-          Math.abs(m - num) < Math.abs(best - num) ? m : best,
-        );
-        setMinute(nearest);
-      }
-    },
-    [minutes],
-  );
-
-  const commitHourText = useCallback(() => {
-    setHourFocused(false);
-    const num = parseInt(hourText, 10);
-    if (use24Hour) {
-      if (isNaN(num) || num < 0 || num > 23) {
-        setHourText(pad2(hour24Direct));
-      } else {
-        setHour24Direct(num);
-        setHourText(pad2(num));
-      }
-    } else if (isNaN(num) || num < 1 || num > 12) {
-      setHourText(String(hour12));
-    } else {
-      setHour12(num);
-      setHourText(String(num));
-    }
-  }, [hour12, hour24Direct, hourText, use24Hour]);
-
-  const commitMinuteText = useCallback(() => {
-    setMinuteFocused(false);
-    const num = parseInt(minuteText, 10);
-    if (isNaN(num) || num < 0 || num > 59) {
-      setMinuteText(pad2(minute));
-    } else {
-      const nearest = minutes.reduce((best, m) =>
-        Math.abs(m - num) < Math.abs(best - num) ? m : best,
-      );
-      setMinute(nearest);
-      setMinuteText(pad2(nearest));
-    }
-  }, [minute, minuteText, minutes]);
-
-  const handleHourSubmit = useCallback(() => {
-    commitHourText();
-    minuteInputRef.current?.focus();
-  }, [commitHourText]);
-
   const formatHourItem = useCallback(
     (val: number) => (use24Hour ? pad2(val) : String(val)),
     [use24Hour],
@@ -704,6 +656,13 @@ export function TimePicker({
     onDismiss();
   }, [hour24, isInRange, minute, onConfirm, onDismiss]);
 
+  const selectedTimeLabel = useMemo(() => {
+    const hhmm = `${pad2(hour24)}:${pad2(minute)}`;
+    return use24Hour ? formatTime24h(hhmm) : formatTime12h(hhmm);
+  }, [hour24, minute, use24Hour]);
+
+  const footerBottomPadding = Math.max(insets.bottom, 16);
+
   return (
     <Modal
       visible={visible}
@@ -711,126 +670,96 @@ export function TimePicker({
       animationType="fade"
       statusBarTranslucent
       onRequestClose={onDismiss}>
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <Pressable
           style={styles.backdrop}
           accessibilityRole="button"
           accessibilityLabel={resolvedCancel}
           onPress={dismissOnBackdropPress ? onDismiss : undefined}
         />
-        <View style={[styles.sheetWrap, layout.wrapStyle]} pointerEvents="box-none">
-          <View style={[styles.sheet, sheetSizeStyle]}>
-            <View style={styles.sheetInner}>
-            <Text style={styles.title}>{resolvedTitle}</Text>
+        <View
+          style={[
+            styles.sheetWrap,
+            { paddingBottom: Math.max(insets.bottom, 10) },
+          ]}
+          pointerEvents="box-none">
+          <View style={[styles.sheet, { maxHeight: sheetMaxHeight }]}>
+            <View style={styles.sheetBody}>
+              <Text style={styles.title}>{resolvedTitle}</Text>
+              <Text
+                style={[
+                  styles.selectedTime,
+                  !isInRange && styles.selectedTimeInvalid,
+                ]}
+                accessibilityRole="text"
+                accessibilityLabel={selectedTimeLabel}>
+                {selectedTimeLabel}
+              </Text>
 
-            <View style={styles.inputRow}>
-              <View style={[styles.inputBox, hourFocused && styles.inputBoxFocused]}>
-                <TextInput
-                  value={hourText}
-                  onChangeText={handleHourTextChange}
-                  onFocus={() => setHourFocused(true)}
-                  onBlur={commitHourText}
-                  onSubmitEditing={handleHourSubmit}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  selectTextOnFocus
-                  returnKeyType="next"
-                  style={styles.inputTextInput}
+              <View style={styles.wheelsRow}>
+                <Wheel
+                  data={use24Hour ? HOURS_24 : HOURS_12}
+                  selected={use24Hour ? hour24Direct : hour12}
+                  onSelect={use24Hour ? setHour24Direct : setHour12}
+                  formatItem={formatHourItem}
+                  isDisabled={isHourDisabled}
+                  styles={styles}
                 />
-              </View>
-              <Text style={styles.inputColon}>:</Text>
-              <View style={[styles.inputBox, minuteFocused && styles.inputBoxFocused]}>
-                <TextInput
-                  ref={minuteInputRef}
-                  value={minuteText}
-                  onChangeText={handleMinuteTextChange}
-                  onFocus={() => setMinuteFocused(true)}
-                  onBlur={commitMinuteText}
-                  onSubmitEditing={commitMinuteText}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  selectTextOnFocus
-                  returnKeyType="done"
-                  style={styles.inputTextInput}
-                />
-              </View>
-              {!use24Hour ? (
-                <View style={styles.periodRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: period === 'AM' }}
-                    onPress={() => setPeriod('AM')}
-                    style={[
-                      styles.periodBtn,
-                      styles.periodBtnTop,
-                      period === 'AM' && styles.periodBtnActive,
-                    ]}>
-                    <Text style={[
-                      styles.periodText,
-                      period === 'AM' && styles.periodTextActive,
-                    ]}>
-                      {t('modals.timePicker.am')}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: period === 'PM' }}
-                    onPress={() => setPeriod('PM')}
-                    style={[
-                      styles.periodBtn,
-                      period === 'PM' && styles.periodBtnActive,
-                    ]}>
-                    <Text style={[
-                      styles.periodText,
-                      period === 'PM' && styles.periodTextActive,
-                    ]}>
-                      {t('modals.timePicker.pm')}
-                    </Text>
-                  </Pressable>
+                <View style={styles.colonSpacer}>
+                  <Text style={styles.colonText}>:</Text>
                 </View>
+                <Wheel
+                  data={minutes}
+                  selected={minute}
+                  onSelect={setMinute}
+                  isDisabled={isMinuteDisabled}
+                  styles={styles}
+                />
+                {!use24Hour ? (
+                  <View style={styles.periodRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: period === 'AM' }}
+                      onPress={() => setPeriod('AM')}
+                      style={[
+                        styles.periodBtn,
+                        styles.periodBtnTop,
+                        period === 'AM' && styles.periodBtnActive,
+                      ]}>
+                      <Text
+                        style={[
+                          styles.periodText,
+                          period === 'AM' && styles.periodTextActive,
+                        ]}>
+                        {t('modals.timePicker.am')}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: period === 'PM' }}
+                      onPress={() => setPeriod('PM')}
+                      style={[
+                        styles.periodBtn,
+                        period === 'PM' && styles.periodBtnActive,
+                      ]}>
+                      <Text
+                        style={[
+                          styles.periodText,
+                          period === 'PM' && styles.periodTextActive,
+                        ]}>
+                        {t('modals.timePicker.pm')}
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+              </View>
+
+              {rangeErrorText ? (
+                <Text style={styles.rangeError}>{rangeErrorText}</Text>
               ) : null}
             </View>
 
-            <View style={styles.inputLabels}>
-              <View style={styles.inputLabelBox}>
-                <Text style={styles.inputLabelText}>
-                  {t('modals.timePicker.hour')}
-                </Text>
-              </View>
-              <View style={styles.inputLabelSpacer} />
-              <View style={styles.inputLabelBox}>
-                <Text style={styles.inputLabelText}>
-                  {t('modals.timePicker.minute')}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.wheelsRow}>
-              <Wheel
-                data={use24Hour ? HOURS_24 : HOURS_12}
-                selected={use24Hour ? hour24Direct : hour12}
-                onSelect={use24Hour ? setHour24Direct : setHour12}
-                formatItem={formatHourItem}
-                isDisabled={isHourDisabled}
-                styles={styles}
-              />
-              <View style={styles.colonSpacer}>
-                <Text style={styles.colonText}>:</Text>
-              </View>
-              <Wheel
-                data={minutes}
-                selected={minute}
-                onSelect={setMinute}
-                isDisabled={isMinuteDisabled}
-                styles={styles}
-              />
-            </View>
-
-            {rangeErrorText ? (
-              <Text style={styles.rangeError}>{rangeErrorText}</Text>
-            ) : null}
-
-            <View style={styles.footer}>
+            <View style={[styles.footer, { paddingBottom: footerBottomPadding }]}>
               <Pressable
                 accessibilityRole="button"
                 onPress={onDismiss}
@@ -843,6 +772,7 @@ export function TimePicker({
               </Pressable>
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{ disabled: !isInRange }}
                 onPress={handleConfirm}
                 disabled={!isInRange}
                 style={({ pressed }) => [
@@ -853,7 +783,6 @@ export function TimePicker({
                 ]}>
                 <Text style={styles.confirmLabel}>{resolvedConfirm}</Text>
               </Pressable>
-            </View>
             </View>
           </View>
         </View>
@@ -870,6 +799,8 @@ export type UseTimePickerOptions = {
   cancelLabel?: string;
   confirmLabel?: string;
   minuteStep?: number;
+  minTime?: string;
+  maxTime?: string;
 };
 
 export function useTimePicker(opts: UseTimePickerOptions = {}) {
@@ -898,6 +829,8 @@ export function useTimePicker(opts: UseTimePickerOptions = {}) {
     cancelLabel: opts.cancelLabel,
     confirmLabel: opts.confirmLabel,
     minuteStep: opts.minuteStep,
+    minTime: opts.minTime,
+    maxTime: opts.maxTime,
   };
 
   return { value, setValue, visible, present, dismiss, pickerProps };

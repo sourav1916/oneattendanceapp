@@ -201,6 +201,10 @@ export const hi = {
       WORKING: 'चेक-इन · लाइव सत्र',
       ON_BREAK: 'ब्रेक पर',
       COMPLETED: 'आज के लिए शिफ्ट पूर्ण',
+      HOLIDAY: 'अवकाश',
+      WEEKEND: 'सप्ताहांत',
+      LEAVE: 'छुट्टी पर',
+      ABSENT: 'अनुपस्थित',
     },
     errors: {
       noCompany: 'स्थिति लोड करने के लिए ऊपर से कंपनी चुनें।',

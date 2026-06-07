@@ -262,6 +262,10 @@ export function getStatusColor(
       return '#a855f7';
     case 'WEEKEND':
       return colors.textMuted;
+    case 'LEAVE':
+      return '#ca8a04';
+    case 'ABSENT':
+      return '#dc2626';
     case 'NOT_PUNCHED_IN':
     default:
       return colors.textMuted;

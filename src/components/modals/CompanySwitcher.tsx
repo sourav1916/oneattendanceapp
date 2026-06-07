@@ -6,12 +6,15 @@ import {
   FlatList,
   Image,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { createCompany } from '@src/api/createCompany';
 import { CreateCompany, type CreateCompanyFormPayload } from '@src/components/modals/CreateCompany';
@@ -99,8 +102,28 @@ function buildSwitcherStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       marginBottom: 12,
       paddingHorizontal: 2,
     },
+    searchWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      backgroundColor: colors.background,
+    },
+    searchIcon: {
+      marginRight: 6,
+    },
+    searchInput: {
+      flex: 1,
+      paddingVertical: Platform.OS === 'ios' ? 12 : 10,
+      fontSize: 15,
+      color: colors.text,
+    },
     list: {
       flexGrow: 0,
+      flexShrink: 1,
     },
     listContent: {
       paddingBottom: 4,
@@ -239,7 +262,18 @@ export function CompanySwitcher({
 
   const [displayCompanies, setDisplayCompanies] = useState(companies);
   const [createOpen, setCreateOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const isEmpty = displayCompanies.length === 0;
+
+  const filteredCompanies = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      return displayCompanies;
+    }
+    return displayCompanies.filter(c =>
+      c.name.trim().toLowerCase().includes(q),
+    );
+  }, [displayCompanies, searchQuery]);
 
   const relationLabel = useCallback(
     (relation: StoredSelectedCompany['relation']) =>
@@ -250,6 +284,7 @@ export function CompanySwitcher({
   useEffect(() => {
     if (visible) {
       setDisplayCompanies(companies);
+      setSearchQuery('');
     }
   }, [visible, companies]);
 
@@ -340,8 +375,30 @@ export function CompanySwitcher({
                 <Text style={ms.subtitle}>{t('home.companySwitcher.subtitle')}</Text>
               ) : null}
 
+              {!isEmpty ? (
+                <View style={ms.searchWrap}>
+                  <MaterialCommunityIcons
+                    name="magnify"
+                    size={20}
+                    color={colors.textMuted}
+                    style={ms.searchIcon}
+                  />
+                  <TextInput
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder={t('home.companySwitcher.searchPlaceholder')}
+                    placeholderTextColor={colors.textMuted}
+                    style={ms.searchInput}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    clearButtonMode={Platform.OS === 'ios' ? 'while-editing' : undefined}
+                    accessibilityLabel={t('home.companySwitcher.searchPlaceholder')}
+                  />
+                </View>
+              ) : null}
+
               <FlatList
-                data={displayCompanies}
+                data={filteredCompanies}
                 keyExtractor={item => `switch-${item.id}-${item.relation}`}
                 style={ms.list}
                 contentContainerStyle={ms.listContent}
@@ -350,21 +407,29 @@ export function CompanySwitcher({
                 showsHorizontalScrollIndicator={false}
                 ListEmptyComponent={
                   !refreshing ? (
-                    <View style={ms.emptyWrap}>
-                      <Text style={ms.emptyTitle}>{t('home.companySwitcher.emptyTitle')}</Text>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={t('home.companySwitcher.createCompany')}
-                        onPress={openCreateCompany}
-                        style={({ pressed }) => [
-                          ms.createBtn,
-                          pressed && ms.createBtnPressed,
-                        ]}>
-                        <Text style={ms.createBtnLabel}>
-                          {t('home.companySwitcher.createCompany')}
+                    isEmpty ? (
+                      <View style={ms.emptyWrap}>
+                        <Text style={ms.emptyTitle}>{t('home.companySwitcher.emptyTitle')}</Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={t('home.companySwitcher.createCompany')}
+                          onPress={openCreateCompany}
+                          style={({ pressed }) => [
+                            ms.createBtn,
+                            pressed && ms.createBtnPressed,
+                          ]}>
+                          <Text style={ms.createBtnLabel}>
+                            {t('home.companySwitcher.createCompany')}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ) : (
+                      <View style={ms.emptyWrap}>
+                        <Text style={ms.emptyTitle}>
+                          {t('home.companySwitcher.emptySearch')}
                         </Text>
-                      </Pressable>
-                    </View>
+                      </View>
+                    )
                   ) : null
                 }
                 renderItem={({ item }) => {
@@ -394,7 +459,6 @@ export function CompanySwitcher({
                         </Text>
                         <Text style={ms.rowHint} numberOfLines={1}>
                           {relationLabel(item.relation)}
-                          {item.role ? ` • ${item.role}` : ''}
                         </Text>
                       </View>
                       {selected ? (

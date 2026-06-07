@@ -24,6 +24,8 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { authHttpClient } from '@src/api/authHttpClient';
+import { salaryApi } from '@src/api/salaryApi';
+import { AssignSalaryModal } from '@src/components/modals/AssignSalaryModal';
 import { LeaveDetailModal } from '@src/components/modals/LeaveDetailModal';
 import {
   StatusAlert,
@@ -775,6 +777,17 @@ function buildStyles(colors, scheme, theme) {
       fontWeight: '700',
       color: colors.text,
     },
+    createBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      backgroundColor: theme.accent,
+    },
+    createBtnPressed: { opacity: 0.88 },
+    createBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
     card: {
       borderRadius: 16,
       borderWidth: 1,
@@ -2737,6 +2750,10 @@ export function EmployeeProfileScreen({ navigation, route }) {
     useState(null);
   const [attendanceSelectedDayInfo, setAttendanceSelectedDayInfo] =
     useState(null);
+  const [assignSalaryVisible, setAssignSalaryVisible] = useState(false);
+  const [assignSalarySubmitting, setAssignSalarySubmitting] = useState(false);
+  const [assignSalaryApiError, setAssignSalaryApiError] = useState('');
+  const [assignSalaryOverlapHint, setAssignSalaryOverlapHint] = useState(false);
 
   const theme = TAB_THEMES[include] ?? TAB_THEMES.basic;
   const styles = useMemo(
@@ -3110,6 +3127,80 @@ export function EmployeeProfileScreen({ navigation, route }) {
     setSelectedLeave(null);
   }, []);
 
+  const openAssignSalary = useCallback(() => {
+    setAssignSalaryApiError('');
+    setAssignSalaryOverlapHint(false);
+    setAssignSalaryVisible(true);
+  }, []);
+
+  const closeAssignSalary = useCallback(() => {
+    if (assignSalarySubmitting) {
+      return;
+    }
+    setAssignSalaryVisible(false);
+    setAssignSalaryApiError('');
+    setAssignSalaryOverlapHint(false);
+  }, [assignSalarySubmitting]);
+
+  const handleAssignSalarySubmit = useCallback(
+    async payload => {
+      if (!selectedCompany?.id) {
+        return;
+      }
+      setAssignSalarySubmitting(true);
+      setAssignSalaryApiError('');
+      setAssignSalaryOverlapHint(false);
+      try {
+        const res = await salaryApi.assignSalary(selectedCompany.id, payload);
+        if (!res.success) {
+          const msg =
+            res.message?.trim() ||
+            t('home.employeeProfile.salary.assignModal.errors.submitFailed');
+          setAssignSalaryApiError(msg);
+          if (/overlap|already exists|selected period/i.test(msg)) {
+            setAssignSalaryOverlapHint(true);
+          }
+          return;
+        }
+        setAssignSalaryVisible(false);
+        setAssignSalaryApiError('');
+        setAssignSalaryOverlapHint(false);
+        presentSuccess(
+          t('home.employeeProfile.salary.assignModal.successTitle'),
+          res.message?.trim() ||
+            t('home.employeeProfile.salary.assignModal.successMessage'),
+        );
+        setTabCache(prev => {
+          const next = { ...prev };
+          delete next.salary;
+          return next;
+        });
+        loadTab('salary').catch(() => {});
+      } catch (e) {
+        const msg = readApiError(e);
+        setAssignSalaryApiError(msg);
+        if (/overlap|already exists|selected period/i.test(msg)) {
+          setAssignSalaryOverlapHint(true);
+        }
+      } finally {
+        setAssignSalarySubmitting(false);
+      }
+    },
+    [loadTab, presentSuccess, selectedCompany?.id, t],
+  );
+
+  const assignSalaryEmployee = useMemo(() => {
+    if (!employeeId) {
+      return null;
+    }
+    return {
+      id: Number(employeeId),
+      name: profileBasic?.name?.trim() || t('home.employeeProfile.na'),
+      employeeCode:
+        profileBasic?.employee_code?.trim() || t('home.employeeProfile.na'),
+    };
+  }, [employeeId, profileBasic, t]);
+
   const renderTabPageBody = useCallback(
     tabKey => {
       const pageTheme = TAB_THEMES[tabKey] ?? TAB_THEMES.basic;
@@ -3178,6 +3269,22 @@ export function EmployeeProfileScreen({ navigation, route }) {
                 section: pageLabel,
               })}
             </Text>
+            {tabKey === 'salary' ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('home.employeeProfile.salary.createBtn')}
+                onPress={openAssignSalary}
+                style={({ pressed }) => [
+                  styles.createBtn,
+                  pressed && styles.createBtnPressed,
+                ]}
+              >
+                <MaterialCommunityIcons name="plus" size={16} color="#fff" />
+                <Text style={styles.createBtnText}>
+                  {t('home.employeeProfile.salary.createBtn')}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
 
           {renderSectionContent({
@@ -3248,6 +3355,7 @@ export function EmployeeProfileScreen({ navigation, route }) {
       onAttendanceNextMonth,
       onAttendancePrevMonth,
       onLeavePress,
+      openAssignSalary,
       profileBasic,
       resolvedScheme,
       styles,
@@ -3393,6 +3501,18 @@ export function EmployeeProfileScreen({ navigation, route }) {
         visible={selectedLeave != null}
         leave={selectedLeave}
         onDismiss={closeLeaveDetail}
+      />
+      <AssignSalaryModal
+        visible={assignSalaryVisible}
+        companyId={selectedCompany?.id ?? null}
+        employee={assignSalaryEmployee}
+        submitting={assignSalarySubmitting}
+        apiError={assignSalaryApiError}
+        showOverlapHint={assignSalaryOverlapHint}
+        onDismiss={closeAssignSalary}
+        onSubmit={payload => {
+          handleAssignSalarySubmit(payload).catch(() => {});
+        }}
       />
       <StatusAlert {...statusAlertProps} />
     </SafeAreaView>

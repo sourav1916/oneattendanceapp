@@ -212,6 +212,10 @@ function statusHeroIconName(status: string): string {
       return 'party-popper';
     case 'WEEKEND':
       return 'beach';
+    case 'LEAVE':
+      return 'beach';
+    case 'ABSENT':
+      return 'account-off-outline';
     default:
       return 'calendar-blank';
   }
@@ -385,12 +389,6 @@ function buildAttendanceStyles(colors: AppThemeColors, scheme: 'light' | 'dark')
       lineHeight: 21,
       color: colors.textMuted,
     },
-    statusHeroChipRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginTop: 14,
-    },
     breakPulseBanner: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -449,23 +447,6 @@ function buildAttendanceStyles(colors: AppThemeColors, scheme: 'light' | 'dark')
       fontSize: 14,
       color: colors.textMuted,
       lineHeight: 20,
-    },
-    chip: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 999,
-      backgroundColor: scheme === 'dark' ? 'rgba(148,163,184,0.15)' : '#f1f5f9',
-    },
-    chipText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.textMuted,
-    },
-    chipHoliday: {
-      backgroundColor: scheme === 'dark' ? 'rgba(168,85,247,0.2)' : '#f3e8ff',
-    },
-    chipHolidayText: {
-      color: scheme === 'dark' ? '#e9d5ff' : '#6b21a8',
     },
     infoRow: {
       flexDirection: 'row',
@@ -1532,25 +1513,21 @@ export function AttendanceScreen() {
                     {t('attendance.messages.weekend')}
                   </Text>
                 ) : null}
+                {statusData.status === 'LEAVE' ? (
+                  <Text style={ms.statusHeroMessage} numberOfLines={2}>
+                    {t('attendance.messages.leave')}
+                  </Text>
+                ) : null}
+                {statusData.status === 'ABSENT' ? (
+                  <Text style={ms.statusHeroMessage} numberOfLines={2}>
+                    {t('attendance.messages.absent')}
+                  </Text>
+                ) : null}
                 {statusData.status === 'COMPLETED' ? (
                   <Text style={ms.statusHeroMessage} numberOfLines={2}>
                     {t('attendance.messages.completed')}
                   </Text>
                 ) : null}
-                <View style={ms.statusHeroChipRow}>
-                  {statusData.day_info?.is_holiday ? (
-                    <View style={[ms.chip, ms.chipHoliday]}>
-                      <Text style={[ms.chipText, ms.chipHolidayText]}>
-                        {t('attendance.chips.holiday')}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {statusData.day_info?.is_weekend ? (
-                    <View style={ms.chip}>
-                      <Text style={ms.chipText}>{t('attendance.chips.weekend')}</Text>
-                    </View>
-                  ) : null}
-                </View>
               </View>
             </View>
 

@@ -28,6 +28,11 @@ import type {
   MarkAttendanceStatus,
   MarkAttendanceType,
 } from '@src/types/markAttendance';
+import {
+  canComputeHalfDayTimes,
+  getHalfDayTimesAsHhMm,
+  normalizeToHhMm,
+} from '@src/utils/halfDayShiftTimes';
 
 export type MarkAttendanceTarget = {
   employeeId: number;
@@ -58,6 +63,28 @@ const HALF_DAY_TYPES: HalfDayType[] = ['first_half', 'second_half'];
 const LEAVE_TYPES: LeaveType[] = ['paid', 'unpaid'];
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function applyShiftTimesToFields(
+  shift: ShiftInfo | null | undefined,
+  status: MarkAttendanceStatus,
+  halfDayType: HalfDayType,
+): { start: string; end: string } {
+  if (!shift?.start_time?.trim() || !shift?.end_time?.trim()) {
+    return { start: '', end: '' };
+  }
+  if (status === 'half_day') {
+    const half = getHalfDayTimesAsHhMm(
+      shift.start_time,
+      shift.end_time,
+      halfDayType,
+    );
+    return { start: half.start_time, end: half.end_time };
+  }
+  return {
+    start: normalizeToHhMm(shift.start_time),
+    end: normalizeToHhMm(shift.end_time),
+  };
+}
 
 function isValidTime(v: string): boolean {
   return TIME_RE.test(v.trim());
@@ -139,6 +166,8 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       color: colors.text,
     },
     chipTextActive: { color: colors.primary },
+    chipDisabled: { opacity: 0.42 },
+    chipTextDisabled: { color: colors.textMuted },
     timeRow: {
       flexDirection: 'row',
       gap: 12,
@@ -271,23 +300,33 @@ function Chip({
   label,
   active,
   onPress,
+  disabled = false,
   styles,
 }: {
   label: string;
   active: boolean;
   onPress: () => void;
+  disabled?: boolean;
   styles: ReturnType<typeof buildStyles>;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
         active && styles.chipActive,
-        pressed && { opacity: 0.85 },
+        disabled && styles.chipDisabled,
+        pressed && !disabled && { opacity: 0.85 },
       ]}>
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>
+      <Text
+        style={[
+          styles.chipText,
+          active && styles.chipTextActive,
+          disabled && styles.chipTextDisabled,
+        ]}>
         {label}
       </Text>
     </Pressable>
@@ -375,10 +414,19 @@ export function MarkAttendanceModal({
     setValidationErrors({});
 
     const { preSelectedStatus, existingRecord, shift } = target;
+    const initialStatus: MarkAttendanceStatus =
+      preSelectedStatus ??
+      (existingRecord?.day_status as MarkAttendanceStatus | undefined) ??
+      'present';
 
-    if (existingRecord) {
-      setType('attendance');
-      setStatus(existingRecord.day_status as MarkAttendanceStatus);
+    setType('attendance');
+    setStatus(initialStatus);
+
+    const reuseExistingDetails =
+      existingRecord != null &&
+      (preSelectedStatus == null || preSelectedStatus === existingRecord.day_status);
+
+    if (reuseExistingDetails) {
       setStartTime(existingRecord.punch_in?.time ?? '');
       setEndTime(existingRecord.punch_out?.time ?? '');
       setIsDeductible(existingRecord.is_deductible);
@@ -393,8 +441,6 @@ export function MarkAttendanceModal({
       return;
     }
 
-    setType('attendance');
-    setStatus(preSelectedStatus ?? 'present');
     setIsDeductible(false);
     setIsOvertime(false);
     setHalfDayType('first_half');
@@ -403,14 +449,73 @@ export function MarkAttendanceModal({
     setLeaveOvertimeMin('');
     setNotes('');
 
-    if (shift) {
-      setStartTime(shift.start_time);
-      setEndTime(shift.end_time);
+    if (initialStatus === 'present' || initialStatus === 'half_day') {
+      const { start, end } = applyShiftTimesToFields(
+        shift,
+        initialStatus,
+        'first_half',
+      );
+      setStartTime(start);
+      setEndTime(end);
     } else {
       setStartTime('');
       setEndTime('');
     }
   }, [visible, target]);
+
+  const applyHalfDayTimesFromShift = useCallback(
+    (session: HalfDayType) => {
+      const { start, end } = applyShiftTimesToFields(
+        target?.shift,
+        'half_day',
+        session,
+      );
+      setStartTime(start);
+      setEndTime(end);
+    },
+    [target?.shift],
+  );
+
+  const handleStatusChange = useCallback(
+    (next: MarkAttendanceStatus) => {
+      setStatus(next);
+      if (next === 'half_day') {
+        applyHalfDayTimesFromShift(halfDayType);
+        return;
+      }
+      if (next === 'present') {
+        const { start, end } = applyShiftTimesToFields(
+          target?.shift,
+          'present',
+          halfDayType,
+        );
+        setStartTime(start);
+        setEndTime(end);
+        return;
+      }
+      setStartTime('');
+      setEndTime('');
+    },
+    [applyHalfDayTimesFromShift, halfDayType, target?.shift],
+  );
+
+  const handleHalfDayTypeChange = useCallback(
+    (session: HalfDayType) => {
+      setHalfDayType(session);
+      if (status === 'half_day') {
+        applyHalfDayTimesFromShift(session);
+      }
+    },
+    [applyHalfDayTimesFromShift, status],
+  );
+
+  const breakAllowed = status === 'present' || status === 'half_day';
+
+  useEffect(() => {
+    if (!breakAllowed && type === 'break') {
+      setType('attendance');
+    }
+  }, [breakAllowed, type]);
 
   const needsTimes =
     type === 'attendance'
@@ -434,6 +539,14 @@ export function MarkAttendanceModal({
     const errs: Record<string, string> = {};
 
     if (type === 'attendance') {
+      if (status === 'half_day' && !canComputeHalfDayTimes(
+        target?.shift?.start_time,
+        target?.shift?.end_time,
+      )) {
+        errs.shiftTimes = t(
+          'home.attendanceManagement.mark.errors.shiftRequired',
+        );
+      }
       if (status === 'present' || status === 'half_day') {
         if (!isValidTime(startTime)) {
           errs.startTime = t(
@@ -492,7 +605,7 @@ export function MarkAttendanceModal({
     }
 
     return Object.keys(errs).length > 0 ? errs : null;
-  }, [endTime, leaveCode, startTime, status, t, type]);
+  }, [endTime, leaveCode, startTime, status, t, target?.shift, type]);
 
   const handleSubmit = useCallback(() => {
     if (!target || submitting) {
@@ -610,8 +723,21 @@ export function MarkAttendanceModal({
               nestedScrollEnabled
               {...scrollViewProps}>
               <Text style={[styles.sectionLabel, styles.sectionLabelFirst]}>
-                {t(`${tk}.type`)}
+                {t(`${tk}.status`)}
               </Text>
+              <View style={styles.chipRow}>
+                {ATTENDANCE_STATUSES.map(s => (
+                  <Chip
+                    key={s}
+                    label={t(`${tk}.statuses.${s}`)}
+                    active={status === s}
+                    onPress={() => handleStatusChange(s)}
+                    styles={styles}
+                  />
+                ))}
+              </View>
+
+              <Text style={styles.sectionLabel}>{t(`${tk}.type`)}</Text>
               <View style={styles.chipRow}>
                 <Chip
                   label={t(`${tk}.typeAttendance`)}
@@ -622,27 +748,11 @@ export function MarkAttendanceModal({
                 <Chip
                   label={t(`${tk}.typeBreak`)}
                   active={type === 'break'}
+                  disabled={!breakAllowed}
                   onPress={() => setType('break')}
                   styles={styles}
                 />
               </View>
-
-              {type === 'attendance' && (
-                <>
-                  <Text style={styles.sectionLabel}>{t(`${tk}.status`)}</Text>
-                  <View style={styles.chipRow}>
-                    {ATTENDANCE_STATUSES.map(s => (
-                      <Chip
-                        key={s}
-                        label={t(`${tk}.statuses.${s}`)}
-                        active={status === s}
-                        onPress={() => setStatus(s)}
-                        styles={styles}
-                      />
-                    ))}
-                  </View>
-                </>
-              )}
 
               {type === 'attendance' && status === 'half_day' && (
                 <>
@@ -655,11 +765,19 @@ export function MarkAttendanceModal({
                         key={h}
                         label={t(`${tk}.halfDayTypes.${h}`)}
                         active={halfDayType === h}
-                        onPress={() => setHalfDayType(h)}
+                        onPress={() => handleHalfDayTypeChange(h)}
                         styles={styles}
                       />
                     ))}
                   </View>
+                  {!canComputeHalfDayTimes(
+                    target?.shift?.start_time,
+                    target?.shift?.end_time,
+                  ) ? (
+                    <Text style={styles.errorText}>
+                      {t('home.attendanceManagement.mark.errors.shiftRequired')}
+                    </Text>
+                  ) : null}
                 </>
               )}
 

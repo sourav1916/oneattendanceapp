@@ -26,6 +26,8 @@ import { hydrateLanguageFromPreference } from '@src/i18n';
 import { configureGoogleSignIn } from '@src/utils/googleSignIn';
 import { AuthNavigator } from '@src/navigation/AuthNavigator';
 import { MainNavigator } from '@src/navigation/MainNavigator';
+import { rootNavigationRef } from '@src/navigation/rootNavigationRef';
+import { useAndroidDoubleBackExit } from '@src/hooks/useAndroidDoubleBackExit';
 
 function RootNavigation() {
   const { hydrated, token } = useAuth();
@@ -54,6 +56,11 @@ function RootNavigation() {
   );
 }
 
+function AndroidDoubleBackExitHandler() {
+  useAndroidDoubleBackExit(rootNavigationRef);
+  return null;
+}
+
 function ThemedNavigation() {
   const { resolvedScheme, colors } = useAppTheme();
   const navTheme = useMemo(() => {
@@ -74,7 +81,8 @@ function ThemedNavigation() {
   }, [resolvedScheme, colors]);
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={rootNavigationRef} theme={navTheme}>
+      <AndroidDoubleBackExitHandler />
       <RootNavigation />
     </NavigationContainer>
   );

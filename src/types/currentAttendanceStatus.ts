@@ -4,7 +4,9 @@ export type AttendanceDayStatus =
   | 'ON_BREAK'
   | 'COMPLETED'
   | 'HOLIDAY'
-  | 'WEEKEND';
+  | 'WEEKEND'
+  | 'LEAVE'
+  | 'ABSENT';
 
 /** Methods the current-status API may expose for punch UI (lowercase strings). */
 export type AttendanceUiMethod = 'manual' | 'gps' | 'ip' | 'qr';
@@ -89,6 +91,8 @@ const VALID_STATUSES: readonly AttendanceDayStatus[] = [
   'COMPLETED',
   'HOLIDAY',
   'WEEKEND',
+  'LEAVE',
+  'ABSENT',
 ] as const;
 
 const VALID_ACTIONS: readonly AllowedAttendanceAction[] = [
@@ -203,7 +207,7 @@ function normalizeTodaySummary(
 
 /**
  * Coerces a partial API payload into a safe shape. Omits `shift`, `today_summary`, and
- * `today_activities` when the API does not send them (e.g. HOLIDAY / WEEKEND / NOT_PUNCHED_IN).
+ * `today_activities` when the API does not send them (e.g. HOLIDAY / WEEKEND / LEAVE / ABSENT).
  */
 export function normalizeCurrentAttendanceStatusData(
   raw: Partial<CurrentAttendanceStatusData> | null | undefined,

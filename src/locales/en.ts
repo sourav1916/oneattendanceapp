@@ -1,4 +1,7 @@
 export const en = {
+  app: {
+    pressBackAgainToExit: 'Press back again to exit',
+  },
   tabs: {
     home: 'Home',
     attendance: 'Attendance',
@@ -15,7 +18,9 @@ export const en = {
       showCompanies: 'Show companies',
       title: 'Your companies',
       subtitle: 'Tap one to switch the active workspace.',
+      searchPlaceholder: 'Search companies…',
       emptyTitle: 'No companies yet',
+      emptySearch: 'No companies match your search.',
       createCompany: 'Create company',
     },
     menu: {
@@ -1293,6 +1298,58 @@ export const en = {
         employee_code: 'Employee Code',
         name: 'Name',
       },
+      salary: {
+        createBtn: 'Create',
+        assignModal: {
+          title: 'Assign salary',
+          subtitle: 'Set base pay and components for a date range.',
+          employeeLabel: 'Employee',
+          baseAmountLabel: 'Base amount',
+          baseAmountPlaceholder: 'e.g. 50000',
+          effectiveFromLabel: 'Effective from',
+          effectiveToLabel: 'Effective to',
+          openEndedLabel: 'Open-ended',
+          openEndedHint: 'No end date — salary continues until revised',
+          selectDate: 'Select date',
+          confirmDate: 'Confirm',
+          componentsLabel: 'Salary components',
+          noComponents: 'No salary components configured for this company.',
+          rowLabel: 'Component #{{index}}',
+          componentTypes: {
+            earning: 'Earnings',
+            deduction: 'Deductions',
+            employer_contribution: 'Employer contribution',
+          },
+          calcTypeLabel: 'Calculation type',
+          calcTypes: {
+            fixed: 'Fixed amount',
+            percentage: '% of base',
+          },
+          calcValueLabel: 'Value',
+          calcValuePlaceholderFixed: 'Amount',
+          calcValuePlaceholderPercent: 'Percentage',
+          reasonLabel: 'Reason (optional)',
+          reasonPlaceholder: 'e.g. HRA allowance',
+          addComponent: 'Add component',
+          overlapHint:
+            'A salary already exists for this period. Use update or revise instead of assigning again.',
+          cancel: 'Cancel',
+          assign: 'Assign',
+          successTitle: 'Salary assigned',
+          successMessage: 'Salary structure assigned successfully.',
+          errors: {
+            employeeRequired: 'Employee is required.',
+            baseAmountRequired: 'Enter a valid base amount greater than zero.',
+            effectiveFromRequired: 'Effective from date is required.',
+            effectiveToRequired: 'Effective to date is required when not open-ended.',
+            effectiveToBeforeFrom: 'Effective to cannot be before effective from.',
+            componentRequired: 'Select a component for each row.',
+            duplicateComponent: 'Each component can only be added once.',
+            calcValueRequired: 'Enter a valid value (zero or greater).',
+            submitFailed: 'Could not assign salary.',
+          },
+        },
+      },
     },
     invitePackages: {
       title: 'Invite Packages',
@@ -1689,6 +1746,8 @@ export const en = {
           endAfterStart: 'End time must be after start time',
           leaveCodeRequired: 'Select a leave code',
           breakTimeRequired: 'At least one time is required for break',
+          shiftRequired:
+            'Employee shift start and end times are required for half day.',
         },
       },
       bulk: {
@@ -1752,11 +1811,15 @@ export const en = {
       holiday: 'Company holiday — attendance actions are disabled.',
       holidayNamed: 'Company holiday ({{name}}) — attendance actions are disabled.',
       weekend: 'Weekend / off day — attendance actions are disabled.',
+      leave: 'You are on approved leave today — attendance actions are disabled.',
+      absent: 'You are marked absent for today — attendance actions are disabled.',
       completed: 'You have already punched out for today.',
     },
     chips: {
       holiday: 'Holiday',
       weekend: 'Weekend',
+      leave: 'On leave',
+      absent: 'Absent',
     },
     insights: {
       worked: 'Time worked',
@@ -1793,6 +1856,8 @@ export const en = {
       COMPLETED: 'Completed',
       HOLIDAY: 'Holiday',
       WEEKEND: 'Weekend',
+      LEAVE: 'On Leave',
+      ABSENT: 'Absent',
       unknown: 'Status unavailable',
     },
     activityLabel: {

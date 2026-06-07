@@ -249,6 +249,14 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       alignItems: 'center',
       gap: 10,
     },
+    profileSelectArea: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minWidth: 0,
+    },
+    profileSelectPressed: { opacity: 0.85 },
     avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary },
     avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
     avatarInitials: { fontSize: 13, fontWeight: '700', color: '#fff' },
@@ -437,9 +445,14 @@ function EmployeeCard({
     <View style={[styles.card, selected && styles.cardSelected]}>
       <View style={styles.cardTopRow}>
         <Pressable
-          accessibilityRole="switch"
+          accessibilityRole="checkbox"
           accessibilityState={{ checked: selected }}
-          onPress={() => onToggleSelect(item.employee_id)}>
+          accessibilityLabel={item.name}
+          onPress={() => onToggleSelect(item.employee_id)}
+          style={({ pressed }) => [
+            styles.profileSelectArea,
+            pressed && styles.profileSelectPressed,
+          ]}>
           {photoUrl ? (
             <Image source={{ uri: photoUrl }} style={styles.avatar} accessibilityIgnoresInvertColors />
           ) : (
@@ -447,13 +460,13 @@ function EmployeeCard({
               <Text style={styles.avatarInitials}>{getInitials(item.name)}</Text>
             </View>
           )}
+          <View style={styles.cardMain}>
+            <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.subline} numberOfLines={1}>
+              {[item.employee_code, labeledValueLabel(item.designation)].filter(Boolean).join(' · ')}
+            </Text>
+          </View>
         </Pressable>
-        <View style={styles.cardMain}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.subline} numberOfLines={1}>
-            {[item.employee_code, labeledValueLabel(item.designation)].filter(Boolean).join(' · ')}
-          </Text>
-        </View>
         <Switch
           value={selected}
           onValueChange={() => onToggleSelect(item.employee_id)}
