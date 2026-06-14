@@ -281,7 +281,7 @@ export function UpdateLeaveBalanceModal({
                 { paddingBottom: Math.max(12, insets.bottom) },
               ]}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
+              keyboardDismissMode="none"
               showsVerticalScrollIndicator={keyboardHeight > 0}
               bounces={false}>
               <Text style={styles.hint}>

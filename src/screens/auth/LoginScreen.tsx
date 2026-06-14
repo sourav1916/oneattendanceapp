@@ -35,12 +35,12 @@ import {
 } from '@src/utils/loginCountries';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
-import { AuthScreenChrome } from '@src/screens/auth/AuthScreenChrome';
-import { buildAuthScreenStyles } from '@src/screens/auth/authScreenVisuals';
+import { AuthScreenChrome } from '@src/components/auth/AuthScreenChrome';
+import { buildAuthScreenStyles } from '@src/theme/authScreenVisuals';
 import { useLoginTruecaller } from '@src/hooks/useLoginTruecaller';
 import type { TruecallerAndroidResponse } from '@ajitpatel28/react-native-truecaller';
 import type { AuthStackParamList } from '@src/navigation/types';
-import { tryOptionalLocationCoords } from '@src/screens/auth/optionalLocationCoords';
+import { tryOptionalLocationCoords } from '@src/utils/optionalLocationCoords';
 import { getAuthContinuePlatform } from '@src/utils/authPlatform';
 import {
   GoogleSignInCancelledError,

@@ -1,9 +1,12 @@
 import { HeaderBackButton } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -29,16 +32,24 @@ import type { SettingsStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { ActiveSession } from '@src/types/activeSessions';
 import { readApiError } from '@src/utils/readApiError';
+import {
+  resolveSessionDeviceVisual,
+  sessionDeviceTint,
+} from '@src/utils/sessionDeviceVisual';
 import { formatSessionDateTime } from '@src/utils/sessionDateFormat';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Sessions'>;
 
 function buildSessionStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
+  const isDark = scheme === 'dark';
+  const screenBg = isDark ? colors.background : '#f1f5f9';
+  const cardBg = isDark ? colors.surface : '#ffffff';
+
   return StyleSheet.create({
     safe: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: screenBg,
     },
     fill: {
       flex: 1,
@@ -56,7 +67,7 @@ function buildSessionStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     stackHeaderTitle: {
       flex: 1,
       fontSize: 17,
-      fontWeight: '600',
+      fontWeight: '700',
       color: colors.text,
       marginLeft: 2,
     },
@@ -65,28 +76,81 @@ function buildSessionStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       height: 40,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: colors.danger,
+      borderColor: '#fecaca',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: isDark ? '#450a0a' : '#fff1f2',
     },
     stackHeaderRightPressed: {
       opacity: 0.88,
-      backgroundColor: colors.secondaryButton,
     },
     stackHeaderRightDisabled: {
       opacity: 0.55,
     },
     scroll: {
       paddingHorizontal: 20,
-      paddingTop: 4,
+      paddingTop: 16,
       paddingBottom: TAB_SCREEN_SCROLL_PADDING_BOTTOM,
     },
+    summaryCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: cardBg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      marginBottom: 16,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0.18 : 0.05,
+          shadowRadius: 8,
+        },
+        android: { elevation: 2 },
+      }),
+    },
+    summaryIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: isDark ? '#1e3a5f' : '#eff6ff',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    summaryTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    summaryBody: {
+      flex: 1,
+    },
+    summaryHint: {
+      marginTop: 2,
+      fontSize: 13,
+      color: colors.textMuted,
+      lineHeight: 18,
+    },
     centerBox: {
-      paddingVertical: 48,
+      paddingVertical: 56,
       alignItems: 'center',
       justifyContent: 'center',
       gap: 12,
+      paddingHorizontal: 24,
+    },
+    centerIconWrap: {
+      width: 72,
+      height: 72,
+      borderRadius: 22,
+      backgroundColor: cardBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     muted: {
       fontSize: 15,
@@ -99,7 +163,6 @@ function buildSessionStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       color: colors.danger,
       textAlign: 'center',
       lineHeight: 22,
-      paddingHorizontal: 12,
     },
     retryBtn: {
       marginTop: 8,
@@ -108,125 +171,261 @@ function buildSessionStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderRadius: 12,
       backgroundColor: colors.primary,
     },
+    retryBtnPressed: {
+      opacity: 0.9,
+    },
     retryLabel: {
       color: '#fff',
-      fontWeight: '600',
-      fontSize: 16,
+      fontWeight: '700',
+      fontSize: 14,
     },
     card: {
-      backgroundColor: colors.surface,
+      backgroundColor: cardBg,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: 14,
-      marginBottom: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginBottom: 8,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: isDark ? 0.16 : 0.04,
+          shadowRadius: 4,
+        },
+        android: { elevation: 1 },
+      }),
     },
     cardCurrent: {
-      borderColor: colors.primary,
-      backgroundColor: scheme === 'dark' ? '#1e293b' : '#eff6ff',
+      borderColor: '#0d9488',
+      backgroundColor: isDark ? '#0f172a' : '#f0fdfa',
     },
-    cardTop: {
+    cardRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
+      alignItems: 'center',
       gap: 10,
-      marginBottom: 8,
+    },
+    deviceIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cardBody: {
+      flex: 1,
+      minWidth: 0,
+    },
+    cardTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
     },
     deviceName: {
-      flex: 1,
-      fontSize: 16,
+      flexShrink: 1,
+      fontSize: 15,
       fontWeight: '700',
       color: colors.text,
+      lineHeight: 20,
     },
     badge: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 8,
-      backgroundColor: colors.primary,
-      flexShrink: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: '#0d9488',
     },
     badgeText: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 10,
+      fontWeight: '800',
       color: '#fff',
-      textTransform: 'uppercase',
     },
-    cardLocation: {
-      fontSize: 14,
-      color: colors.text,
-      marginBottom: 8,
-      lineHeight: 20,
+    lastActiveRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 3,
     },
-    cardLocationMuted: {
-      fontSize: 14,
+    lastActiveText: {
+      flex: 1,
+      fontSize: 12,
       color: colors.textMuted,
-      marginBottom: 8,
-      lineHeight: 20,
-    },
-    cardMeta: {
-      fontSize: 13,
-      color: colors.textMuted,
-      marginBottom: 4,
-      lineHeight: 18,
     },
     cardActions: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'flex-end',
+      alignItems: 'center',
+      gap: 4,
+    },
+    iconBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    iconBtnPressed: {
+      opacity: 0.85,
+    },
+    iconBtnPrimary: {
+      borderColor: isDark ? 'rgba(96, 165, 250, 0.35)' : 'rgba(37, 99, 235, 0.2)',
+      backgroundColor: isDark ? '#1e3a5f' : '#eff6ff',
+    },
+    iconBtnDanger: {
+      borderColor: '#fecaca',
+      backgroundColor: isDark ? '#450a0a' : '#fff1f2',
+    },
+    iconBtnDisabled: {
+      opacity: 0.5,
+    },
+    skPulseBase: {
+      backgroundColor: isDark ? '#334155' : '#e2e8f0',
+    },
+    skSummaryCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: cardBg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      marginBottom: 16,
+    },
+    skIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+    },
+    skSummaryIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+    },
+    skBody: {
+      flex: 1,
+      minWidth: 0,
+      gap: 8,
+    },
+    skLine: {
+      height: 12,
+      borderRadius: 6,
+    },
+    skLineMd: {
+      width: '55%',
+    },
+    skLineLg: {
+      width: '78%',
+    },
+    skLineSm: {
+      width: '42%',
+      height: 10,
+    },
+    skCard: {
+      backgroundColor: cardBg,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginBottom: 8,
+    },
+    skCardRow: {
+      flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
     },
-    actionBtn: {
-      paddingVertical: 10,
-      paddingHorizontal: 14,
+    skActions: {
+      flexDirection: 'row',
+      gap: 4,
+    },
+    skActionBtn: {
+      width: 34,
+      height: 34,
       borderRadius: 10,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.background,
-    },
-    actionBtnPressed: {
-      opacity: 0.88,
-      backgroundColor: colors.secondaryButton,
-    },
-    actionBtnPrimary: {
-      borderColor: colors.primary,
-    },
-    actionBtnDanger: {
-      borderColor: colors.danger,
-    },
-    actionBtnText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.primary,
-    },
-    actionBtnTextDanger: {
-      color: colors.danger,
-    },
-    logoutOthersBlock: {
-      marginBottom: 20,
-    },
-    logoutOthersBtn: {
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.danger,
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-    },
-    logoutOthersBtnPressed: {
-      opacity: 0.88,
-      backgroundColor: colors.secondaryButton,
-    },
-    logoutOthersBtnDisabled: {
-      opacity: 0.55,
-    },
-    logoutOthersBtnText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.danger,
     },
   });
+}
+
+const SKELETON_CARD_COUNT = 4;
+
+function useSkeletonPulse() {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 850,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 850,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => {
+      loop.stop();
+    };
+  }, [pulse]);
+
+  return useMemo(
+    () => ({
+      opacity: pulse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.38, 0.72],
+      }),
+    }),
+    [pulse],
+  );
+}
+
+function SessionListSkeleton({
+  ms,
+  count = SKELETON_CARD_COUNT,
+}: {
+  ms: ReturnType<typeof buildSessionStyles>;
+  count?: number;
+}) {
+  const pulseStyle = useSkeletonPulse();
+
+  return (
+    <>
+      <View style={ms.skSummaryCard}>
+        <Animated.View style={[ms.skSummaryIcon, ms.skPulseBase, pulseStyle]} />
+        <View style={ms.skBody}>
+          <Animated.View style={[ms.skLine, ms.skLineMd, ms.skPulseBase, pulseStyle]} />
+          <Animated.View style={[ms.skLine, ms.skLineLg, ms.skPulseBase, pulseStyle]} />
+        </View>
+      </View>
+      {Array.from({ length: count }, (_, index) => (
+        <View key={`session-sk-${index}`} style={ms.skCard}>
+          <View style={ms.skCardRow}>
+            <Animated.View style={[ms.skIcon, ms.skPulseBase, pulseStyle]} />
+            <View style={ms.skBody}>
+              <Animated.View style={[ms.skLine, ms.skLineMd, ms.skPulseBase, pulseStyle]} />
+              <Animated.View style={[ms.skLine, ms.skLineSm, ms.skPulseBase, pulseStyle]} />
+            </View>
+            <View style={ms.skActions}>
+              <Animated.View style={[ms.skActionBtn, ms.skPulseBase, pulseStyle]} />
+              <Animated.View style={[ms.skActionBtn, ms.skPulseBase, pulseStyle]} />
+            </View>
+          </View>
+        </View>
+      ))}
+    </>
+  );
 }
 
 export function SessionScreen({ navigation }: Props) {
@@ -250,6 +449,13 @@ export function SessionScreen({ navigation }: Props) {
     () => sessions.some(s => !s.is_current),
     [sessions],
   );
+
+  const sortedSessions = useMemo(
+    () => [...sessions].sort((a, b) => Number(b.is_current) - Number(a.is_current)),
+    [sessions],
+  );
+
+  const showSkeleton = loading || refreshing;
 
   const load = useCallback(async () => {
     const tkn = token?.trim();
@@ -433,54 +639,82 @@ export function SessionScreen({ navigation }: Props) {
           </Pressable>
         ) : null}
       </View>
-      {loading ? (
-        <View style={[ms.centerBox, ms.fill]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={ms.muted}>{t('settings.sessions.loading')}</Text>
-        </View>
-      ) : (
-        <ScrollView
-          style={ms.fill}
-          contentContainerStyle={ms.scroll}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-          }
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets>
-          {error ? (
-            <View style={ms.centerBox}>
-              <Text style={ms.error}>{error}</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void load()}
-                style={({ pressed }) => [ms.retryBtn, pressed && { opacity: 0.9 }]}>
-                <Text style={ms.retryLabel}>{t('settings.sessions.retry')}</Text>
-              </Pressable>
+      <ScrollView
+        style={ms.fill}
+        contentContainerStyle={ms.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing && !loading}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets>
+        {showSkeleton ? (
+          <SessionListSkeleton ms={ms} />
+        ) : error ? (
+          <View style={ms.centerBox}>
+            <View style={ms.centerIconWrap}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={32} color={colors.danger} />
             </View>
-          ) : sessions.length === 0 ? (
-            <View style={ms.centerBox}>
-              <Text style={ms.muted}>{t('settings.sessions.empty')}</Text>
+            <Text style={ms.error}>{error}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setLoading(true);
+                load()
+                  .catch(() => {})
+                  .finally(() => {
+                    setLoading(false);
+                  });
+              }}
+              style={({ pressed }) => [ms.retryBtn, pressed && ms.retryBtnPressed]}>
+              <Text style={ms.retryLabel}>{t('settings.sessions.retry')}</Text>
+            </Pressable>
+          </View>
+        ) : sessions.length === 0 ? (
+          <View style={ms.centerBox}>
+            <View style={ms.centerIconWrap}>
+              <MaterialCommunityIcons name="devices" size={32} color={colors.textMuted} />
             </View>
-          ) : (
-            <>
-              {sessions.map(s => {
-                return (
-                  <SessionCard
-                    key={s.id}
-                    session={s}
-                    ms={ms}
-                    localeTag={localeTag}
-                    onOpenDetails={() => setDetailSession(s)}
-                    onLogoutPress={openLogoutOneSessionConfirm}
-                    logoutOneSubmittingId={logoutOneSubmittingId}
-                    logoutOthersSubmitting={logoutOthersSubmitting}
-                  />
-                );
-              })}
-            </>
-          )}
-        </ScrollView>
-      )}
+            <Text style={ms.muted}>{t('settings.sessions.empty')}</Text>
+          </View>
+        ) : (
+          <>
+            <View style={ms.summaryCard}>
+              <View style={ms.summaryIconWrap}>
+                <MaterialCommunityIcons name="shield-check" size={24} color={colors.primary} />
+              </View>
+              <View style={ms.summaryBody}>
+                <Text style={ms.summaryTitle}>
+                  {t('settings.sessions.listMeta', { total: sessions.length })}
+                </Text>
+                <Text style={ms.summaryHint}>
+                  {hasOtherSessions
+                    ? t('settings.sessions.summaryHintOthers')
+                    : t('settings.sessions.summaryHintOnly')}
+                </Text>
+              </View>
+            </View>
+            {sortedSessions.map(s => {
+              return (
+                <SessionCard
+                  key={s.id}
+                  session={s}
+                  ms={ms}
+                  scheme={resolvedScheme}
+                  localeTag={localeTag}
+                  onOpenDetails={() => setDetailSession(s)}
+                  onLogoutPress={openLogoutOneSessionConfirm}
+                  logoutOneSubmittingId={logoutOneSubmittingId}
+                  logoutOthersSubmitting={logoutOthersSubmitting}
+                />
+              );
+            })}
+          </>
+        )}
+      </ScrollView>
       <SessionDetails
         visible={detailSession !== null}
         session={detailSession}
@@ -494,6 +728,7 @@ export function SessionScreen({ navigation }: Props) {
 function SessionCard({
   session,
   ms,
+  scheme,
   localeTag,
   onOpenDetails,
   onLogoutPress,
@@ -502,6 +737,7 @@ function SessionCard({
 }: {
   session: ActiveSession;
   ms: ReturnType<typeof buildSessionStyles>;
+  scheme: 'light' | 'dark';
   localeTag: string;
   onOpenDetails: () => void;
   onLogoutPress: (s: ActiveSession) => void;
@@ -510,57 +746,77 @@ function SessionCard({
 }) {
   const { t } = useTranslation();
   const colors = useThemeColors();
-  const loginAt = formatSessionDateTime(session.login_at, localeTag);
-  const expiresAt = formatSessionDateTime(session.expires_at, localeTag);
+  const lastActive = formatSessionDateTime(session.last_active, localeTag);
   const thisLogoutLoading = logoutOneSubmittingId === session.id;
+  const deviceVisual = resolveSessionDeviceVisual(
+    session.user_agent,
+    session.device_name,
+    session.is_current,
+  );
+  const iconBg = sessionDeviceTint(scheme, deviceVisual);
+  const actionsDisabled = logoutOthersSubmitting || thisLogoutLoading;
 
   return (
     <View style={[ms.card, session.is_current && ms.cardCurrent]}>
-      <View style={ms.cardTop}>
-        <Text style={ms.deviceName} numberOfLines={2}>
-          {session.device_name}
-        </Text>
-        {session.is_current ? (
-          <View style={ms.badge}>
-            <Text style={ms.badgeText}>{t('settings.sessions.current')}</Text>
+      <View style={ms.cardRow}>
+        <View style={[ms.deviceIconWrap, { backgroundColor: iconBg }]}>
+          <MaterialCommunityIcons
+            name={deviceVisual.icon}
+            size={20}
+            color={deviceVisual.accent}
+          />
+        </View>
+        <View style={ms.cardBody}>
+          <View style={ms.cardTitleRow}>
+            <Text style={ms.deviceName} numberOfLines={1}>
+              {session.device_name}
+            </Text>
+            {session.is_current ? (
+              <View style={ms.badge}>
+                <MaterialCommunityIcons name="check-circle" size={10} color="#fff" />
+                <Text style={ms.badgeText}>{t('settings.sessions.current')}</Text>
+              </View>
+            ) : null}
           </View>
-        ) : null}
-      </View>
-      <Text style={ms.cardMeta}>
-        {t('settings.sessions.loginAt')}: {loginAt}
-      </Text>
-      <Text style={[ms.cardMeta, { marginBottom: 12 }]}>
-        {t('settings.sessions.expiresAt')}: {expiresAt}
-      </Text>
-      <View style={ms.cardActions}>
-        {!session.is_current ? (
+          <View style={ms.lastActiveRow}>
+            <MaterialCommunityIcons name="clock-outline" size={13} color={colors.textMuted} />
+            <Text style={ms.lastActiveText} numberOfLines={1}>
+              {t('settings.sessions.lastActive')}: {lastActive}
+            </Text>
+          </View>
+        </View>
+        <View style={ms.cardActions}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={t('settings.sessions.terminateSession')}
-            disabled={logoutOthersSubmitting || thisLogoutLoading}
-            onPress={() => onLogoutPress(session)}
+            accessibilityLabel={t('settings.sessions.viewDetails')}
+            onPress={onOpenDetails}
             style={({ pressed }) => [
-              ms.actionBtn,
-              ms.actionBtnDanger,
-              pressed && !logoutOthersSubmitting && !thisLogoutLoading && ms.actionBtnPressed,
-              (logoutOthersSubmitting || thisLogoutLoading) && { opacity: 0.55 },
+              ms.iconBtn,
+              ms.iconBtnPrimary,
+              pressed && ms.iconBtnPressed,
             ]}>
-            {thisLogoutLoading ? (
-              <ActivityIndicator size="small" color={colors.danger} />
-            ) : (
-              <Text style={[ms.actionBtnText, ms.actionBtnTextDanger]}>
-                {t('settings.sessions.terminateSession')}
-              </Text>
-            )}
+            <MaterialCommunityIcons name="information-outline" size={18} color={colors.primary} />
           </Pressable>
-        ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.sessions.viewDetails')}
-          onPress={onOpenDetails}
-          style={({ pressed }) => [ms.actionBtn, ms.actionBtnPrimary, pressed && ms.actionBtnPressed]}>
-          <Text style={ms.actionBtnText}>{t('settings.sessions.viewDetails')}</Text>
-        </Pressable>
+          {!session.is_current ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.sessions.terminateSession')}
+              disabled={actionsDisabled}
+              onPress={() => onLogoutPress(session)}
+              style={({ pressed }) => [
+                ms.iconBtn,
+                ms.iconBtnDanger,
+                pressed && !actionsDisabled && ms.iconBtnPressed,
+                actionsDisabled && ms.iconBtnDisabled,
+              ]}>
+              {thisLogoutLoading ? (
+                <ActivityIndicator size="small" color="#e11d48" />
+              ) : (
+                <MaterialCommunityIcons name="logout" size={18} color="#e11d48" />
+              )}
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </View>
   );

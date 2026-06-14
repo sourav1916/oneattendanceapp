@@ -18,6 +18,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  ToastAndroid,
   View,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -47,7 +48,22 @@ import {
   hasCalendarDayDetails,
   shiftMonth,
 } from '@src/utils/calendarHelpers';
-import { readApiError } from '@src/utils/readApiError';
+import {
+  formatLedgerAmount,
+  formatLedgerShortDate,
+} from '@src/utils/ledgerFormat';
+import {
+  formatPhoneDisplay,
+  resolveCountryAndNationalFromDigits,
+} from '@src/utils/loginCountries';
+import {
+  formatMinutes,
+  formatTimelineClock12,
+} from '@src/utils/attendanceStatusUi';
+import {
+  accountDisplayLine,
+  accountTypeLabelKey,
+} from '@src/utils/bankAccountValidation';
 
 const INCLUDE_KEYS = [
   'basic',
@@ -114,14 +130,208 @@ const TAB_THEMES = {
 const DATE_KEY_PATTERN =
   /(^date$|_date$|_at$|^from$|^to$|joining|birth|start|end|expiry|valid)/i;
 
-const BASIC_FIELD_KEYS = [
-  'phone',
-  'designation',
-  'employment_type',
-  'salary_type',
-  'joining_date',
-  'status',
+const COMPACT_SKIP_KEYS = new Set([
+  'id',
+  'company_id',
+  'employee_id',
+  'bank_account_id',
+  'bank_id',
+  'leave_config_id',
+  'leave_type_id',
+]);
+
+const BANK_COPY_FIELD_SPECS = {
+  account_holder_name: {
+    key: 'account_holder_name',
+    labelKey: 'settings.bankAccounts.holderLabel',
+  },
+  bank_name: {
+    key: 'bank_name',
+    labelKey: 'settings.bankAccounts.bankNameLabel',
+  },
+  account_number: {
+    key: 'account_number',
+    labelKey: 'settings.bankAccounts.accountNumberLabel',
+    fallbackKey: 'masked_account_number',
+  },
+  ifsc_code: {
+    key: 'ifsc_code',
+    labelKey: 'settings.bankAccounts.ifscLabel',
+  },
+  branch_name: {
+    key: 'branch_name',
+    labelKey: 'settings.bankAccounts.branchLabel',
+  },
+  upi_id: {
+    key: 'upi_id',
+    labelKey: 'settings.bankAccounts.upiIdLabel',
+    fallbackKey: 'masked_upi_id',
+  },
+};
+
+const BANK_COPY_FIELDS_BY_TYPE = {
+  savings: [
+    'account_holder_name',
+    'bank_name',
+    'account_number',
+    'ifsc_code',
+    'branch_name',
+  ],
+  current: [
+    'account_holder_name',
+    'bank_name',
+    'account_number',
+    'ifsc_code',
+    'branch_name',
+  ],
+  upi: ['account_holder_name', 'upi_id'],
+  cash: ['account_holder_name'],
+};
+
+const BANK_TYPE_ICONS = {
+  savings: 'piggy-bank-outline',
+  current: 'bank-outline',
+  upi: 'qrcode',
+  cash: 'cash',
+};
+
+const BANK_TYPE_THEMES = {
+  savings: { accent: '#2563eb', tint: '#dbeafe' },
+  current: { accent: '#7c3aed', tint: '#ede9fe' },
+  upi: { accent: '#0891b2', tint: '#cffafe' },
+  cash: { accent: '#059669', tint: '#d1fae5' },
+};
+
+const BANK_EXPAND_DURATION = 320;
+const BANK_EXPAND_EASING = Easing.bezier(0.4, 0, 0.2, 1);
+
+const SALARY_COMPONENT_THEMES = {
+  earning: { accent: '#059669', tint: '#d1fae5', icon: 'plus-circle-outline' },
+  deduction: {
+    accent: '#e11d48',
+    tint: '#ffe4e6',
+    icon: 'minus-circle-outline',
+  },
+  employer_contribution: {
+    accent: '#4f46e5',
+    tint: '#eef2ff',
+    icon: 'domain',
+  },
+};
+
+const SALARY_SUMMARY_ROWS = [
+  { key: 'base_amount', icon: 'cash', accent: '#4f46e5', tint: '#eef2ff' },
+  {
+    key: 'gross_salary',
+    icon: 'trending-up',
+    accent: '#059669',
+    tint: '#d1fae5',
+  },
+  {
+    key: 'ctc',
+    icon: 'wallet-outline',
+    accent: '#d97706',
+    tint: '#fffbeb',
+  },
+  {
+    key: 'employer_contributions',
+    icon: 'domain',
+    accent: '#7c3aed',
+    tint: '#ede9fe',
+  },
+  {
+    key: 'total_deductions',
+    icon: 'trending-down',
+    accent: '#e11d48',
+    tint: '#ffe4e6',
+  },
+  {
+    key: 'net_salary',
+    icon: 'hand-coin-outline',
+    accent: '#0d9488',
+    tint: '#ccfbf1',
+  },
 ];
+
+const SALARY_COMPONENT_GROUP_ORDER = [
+  'earning',
+  'deduction',
+  'employer_contribution',
+];
+
+const RECORD_TITLE_KEYS = [
+  'name',
+  'title',
+  'shift_name',
+  'code',
+  'employee_code',
+  'month',
+  'effective_from',
+  'bank_name',
+  'account_type',
+  'payroll_month',
+  'period',
+];
+
+const BASIC_WEEKEND_DAY_KEYS = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+];
+
+const BASIC_FIELD_VISUALS = {
+  phone: { icon: 'phone-outline', accent: '#059669', tint: '#d1fae5' },
+  email: { icon: 'email-outline', accent: '#2563eb', tint: '#dbeafe' },
+  designation: {
+    icon: 'briefcase-outline',
+    accent: '#7c3aed',
+    tint: '#ede9fe',
+  },
+  employment_type: {
+    icon: 'badge-account-outline',
+    accent: '#0891b2',
+    tint: '#cffafe',
+  },
+  salary_type: { icon: 'cash', accent: '#d97706', tint: '#fffbeb' },
+  joining_date: {
+    icon: 'calendar-check-outline',
+    accent: '#ea580c',
+    tint: '#ffedd5',
+  },
+  status: {
+    icon: 'checkbox-marked-circle-outline',
+    accent: '#2563eb',
+    tint: '#dbeafe',
+  },
+  face_enrolled: {
+    icon: 'face-recognition',
+    accent: '#0d9488',
+    tint: '#ccfbf1',
+  },
+  shift_timing: {
+    icon: 'clock-time-four-outline',
+    accent: '#4f46e5',
+    tint: '#eef2ff',
+  },
+  expected_work_minutes: {
+    icon: 'timer-outline',
+    accent: '#4338ca',
+    tint: '#e0e7ff',
+  },
+  break_minutes: { icon: 'coffee-outline', accent: '#b45309', tint: '#fef3c7' },
+  grace_minutes: { icon: 'timer-sand', accent: '#64748b', tint: '#f1f5f9' },
+  weekends: { icon: 'calendar-weekend', accent: '#db2777', tint: '#fdf2f8' },
+};
+
+const BASIC_DEFAULT_VISUAL = {
+  icon: 'information-outline',
+  accent: '#64748b',
+  tint: '#f1f5f9',
+};
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SUMMARY_KEYS = [
   { key: 'present', labelKey: 'present', status: 'present' },
@@ -699,21 +909,35 @@ function buildStyles(colors, scheme, theme) {
       overflow: 'hidden',
     },
     avatarText: { color: theme.accent, fontWeight: '700', fontSize: 18 },
-    profileMain: { flex: 1, minWidth: 0 },
-    profileName: { fontSize: 18, fontWeight: '700', color: colors.text },
+    profileMain: {
+      flex: 1,
+      minWidth: 0,
+      minHeight: 58,
+      justifyContent: 'center',
+    },
+    profileName: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      lineHeight: 22,
+    },
+    profileDesignation: {
+      marginTop: 2,
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textMuted,
+      letterSpacing: 0.3,
+      lineHeight: 14,
+    },
     profileCode: {
-      alignSelf: 'flex-start',
-      marginTop: 5,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
-      backgroundColor: dark ? 'rgba(59,130,246,0.2)' : theme.surface,
-      color: theme.accent,
+      marginTop: 1,
       fontSize: 11,
       fontWeight: '700',
-      overflow: 'hidden',
+      color: theme.accent,
+      lineHeight: 14,
     },
     profileEmail: { marginTop: 10, fontSize: 13, color: colors.textMuted },
+    profilePhone: { marginTop: 4, fontSize: 13, color: colors.textMuted },
     tabScroll: { flexGrow: 0 },
     tabRow: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
     chip: {
@@ -758,13 +982,13 @@ function buildStyles(colors, scheme, theme) {
     sectionHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      marginBottom: 12,
+      gap: 8,
+      marginBottom: 8,
     },
     sectionIconWrap: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: dark ? 'rgba(96,165,250,0.15)' : theme.surface,
@@ -773,7 +997,7 @@ function buildStyles(colors, scheme, theme) {
     },
     sectionTitle: {
       flex: 1,
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '700',
       color: colors.text,
     },
@@ -789,12 +1013,12 @@ function buildStyles(colors, scheme, theme) {
     createBtnPressed: { opacity: 0.88 },
     createBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
     card: {
-      borderRadius: 16,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: tabBorder,
       backgroundColor: colors.surface,
-      padding: 14,
-      marginBottom: 12,
+      padding: 10,
+      marginBottom: 8,
       overflow: 'hidden',
     },
     cardAccent: {
@@ -806,39 +1030,471 @@ function buildStyles(colors, scheme, theme) {
       backgroundColor: theme.accent,
     },
     cardTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+      paddingLeft: 2,
+    },
+    compactFieldList: {
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      backgroundColor: dark ? 'rgba(15,23,42,0.35)' : colors.background,
+    },
+    compactFieldRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    compactFieldRowLast: { borderBottomWidth: 0 },
+    compactFieldLabel: {
+      fontSize: 12,
+      color: colors.textMuted,
+      flex: 0.44,
+    },
+    compactFieldValue: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.text,
+      flex: 0.56,
+      textAlign: 'right',
+    },
+    compactListCard: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: tabBorder,
+      backgroundColor: colors.surface,
+      overflow: 'hidden',
+    },
+    compactRecord: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+    },
+    compactRecordLast: { borderBottomWidth: 0 },
+    compactRecordRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    compactRecordIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    compactRecordBody: { flex: 1, minWidth: 0 },
+    compactRecordTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    compactRecordTitle: {
       fontSize: 14,
       fontWeight: '700',
       color: colors.text,
-      marginBottom: 12,
-      paddingLeft: 6,
     },
-    fieldGrid: { gap: 10, paddingLeft: 6 },
-    fieldRow: {
+    compactRecordSub: {
+      marginTop: 2,
+      fontSize: 12,
+      color: colors.textMuted,
+      lineHeight: 17,
+    },
+    compactRecordMeta: {
+      marginTop: 1,
+      fontSize: 11,
+      color: colors.textMuted,
+    },
+    compactPrimaryBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: '#0d9488',
+    },
+    compactPrimaryBadgeText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: '#fff',
+    },
+    bankRecordHeader: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       gap: 10,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 12,
-      backgroundColor: dark ? 'rgba(15,23,42,0.35)' : colors.background,
+    },
+    bankRecordHeaderPressed: { opacity: 0.88 },
+    bankRecordChevron: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: dark ? 'rgba(255,255,255,0.06)' : colors.background,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    fieldIcon: { marginTop: 1 },
-    fieldBody: { flex: 1, minWidth: 0 },
-    fieldLabel: {
+    bankExpandedBlock: {
+      marginTop: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      backgroundColor: dark ? 'rgba(15,23,42,0.35)' : colors.background,
+    },
+    bankMeasureWrap: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      opacity: 0,
+      zIndex: -1,
+      pointerEvents: 'none',
+    },
+    bankCopyRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    bankCopyRowLast: { borderBottomWidth: 0 },
+    bankCopyRowMain: { flex: 1, minWidth: 0 },
+    bankCopyLabel: {
       fontSize: 11,
+      color: colors.textMuted,
+      marginBottom: 2,
+    },
+    bankCopyValue: {
+      fontSize: 13,
       fontWeight: '600',
+      color: colors.text,
+    },
+    bankCopyBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: dark ? 'rgba(255,255,255,0.06)' : colors.surface,
+    },
+    bankCopyBtnPressed: { opacity: 0.85 },
+    bankStatusBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: dark ? 'rgba(148,163,184,0.2)' : '#f1f5f9',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    bankStatusBadgeText: {
+      fontSize: 9,
+      fontWeight: '700',
+      color: colors.textMuted,
+      textTransform: 'capitalize',
+    },
+    salaryActiveBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: dark ? 'rgba(16,185,129,0.22)' : '#ecfdf5',
+      borderWidth: 1,
+      borderColor: dark ? 'rgba(52,211,153,0.45)' : '#6ee7b7',
+    },
+    salaryActiveBadgeText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: dark ? '#6ee7b7' : '#15803d',
+    },
+    salaryListRoot: {
+      gap: 12,
+    },
+    salaryRecordCard: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: tabBorder,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+    },
+    salaryExpandedBlock: {
+      marginTop: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      backgroundColor: dark ? 'rgba(15,23,42,0.35)' : colors.background,
+      padding: 12,
+    },
+    salarySummaryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    salarySummaryTile: {
+      width: '48%',
+      flexGrow: 1,
+      flexBasis: '46%',
+    },
+    salarySummaryTileInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+      backgroundColor: dark ? 'rgba(30,41,59,0.45)' : colors.surface,
+    },
+    salarySummaryIcon: {
+      width: 30,
+      height: 30,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    salarySummaryMain: { flex: 1, minWidth: 0 },
+    salarySummaryLabel: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    salarySummaryValue: {
+      marginTop: 1,
+      fontSize: 13,
+      fontWeight: '800',
+      color: colors.text,
+    },
+    salaryComponentGroupLabel: {
+      fontSize: 10,
+      fontWeight: '700',
       color: colors.textMuted,
       textTransform: 'uppercase',
       letterSpacing: 0.4,
-      marginBottom: 3,
+      marginTop: 10,
+      marginBottom: 6,
+      paddingHorizontal: 12,
     },
-    fieldValue: {
-      fontSize: 14,
+    salaryComponentGroupLabelFirst: {
+      marginTop: 0,
+    },
+    salaryComponentCard: {
+      marginTop: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      backgroundColor: dark ? 'rgba(30,41,59,0.45)' : colors.surface,
+    },
+    salaryComponentEmpty: {
+      marginTop: 12,
+      paddingHorizontal: 4,
+    },
+    salaryComponentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    salaryComponentRowLast: { borderBottomWidth: 0 },
+    salaryComponentIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    salaryComponentMain: { flex: 1, minWidth: 0 },
+    salaryComponentName: {
+      fontSize: 13,
       fontWeight: '600',
       color: colors.text,
+    },
+    salaryComponentMeta: {
+      marginTop: 2,
+      fontSize: 11,
+      color: colors.textMuted,
+      lineHeight: 15,
+    },
+    salaryComponentAmount: {
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    basicRoot: { gap: 4 },
+    basicGroupLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginTop: 10,
+      marginBottom: 8,
+      paddingHorizontal: 2,
+    },
+    basicGroupLabelFirst: { marginTop: 0 },
+    basicGrid: {
+      flexDirection: 'row',
       flexWrap: 'wrap',
+      marginHorizontal: -4,
+    },
+    basicTile: {
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: dark ? 'rgba(30,41,59,0.45)' : colors.surface,
+      padding: 12,
+      marginHorizontal: 4,
+      marginBottom: 8,
+      minHeight: 88,
+    },
+    basicTileHalf: {
+      width: '48%',
+      flexGrow: 1,
+      flexBasis: '46%',
+      maxWidth: '48%',
+    },
+    basicTileFull: {
+      width: '100%',
+      flexBasis: '100%',
+      maxWidth: '100%',
+    },
+    basicTileTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    basicTileIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    basicTileLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textMuted,
+      marginBottom: 4,
+    },
+    basicTileValue: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+      lineHeight: 20,
+    },
+    basicCopyBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: dark ? 'rgba(255,255,255,0.06)' : colors.background,
+    },
+    basicCopyBtnPressed: { opacity: 0.85 },
+    basicStatusPill: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    basicStatusPillText: { fontSize: 12, fontWeight: '700' },
+    basicFaceBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 5,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    basicFaceYes: {
+      backgroundColor: dark ? 'rgba(16,185,129,0.18)' : '#ecfdf5',
+      borderColor: dark ? 'rgba(52,211,153,0.45)' : '#6ee7b7',
+    },
+    basicFaceNo: {
+      backgroundColor: dark ? 'rgba(239,68,68,0.18)' : '#fef2f2',
+      borderColor: dark ? 'rgba(248,113,113,0.45)' : '#fca5a5',
+    },
+    basicFaceYesText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: dark ? '#6ee7b7' : '#15803d',
+    },
+    basicFaceNoText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: dark ? '#fca5a5' : '#dc2626',
+    },
+    compactRecordIndex: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.accent,
+      marginBottom: 6,
+    },
+    compactSectionLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      marginTop: 6,
+      marginBottom: 6,
+      paddingLeft: 2,
+    },
+    fieldGrid: { gap: 0 },
+    fieldRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      paddingVertical: 7,
+      paddingHorizontal: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    fieldIcon: { display: 'none' },
+    fieldBody: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    fieldLabel: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textMuted,
+      flex: 0.44,
+      marginBottom: 0,
+      textTransform: 'none',
+      letterSpacing: 0,
+    },
+    fieldValue: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.text,
+      flex: 0.56,
+      textAlign: 'right',
     },
     statusPill: {
       alignSelf: 'flex-start',
@@ -1382,6 +2038,40 @@ function buildStyles(colors, scheme, theme) {
       color: theme.accent,
     },
     skBone: { borderRadius: 6 },
+    skProfileAvatar: {
+      width: 58,
+      height: 58,
+      borderRadius: 29,
+    },
+    skProfileName: {
+      height: 18,
+      width: '72%',
+      borderRadius: 6,
+    },
+    skProfileDesignation: {
+      marginTop: 2,
+      height: 11,
+      width: '58%',
+      borderRadius: 4,
+    },
+    skProfileCode: {
+      marginTop: 1,
+      height: 11,
+      width: '42%',
+      borderRadius: 4,
+    },
+    skProfileEmail: {
+      marginTop: 10,
+      height: 13,
+      width: '88%',
+      borderRadius: 4,
+    },
+    skProfilePhone: {
+      marginTop: 4,
+      height: 13,
+      width: '62%',
+      borderRadius: 4,
+    },
     skSectionIcon: { width: 36, height: 36, borderRadius: 18 },
     skSectionTitle: { height: 16, width: '52%', borderRadius: 6 },
     skCard: {
@@ -1505,6 +2195,41 @@ function useProfileSkeletonPulse() {
   );
 }
 
+function EmployeeProfileHeaderSkeleton({ styles, scheme }) {
+  const pulseStyle = useProfileSkeletonPulse();
+  const barBg =
+    scheme === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(15,23,42,0.07)';
+
+  const bone = useCallback(
+    extra => {
+      const flat = Array.isArray(extra)
+        ? extra.reduce((acc, part) => ({ ...acc, ...part }), {})
+        : extra;
+      return [styles.skBone, { backgroundColor: barBg }, flat, pulseStyle];
+    },
+    [barBg, pulseStyle, styles.skBone],
+  );
+
+  return (
+    <View
+      style={styles.profileCard}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <View style={styles.profileTop}>
+        <Animated.View style={bone(styles.skProfileAvatar)} />
+        <View style={styles.profileMain}>
+          <Animated.View style={bone(styles.skProfileName)} />
+          <Animated.View style={bone(styles.skProfileDesignation)} />
+          <Animated.View style={bone(styles.skProfileCode)} />
+        </View>
+      </View>
+      <Animated.View style={bone(styles.skProfileEmail)} />
+      <Animated.View style={bone(styles.skProfilePhone)} />
+    </View>
+  );
+}
+
 function EmployeeProfileTabSkeleton({ tabKey, styles, scheme }) {
   const pulseStyle = useProfileSkeletonPulse();
   const barBg =
@@ -1578,10 +2303,7 @@ function EmployeeProfileTabSkeleton({ tabKey, styles, scheme }) {
           {Array.from({ length: 5 }).map((_, weekIndex) => (
             <View key={weekIndex} style={styles.skGridWeekRow}>
               {Array.from({ length: 7 }).map((__, dayIndex) => (
-                <Animated.View
-                  key={dayIndex}
-                  style={bone(styles.skDayCell)}
-                />
+                <Animated.View key={dayIndex} style={bone(styles.skDayCell)} />
               ))}
             </View>
           ))}
@@ -1627,10 +2349,7 @@ function EmployeeProfileTabSkeleton({ tabKey, styles, scheme }) {
       {Array.from({ length: 2 }).map((_, i) => (
         <View key={i} style={styles.skCard}>
           <Animated.View
-            style={bone([
-              styles.skSectionTitle,
-              styles.skSectionTitleSpacedLg,
-            ])}
+            style={bone([styles.skSectionTitle, styles.skSectionTitleSpacedLg])}
           />
           <Animated.View
             style={bone([styles.skFieldValue, { width: '100%' }])}
@@ -1657,6 +2376,115 @@ function EmployeeProfileTabSkeleton({ tabKey, styles, scheme }) {
         />
       </View>
     </>
+  );
+}
+
+function AttendanceCalendarBodySkeleton({ styles, scheme }) {
+  const pulseStyle = useProfileSkeletonPulse();
+  const barBg =
+    scheme === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(15,23,42,0.07)';
+
+  const bone = useCallback(
+    extra => {
+      const flat = Array.isArray(extra)
+        ? extra.reduce((acc, part) => ({ ...acc, ...part }), {})
+        : extra;
+      return [styles.skBone, { backgroundColor: barBg }, flat, pulseStyle];
+    },
+    [barBg, pulseStyle, styles.skBone],
+  );
+
+  return (
+    <>
+      <View style={styles.weekdayRow}>
+        {WEEKDAY_LABELS.map(label => (
+          <View key={label} style={styles.weekdayCol}>
+            <Text style={styles.weekdayLabel}>{label}</Text>
+          </View>
+        ))}
+      </View>
+      {Array.from({ length: 5 }).map((_, weekIndex) => (
+        <View key={`sk-week-${weekIndex}`} style={styles.skGridWeekRow}>
+          {Array.from({ length: 7 }).map((__, dayIndex) => (
+            <View key={`sk-day-${dayIndex}`} style={styles.gridCell}>
+              <Animated.View style={bone(styles.skDayCell)} />
+            </View>
+          ))}
+        </View>
+      ))}
+    </>
+  );
+}
+
+function AttendanceSummarySkeleton({ styles, scheme, t }) {
+  const pulseStyle = useProfileSkeletonPulse();
+  const barBg =
+    scheme === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(15,23,42,0.07)';
+
+  const bone = useCallback(
+    extra => {
+      const flat = Array.isArray(extra)
+        ? extra.reduce((acc, part) => ({ ...acc, ...part }), {})
+        : extra;
+      return [styles.skBone, { backgroundColor: barBg }, flat, pulseStyle];
+    },
+    [barBg, pulseStyle, styles.skBone],
+  );
+
+  return (
+    <View style={styles.attendanceCard}>
+      <Text style={styles.cardTitle}>{t('home.myCalendar.summaryTitle')}</Text>
+      <View style={styles.skSummaryGrid}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Animated.View
+            key={`sk-summary-${i}`}
+            style={bone(styles.skSummaryCard)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function renderAttendanceMonthNav({
+  styles,
+  theme,
+  t,
+  attendanceYear,
+  attendanceMonth,
+  onAttendancePrevMonth,
+  onAttendanceNextMonth,
+}) {
+  return (
+    <View style={styles.monthNav}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('home.myCalendar.prevMonth')}
+        onPress={onAttendancePrevMonth}
+        style={styles.monthNavBtn}
+      >
+        <MaterialCommunityIcons
+          name="chevron-left"
+          size={24}
+          color={theme.accent}
+        />
+      </Pressable>
+      <Text style={styles.monthNavTitle}>
+        {formatMonthTitle(attendanceYear, attendanceMonth)}
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('home.myCalendar.nextMonth')}
+        onPress={onAttendanceNextMonth}
+        style={styles.monthNavBtn}
+      >
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={24}
+          color={theme.accent}
+        />
+      </Pressable>
+    </View>
   );
 }
 
@@ -1889,78 +2717,109 @@ function formatDisplayValue(key, value, t) {
   return String(value);
 }
 
-function fieldIconName(key) {
-  if (/email/i.test(key)) {
-    return 'email-outline';
-  }
-  if (/phone|mobile/i.test(key)) {
-    return 'phone-outline';
-  }
-  if (/date|joining|birth/i.test(key)) {
-    return 'calendar-outline';
-  }
-  if (/status/i.test(key)) {
-    return 'checkbox-marked-circle-outline';
-  }
-  if (/salary|amount|pay/i.test(key)) {
-    return 'currency-inr';
-  }
-  if (/bank|account|ifsc/i.test(key)) {
-    return 'bank-outline';
-  }
-  if (/shift|time/i.test(key)) {
-    return 'clock-outline';
-  }
-  return 'information-outline';
+function getDetailEntries(source, excludeKeys = new Set()) {
+  return Object.entries(source || {}).filter(
+    ([key, val]) =>
+      val != null &&
+      val !== '' &&
+      typeof val !== 'object' &&
+      !COMPACT_SKIP_KEYS.has(key) &&
+      !excludeKeys.has(key),
+  );
 }
 
-function DetailField({ styles, label, fieldKey, value, theme, scheme, t }) {
+function extractSectionItems(sectionData, include) {
+  if (Array.isArray(sectionData)) {
+    return sectionData;
+  }
+  if (sectionData && typeof sectionData === 'object') {
+    if (Array.isArray(sectionData[include])) {
+      return sectionData[include];
+    }
+    const pluralKey = `${include}s`;
+    if (Array.isArray(sectionData[pluralKey])) {
+      return sectionData[pluralKey];
+    }
+    const arrayKeys = Object.keys(sectionData).filter(key =>
+      Array.isArray(sectionData[key]),
+    );
+    if (arrayKeys.length === 1) {
+      return sectionData[arrayKeys[0]];
+    }
+  }
+  return null;
+}
+
+function getRecordTitle(item, index, includeLabel, t) {
+  if (!item || typeof item !== 'object') {
+    return t('home.employeeProfile.record', {
+      section: includeLabel,
+      index: index + 1,
+    });
+  }
+  for (const key of RECORD_TITLE_KEYS) {
+    const val = item[key];
+    if (val != null && val !== '') {
+      return String(val);
+    }
+  }
+  return t('home.employeeProfile.record', {
+    section: includeLabel,
+    index: index + 1,
+  });
+}
+
+function DetailField({
+  styles,
+  label,
+  fieldKey,
+  value,
+  theme,
+  scheme,
+  t,
+  isLast,
+}) {
   const isStatus = fieldKey === 'status';
   const statusColors = isStatus ? getStatusColors(value, scheme) : null;
   const display = formatDisplayValue(fieldKey, value, t);
 
   return (
-    <View style={styles.fieldRow}>
-      <MaterialCommunityIcons
-        name={fieldIconName(fieldKey)}
-        size={18}
-        color={theme.accent}
-        style={styles.fieldIcon}
-      />
-      <View style={styles.fieldBody}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        {isStatus ? (
-          <View
-            style={[
-              styles.statusPill,
-              {
-                backgroundColor: statusColors.bg,
-                borderColor: statusColors.border,
-              },
-            ]}
-          >
-            <Text style={[styles.statusPillText, { color: statusColors.text }]}>
-              {display}
-            </Text>
-          </View>
-        ) : (
-          <Text style={styles.fieldValue}>{display}</Text>
-        )}
-      </View>
+    <View style={[styles.fieldRow, isLast && styles.compactFieldRowLast]}>
+      <Text style={styles.fieldLabel} numberOfLines={2}>
+        {label}
+      </Text>
+      {isStatus ? (
+        <View
+          style={[
+            styles.statusPill,
+            {
+              backgroundColor: statusColors.bg,
+              borderColor: statusColors.border,
+              alignSelf: 'center',
+            },
+          ]}
+        >
+          <Text style={[styles.statusPillText, { color: statusColors.text }]}>
+            {display}
+          </Text>
+        </View>
+      ) : (
+        <Text style={styles.fieldValue} numberOfLines={3}>
+          {display}
+        </Text>
+      )}
     </View>
   );
 }
 
 function renderObjectFields(styles, source, theme, scheme, t, labelForKey) {
-  const entries = Object.entries(source || {}).filter(
-    ([, v]) => v != null && v !== '' && typeof v !== 'object',
-  );
+  const entries = getDetailEntries(source);
   if (entries.length === 0) {
     return null;
   }
   return (
-    <View style={styles.fieldGrid}>
-      {entries.map(([key, value]) => (
+    <View style={styles.compactFieldList}>
+      {entries.map(([key, value], index) => (
         <DetailField
           key={key}
           styles={styles}
@@ -1970,8 +2829,1244 @@ function renderObjectFields(styles, source, theme, scheme, t, labelForKey) {
           theme={theme}
           scheme={scheme}
           t={t}
+          isLast={index === entries.length - 1}
         />
       ))}
+    </View>
+  );
+}
+
+function renderCompactRecordList({
+  styles,
+  items,
+  theme,
+  scheme,
+  t,
+  labelForKey,
+  includeLabel,
+}) {
+  return (
+    <View style={styles.compactListCard}>
+      {items.map((item, index) => {
+        if (typeof item !== 'object' || item == null) {
+          return (
+            <View
+              key={`record-${index}`}
+              style={[
+                styles.compactRecord,
+                index === items.length - 1 && styles.compactRecordLast,
+              ]}
+            >
+              <Text style={styles.compactRecordSub}>{String(item)}</Text>
+            </View>
+          );
+        }
+        const entries = getDetailEntries(item);
+        const title = getRecordTitle(item, index, includeLabel, t);
+        return (
+          <View
+            key={`record-${index}`}
+            style={[
+              styles.compactRecord,
+              index === items.length - 1 && styles.compactRecordLast,
+            ]}
+          >
+            <Text style={styles.compactRecordIndex} numberOfLines={1}>
+              {title}
+            </Text>
+            {entries.length > 0 ? (
+              <View style={styles.compactFieldList}>
+                {entries.map(([key, value], entryIndex) => (
+                  <DetailField
+                    key={key}
+                    styles={styles}
+                    label={labelForKey(key)}
+                    fieldKey={key}
+                    value={value}
+                    theme={theme}
+                    scheme={scheme}
+                    t={t}
+                    isLast={entryIndex === entries.length - 1}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function getBankAccountId(account, index) {
+  return String(account.id ?? account.bank_account_id ?? index);
+}
+
+function normalizeBankAccountType(type) {
+  if (type === 'current' || type === 'upi' || type === 'cash') {
+    return type;
+  }
+  return 'savings';
+}
+
+function resolveBankCopyValue(account, spec) {
+  const primary = account[spec.key];
+  if (primary != null && String(primary).trim()) {
+    return String(primary).trim();
+  }
+  if (spec.fallbackKey) {
+    const fallback = account[spec.fallbackKey];
+    if (fallback != null && String(fallback).trim()) {
+      return String(fallback).trim();
+    }
+  }
+  return null;
+}
+
+function getBankCopyableFields(account, t) {
+  const type = normalizeBankAccountType(account.account_type);
+  const fieldKeys =
+    BANK_COPY_FIELDS_BY_TYPE[type] ?? BANK_COPY_FIELDS_BY_TYPE.savings;
+  return fieldKeys
+    .map(key => {
+      const spec = BANK_COPY_FIELD_SPECS[key];
+      if (!spec) {
+        return null;
+      }
+      const copyValue = resolveBankCopyValue(account, spec);
+      if (!copyValue) {
+        return null;
+      }
+      return {
+        key: spec.key,
+        label: t(spec.labelKey),
+        copyValue,
+      };
+    })
+    .filter(Boolean);
+}
+
+function getBankCollapsedDisplay(account, t) {
+  const type = normalizeBankAccountType(account.account_type);
+  const title = t(accountTypeLabelKey(type));
+
+  if (type === 'cash') {
+    return {
+      title,
+      subtitle:
+        account.account_holder_name?.trim() || t('home.employeeProfile.na'),
+      meta: null,
+    };
+  }
+
+  if (type === 'upi') {
+    return {
+      title,
+      subtitle:
+        account.upi_id?.trim() ||
+        account.masked_upi_id?.trim() ||
+        t('home.employeeProfile.na'),
+      meta: account.account_holder_name?.trim() || null,
+    };
+  }
+
+  return {
+    title,
+    subtitle: accountDisplayLine(account),
+    meta: account.account_holder_name?.trim() || null,
+  };
+}
+
+function formatEmployeePhone(phone) {
+  if (phone == null || String(phone).trim() === '') {
+    return null;
+  }
+  const { country, national } = resolveCountryAndNationalFromDigits(
+    String(phone),
+  );
+  return formatPhoneDisplay(country, national);
+}
+
+function formatEnumLabel(value) {
+  if (value == null || String(value).trim() === '') {
+    return null;
+  }
+  return humanizeKey(String(value));
+}
+
+function formatShiftRange(start, end) {
+  const from = formatTimelineClock12(start);
+  const to = formatTimelineClock12(end);
+  if (from === '—' && to === '—') {
+    return null;
+  }
+  return `${from} – ${to}`;
+}
+
+function formatWeekends(weekends, t) {
+  if (!Array.isArray(weekends) || weekends.length === 0) {
+    return t('home.employeeProfile.basic.noWeekends');
+  }
+  return weekends
+    .map(day => {
+      const key = String(day).trim().toLowerCase();
+      if (!BASIC_WEEKEND_DAY_KEYS.includes(key)) {
+        return humanizeKey(key);
+      }
+      const labelKey = `home.employeeList.days.${key}`;
+      const translated = t(labelKey);
+      return translated !== labelKey ? translated : humanizeKey(key);
+    })
+    .join(', ');
+}
+
+function buildBasicDetailModel(basicData, t) {
+  if (!basicData || typeof basicData !== 'object') {
+    return null;
+  }
+
+  const contact = [];
+  const profile = [];
+  const shift = [];
+  let face = null;
+  let weekends = null;
+
+  const phone = formatEmployeePhone(basicData.phone);
+  if (phone) {
+    contact.push({
+      fieldKey: 'phone',
+      label: t('home.employeeProfile.fields.phone'),
+      value: phone,
+      copyValue: phone,
+      variant: 'text',
+    });
+  }
+
+  const email = basicData.email?.trim();
+  if (email) {
+    contact.push({
+      fieldKey: 'email',
+      label: t('home.employeeProfile.fields.email'),
+      value: email,
+      copyValue: email,
+      variant: 'text',
+    });
+  }
+
+  const designation = formatEnumLabel(basicData.designation);
+  if (designation) {
+    profile.push({
+      fieldKey: 'designation',
+      label: t('home.employeeProfile.fields.designation'),
+      value: designation.toUpperCase(),
+      variant: 'text',
+    });
+  }
+
+  const employmentType = formatEnumLabel(basicData.employment_type);
+  if (employmentType) {
+    profile.push({
+      fieldKey: 'employment_type',
+      label: t('home.employeeProfile.fields.employment_type'),
+      value: employmentType,
+      variant: 'text',
+    });
+  }
+
+  const salaryType = formatEnumLabel(basicData.salary_type);
+  if (salaryType) {
+    profile.push({
+      fieldKey: 'salary_type',
+      label: t('home.employeeProfile.fields.salary_type'),
+      value: salaryType,
+      variant: 'text',
+    });
+  }
+
+  if (basicData.joining_date) {
+    profile.push({
+      fieldKey: 'joining_date',
+      label: t('home.employeeProfile.fields.joining_date'),
+      value:
+        formatDateDDMMYYYY(basicData.joining_date) ??
+        String(basicData.joining_date),
+      variant: 'text',
+    });
+  }
+
+  if (basicData.status != null && basicData.status !== '') {
+    profile.push({
+      fieldKey: 'status',
+      label: t('home.employeeProfile.fields.status'),
+      value: humanizeKey(String(basicData.status)),
+      rawStatus: String(basicData.status),
+      variant: 'status',
+    });
+  }
+
+  if (typeof basicData.face_enrolled === 'boolean') {
+    face = {
+      fieldKey: 'face_enrolled',
+      label: t('home.employeeProfile.fields.face_enrolled'),
+      value: basicData.face_enrolled
+        ? t('home.employeeProfile.yes')
+        : t('home.employeeProfile.no'),
+      faceEnrolled: basicData.face_enrolled,
+      variant: 'face',
+    };
+  }
+
+  const shiftRange = formatShiftRange(
+    basicData.shift_start,
+    basicData.shift_end,
+  );
+  if (shiftRange) {
+    shift.push({
+      fieldKey: 'shift_timing',
+      label: t('home.employeeProfile.fields.shift_timing'),
+      value: shiftRange,
+      variant: 'text',
+    });
+  }
+
+  if (basicData.expected_work_minutes != null) {
+    const workDuration = formatMinutes(basicData.expected_work_minutes);
+    if (workDuration !== '-') {
+      shift.push({
+        fieldKey: 'expected_work_minutes',
+        label: t('home.employeeProfile.fields.expected_work_minutes'),
+        value: workDuration,
+        variant: 'text',
+      });
+    }
+  }
+
+  if (basicData.break_minutes != null) {
+    const breakDuration = formatMinutes(basicData.break_minutes);
+    if (breakDuration !== '-') {
+      shift.push({
+        fieldKey: 'break_minutes',
+        label: t('home.employeeProfile.fields.break_minutes'),
+        value: breakDuration,
+        variant: 'text',
+      });
+    }
+  }
+
+  if (basicData.grace_minutes != null) {
+    const graceDuration = formatMinutes(basicData.grace_minutes);
+    if (graceDuration !== '-') {
+      shift.push({
+        fieldKey: 'grace_minutes',
+        label: t('home.employeeProfile.fields.grace_minutes'),
+        value: graceDuration,
+        variant: 'text',
+      });
+    }
+  }
+
+  weekends = {
+    fieldKey: 'weekends',
+    label: t('home.employeeProfile.fields.weekends'),
+    value: formatWeekends(basicData.weekends, t),
+    variant: 'text',
+  };
+
+  const hasContent =
+    contact.length > 0 ||
+    profile.length > 0 ||
+    face != null ||
+    shift.length > 0 ||
+    weekends.value != null;
+
+  if (!hasContent) {
+    return null;
+  }
+
+  return { contact, profile, face, shift, weekends };
+}
+
+function BasicDetailTile({
+  item,
+  styles,
+  scheme,
+  t,
+  onCopyValue,
+  fullWidth = false,
+}) {
+  const visual = BASIC_FIELD_VISUALS[item.fieldKey] ?? BASIC_DEFAULT_VISUAL;
+  const iconBg = scheme === 'dark' ? `${visual.accent}22` : visual.tint;
+
+  const renderValue = () => {
+    if (item.variant === 'status') {
+      const statusColors = getStatusColors(
+        item.rawStatus ?? item.value,
+        scheme,
+      );
+      return (
+        <View
+          style={[
+            styles.basicStatusPill,
+            {
+              backgroundColor: statusColors.bg,
+              borderColor: statusColors.border,
+            },
+          ]}
+        >
+          <Text
+            style={[styles.basicStatusPillText, { color: statusColors.text }]}
+          >
+            {item.value}
+          </Text>
+        </View>
+      );
+    }
+
+    if (item.variant === 'face') {
+      const enrolled = Boolean(item.faceEnrolled);
+      return (
+        <View
+          style={[
+            styles.basicFaceBadge,
+            enrolled ? styles.basicFaceYes : styles.basicFaceNo,
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={enrolled ? 'check-circle' : 'close-circle'}
+            size={14}
+            color={
+              enrolled
+                ? scheme === 'dark'
+                  ? '#6ee7b7'
+                  : '#15803d'
+                : scheme === 'dark'
+                ? '#fca5a5'
+                : '#dc2626'
+            }
+          />
+          <Text
+            style={enrolled ? styles.basicFaceYesText : styles.basicFaceNoText}
+          >
+            {item.value}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <Text style={styles.basicTileValue} numberOfLines={fullWidth ? 3 : 2}>
+        {item.value}
+      </Text>
+    );
+  };
+
+  return (
+    <View
+      style={[
+        styles.basicTile,
+        fullWidth ? styles.basicTileFull : styles.basicTileHalf,
+      ]}
+    >
+      <View style={styles.basicTileTop}>
+        <View style={[styles.basicTileIcon, { backgroundColor: iconBg }]}>
+          <MaterialCommunityIcons
+            name={visual.icon}
+            size={18}
+            color={visual.accent}
+          />
+        </View>
+        {item.copyValue ? (
+          <Pressable
+            onPress={() => onCopyValue(item.copyValue, item.label)}
+            style={({ pressed }) => [
+              styles.basicCopyBtn,
+              pressed && styles.basicCopyBtnPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t('home.employeeProfile.banks.copyFieldA11y', {
+              field: item.label,
+            })}
+          >
+            <MaterialCommunityIcons
+              name="content-copy"
+              size={15}
+              color={visual.accent}
+            />
+          </Pressable>
+        ) : null}
+      </View>
+      <Text style={styles.basicTileLabel}>{item.label}</Text>
+      {renderValue()}
+    </View>
+  );
+}
+
+function EmployeeBasicSection({ styles, basicData, scheme, t, onCopyValue }) {
+  const model = buildBasicDetailModel(basicData, t);
+
+  if (!model) {
+    return (
+      <View style={styles.basicRoot}>
+        <Text style={styles.muted}>{t('home.employeeProfile.noDetails')}</Text>
+      </View>
+    );
+  }
+
+  const { contact, profile, face, shift, weekends } = model;
+
+  return (
+    <View style={styles.basicRoot}>
+      {contact.length > 0 ? (
+        <>
+          <Text style={[styles.basicGroupLabel, styles.basicGroupLabelFirst]}>
+            {t('home.employeeProfile.basic.groups.contact')}
+          </Text>
+          <View style={styles.basicGrid}>
+            {contact.map(item => (
+              <BasicDetailTile
+                key={item.fieldKey}
+                item={item}
+                styles={styles}
+                scheme={scheme}
+                t={t}
+                onCopyValue={onCopyValue}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      {profile.length > 0 || face ? (
+        <>
+          <Text
+            style={[
+              styles.basicGroupLabel,
+              contact.length === 0 && styles.basicGroupLabelFirst,
+            ]}
+          >
+            {t('home.employeeProfile.basic.groups.workProfile')}
+          </Text>
+          <View style={styles.basicGrid}>
+            {profile.map(item => (
+              <BasicDetailTile
+                key={item.fieldKey}
+                item={item}
+                styles={styles}
+                scheme={scheme}
+                t={t}
+                onCopyValue={onCopyValue}
+              />
+            ))}
+            {face ? (
+              <BasicDetailTile
+                item={face}
+                styles={styles}
+                scheme={scheme}
+                t={t}
+                onCopyValue={onCopyValue}
+              />
+            ) : null}
+          </View>
+        </>
+      ) : null}
+
+      {shift.length > 0 ? (
+        <>
+          <Text style={styles.basicGroupLabel}>
+            {t('home.employeeProfile.basic.groups.schedule')}
+          </Text>
+          <View style={styles.basicGrid}>
+            {shift.map(item => (
+              <BasicDetailTile
+                key={item.fieldKey}
+                item={item}
+                styles={styles}
+                scheme={scheme}
+                t={t}
+                onCopyValue={onCopyValue}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      {weekends?.value ? (
+        <>
+          <Text style={styles.basicGroupLabel}>
+            {t('home.employeeProfile.basic.groups.weekends')}
+          </Text>
+          <View style={styles.basicGrid}>
+            <BasicDetailTile
+              item={weekends}
+              styles={styles}
+              scheme={scheme}
+              t={t}
+              onCopyValue={onCopyValue}
+              fullWidth
+            />
+          </View>
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+function BankCopyFieldsList({ copyFields, styles, typeTheme, t, onCopyValue }) {
+  return copyFields.map((field, fieldIndex) => (
+    <View
+      key={field.key}
+      style={[
+        styles.bankCopyRow,
+        fieldIndex === copyFields.length - 1 && styles.bankCopyRowLast,
+      ]}
+    >
+      <View style={styles.bankCopyRowMain}>
+        <Text style={styles.bankCopyLabel}>{field.label}</Text>
+        <Text style={styles.bankCopyValue} selectable>
+          {field.copyValue}
+        </Text>
+      </View>
+      <Pressable
+        onPress={() => onCopyValue(field.copyValue, field.label)}
+        style={({ pressed }) => [
+          styles.bankCopyBtn,
+          pressed && styles.bankCopyBtnPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={t('home.employeeProfile.banks.copyFieldA11y', {
+          field: field.label,
+        })}
+      >
+        <MaterialCommunityIcons
+          name="content-copy"
+          size={16}
+          color={typeTheme.accent}
+        />
+      </Pressable>
+    </View>
+  ));
+}
+
+function BankAccountCard({
+  account,
+  index,
+  totalCount,
+  isExpanded,
+  onToggle,
+  styles,
+  scheme,
+  t,
+  onCopyValue,
+}) {
+  const accountId = getBankAccountId(account, index);
+  const type = normalizeBankAccountType(account.account_type);
+  const typeTheme = BANK_TYPE_THEMES[type] ?? BANK_TYPE_THEMES.savings;
+  const iconBg = scheme === 'dark' ? `${typeTheme.accent}22` : typeTheme.tint;
+  const isPrimary = Boolean(account.is_primary);
+  const copyFields = getBankCopyableFields(account, t);
+  const collapsed = getBankCollapsedDisplay(account, t);
+  const expandProgress = useRef(new Animated.Value(isExpanded ? 1 : 0)).current;
+  const chevronProgress = useRef(
+    new Animated.Value(isExpanded ? 1 : 0),
+  ).current;
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(expandProgress, {
+        toValue: isExpanded ? 1 : 0,
+        duration: BANK_EXPAND_DURATION,
+        easing: BANK_EXPAND_EASING,
+        useNativeDriver: false,
+      }),
+      Animated.timing(chevronProgress, {
+        toValue: isExpanded ? 1 : 0,
+        duration: BANK_EXPAND_DURATION,
+        easing: BANK_EXPAND_EASING,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [chevronProgress, contentHeight, expandProgress, isExpanded]);
+
+  const chevronRotate = chevronProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  const bodyHeight = expandProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, contentHeight > 0 ? contentHeight : 1],
+  });
+
+  const bodyOpacity = expandProgress.interpolate({
+    inputRange: [0, 0.35, 1],
+    outputRange: [0, 1, 1],
+  });
+
+  const handleBodyLayout = useCallback(event => {
+    const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+    if (nextHeight > 0) {
+      setContentHeight(prev => (prev === nextHeight ? prev : nextHeight));
+    }
+  }, []);
+
+  const statusLabel =
+    account.status && account.status !== 'active'
+      ? humanizeKey(String(account.status))
+      : null;
+
+  return (
+    <View
+      style={[
+        styles.compactRecord,
+        index === totalCount - 1 && styles.compactRecordLast,
+      ]}
+    >
+      <Pressable
+        onPress={() => onToggle(accountId)}
+        style={({ pressed }) => [
+          styles.bankRecordHeader,
+          pressed && styles.bankRecordHeaderPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isExpanded }}
+        accessibilityLabel={
+          isExpanded
+            ? t('home.employeeProfile.banks.collapseA11y')
+            : t('home.employeeProfile.banks.expandA11y')
+        }
+      >
+        <View style={[styles.compactRecordIcon, { backgroundColor: iconBg }]}>
+          <MaterialCommunityIcons
+            name={BANK_TYPE_ICONS[type] ?? 'bank-outline'}
+            size={18}
+            color={typeTheme.accent}
+          />
+        </View>
+        <View style={styles.compactRecordBody}>
+          <View style={styles.compactRecordTitleRow}>
+            <Text style={styles.compactRecordTitle}>{collapsed.title}</Text>
+            {isPrimary ? (
+              <View style={styles.compactPrimaryBadge}>
+                <Text style={styles.compactPrimaryBadgeText}>
+                  {t('settings.bankAccounts.primaryBadge')}
+                </Text>
+              </View>
+            ) : null}
+            {statusLabel ? (
+              <View style={styles.bankStatusBadge}>
+                <Text style={styles.bankStatusBadgeText}>{statusLabel}</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.compactRecordSub} numberOfLines={2}>
+            {collapsed.subtitle}
+          </Text>
+          {collapsed.meta ? (
+            <Text style={styles.compactRecordMeta} numberOfLines={1}>
+              {collapsed.meta}
+            </Text>
+          ) : null}
+        </View>
+        <Animated.View
+          style={[
+            styles.bankRecordChevron,
+            { transform: [{ rotate: chevronRotate }] },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="chevron-down"
+            size={20}
+            color={typeTheme.accent}
+          />
+        </Animated.View>
+      </Pressable>
+
+      {copyFields.length > 0 ? (
+        <>
+          <View
+            style={styles.bankMeasureWrap}
+            onLayout={handleBodyLayout}
+            collapsable={false}
+            importantForAccessibility="no-hide-descendants"
+            accessibilityElementsHidden
+          >
+            <View style={styles.bankExpandedBlock}>
+              <BankCopyFieldsList
+                copyFields={copyFields}
+                styles={styles}
+                typeTheme={typeTheme}
+                t={t}
+                onCopyValue={onCopyValue}
+              />
+            </View>
+          </View>
+
+          <Animated.View
+            style={{
+              height: contentHeight > 0 ? bodyHeight : 0,
+              opacity: bodyOpacity,
+              overflow: 'hidden',
+            }}
+            pointerEvents={isExpanded ? 'auto' : 'none'}
+          >
+            <View style={styles.bankExpandedBlock}>
+              <BankCopyFieldsList
+                copyFields={copyFields}
+                styles={styles}
+                typeTheme={typeTheme}
+                t={t}
+                onCopyValue={onCopyValue}
+              />
+            </View>
+          </Animated.View>
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+function EmployeeBanksSection({ styles, sectionData, scheme, t, onCopyValue }) {
+  const items = extractSectionItems(sectionData, 'banks') ?? [];
+  const [expandedId, setExpandedId] = useState(null);
+
+  const toggleExpanded = useCallback(accountId => {
+    setExpandedId(prev => (prev === accountId ? null : accountId));
+  }, []);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.compactListCard}>
+      {items.map((account, index) => (
+        <BankAccountCard
+          key={getBankAccountId(account, index)}
+          account={account}
+          index={index}
+          totalCount={items.length}
+          isExpanded={expandedId === getBankAccountId(account, index)}
+          onToggle={toggleExpanded}
+          styles={styles}
+          scheme={scheme}
+          t={t}
+          onCopyValue={onCopyValue}
+        />
+      ))}
+    </View>
+  );
+}
+
+function getSalaryRecordId(record, index) {
+  return String(record.salary_id ?? index);
+}
+
+function formatSalaryAmount(value) {
+  if (value == null || Number.isNaN(Number(value))) {
+    return '—';
+  }
+  return `₹${formatLedgerAmount(Number(value))}`;
+}
+
+function formatSalaryPeriod(record, t) {
+  const from = record.effective_from
+    ? formatLedgerShortDate(record.effective_from)
+    : t('home.employeeProfile.na');
+  const to = record.effective_to
+    ? formatLedgerShortDate(record.effective_to)
+    : t('home.employeeProfile.salary.openEnded');
+  return `${from} — ${to}`;
+}
+
+function getSalaryCollapsedDisplay(record, t) {
+  const ctcLabel = t('home.employeeProfile.salary.fields.ctc');
+  return {
+    title: formatSalaryPeriod(record, t),
+    subtitle: `${ctcLabel}: ${formatSalaryAmount(record.ctc)}`,
+    isActive: record.effective_to == null,
+  };
+}
+
+function sortSalaryRecords(items) {
+  return [...items].sort((a, b) => {
+    const aActive = a.effective_to == null ? 1 : 0;
+    const bActive = b.effective_to == null ? 1 : 0;
+    if (aActive !== bActive) {
+      return bActive - aActive;
+    }
+    const aFrom = a.effective_from ? Date.parse(a.effective_from) : 0;
+    const bFrom = b.effective_from ? Date.parse(b.effective_from) : 0;
+    return bFrom - aFrom;
+  });
+}
+
+function groupSalaryComponents(components) {
+  const map = new Map(SALARY_COMPONENT_GROUP_ORDER.map(type => [type, []]));
+  (components ?? []).forEach(component => {
+    const type = SALARY_COMPONENT_THEMES[component.type]
+      ? component.type
+      : 'earning';
+    const list = map.get(type) ?? [];
+    list.push(component);
+    map.set(type, list);
+  });
+  return SALARY_COMPONENT_GROUP_ORDER.map(type => ({
+    type,
+    items: map.get(type) ?? [],
+  })).filter(group => group.items.length > 0);
+}
+
+function SalarySummaryGrid({ record, styles, scheme, t, labelForKey }) {
+  return (
+    <View style={styles.salarySummaryGrid}>
+      {SALARY_SUMMARY_ROWS.map(row => {
+        const iconBg = scheme === 'dark' ? `${row.accent}22` : row.tint;
+        const label =
+          t(`home.employeeProfile.salary.fields.${row.key}`) !==
+          `home.employeeProfile.salary.fields.${row.key}`
+            ? t(`home.employeeProfile.salary.fields.${row.key}`)
+            : labelForKey(row.key);
+        return (
+          <View key={row.key} style={styles.salarySummaryTile}>
+            <View style={styles.salarySummaryTileInner}>
+              <View
+                style={[styles.salarySummaryIcon, { backgroundColor: iconBg }]}
+              >
+                <MaterialCommunityIcons
+                  name={row.icon}
+                  size={16}
+                  color={row.accent}
+                />
+              </View>
+              <View style={styles.salarySummaryMain}>
+                <Text style={styles.salarySummaryLabel} numberOfLines={1}>
+                  {label}
+                </Text>
+                <Text style={styles.salarySummaryValue} numberOfLines={1}>
+                  {formatSalaryAmount(record[row.key])}
+                </Text>
+              </View>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function SalaryComponentsList({ components, styles, scheme, t }) {
+  const groups = groupSalaryComponents(components);
+  if (groups.length === 0) {
+    return (
+      <Text style={[styles.compactRecordSub, styles.salaryComponentEmpty]}>
+        {t('home.employeeProfile.salary.assignModal.noComponents')}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.salaryComponentCard}>
+      {groups.map((group, groupIndex) => {
+        const groupTheme =
+          SALARY_COMPONENT_THEMES[group.type] ??
+          SALARY_COMPONENT_THEMES.earning;
+        const groupLabel = t(
+          `home.employeeProfile.salary.assignModal.componentTypes.${group.type}`,
+        );
+        const iconBg =
+          scheme === 'dark' ? `${groupTheme.accent}22` : groupTheme.tint;
+
+        return (
+          <View key={group.type}>
+            <Text
+              style={[
+                styles.salaryComponentGroupLabel,
+                groupIndex === 0 && styles.salaryComponentGroupLabelFirst,
+              ]}
+            >
+              {groupLabel}
+            </Text>
+            {group.items.map((component, index) => {
+              const calcTypeLabel = t(
+                `home.employeeProfile.salary.assignModal.calcTypes.${
+                  component.calc_type ?? 'fixed'
+                }`,
+              );
+              const calcHint =
+                component.calc_type === 'percentage'
+                  ? `${calcTypeLabel}: ${component.calc_value ?? 0}%`
+                  : `${calcTypeLabel}: ${formatSalaryAmount(
+                      component.calc_value,
+                    )}`;
+              const code = component.code ? String(component.code) : '';
+              const meta = [code, calcHint].filter(Boolean).join(' · ');
+
+              return (
+                <View
+                  key={String(component.id ?? `${group.type}-${index}`)}
+                  style={[
+                    styles.salaryComponentRow,
+                    index === group.items.length - 1 &&
+                      styles.salaryComponentRowLast,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.salaryComponentIcon,
+                      { backgroundColor: iconBg },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={groupTheme.icon}
+                      size={16}
+                      color={groupTheme.accent}
+                    />
+                  </View>
+                  <View style={styles.salaryComponentMain}>
+                    <Text style={styles.salaryComponentName} numberOfLines={1}>
+                      {component.name ?? component.code ?? '—'}
+                    </Text>
+                    {meta ? (
+                      <Text
+                        style={styles.salaryComponentMeta}
+                        numberOfLines={2}
+                      >
+                        {meta}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text
+                    style={[
+                      styles.salaryComponentAmount,
+                      { color: groupTheme.accent },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {formatSalaryAmount(component.amount)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function SalaryExpandedBody({ record, styles, scheme, t, labelForKey }) {
+  return (
+    <>
+      <SalarySummaryGrid
+        record={record}
+        styles={styles}
+        scheme={scheme}
+        t={t}
+        labelForKey={labelForKey}
+      />
+      <SalaryComponentsList
+        components={record.components}
+        styles={styles}
+        scheme={scheme}
+        t={t}
+      />
+    </>
+  );
+}
+
+function SalaryRecordCard({
+  record,
+  recordId,
+  isExpanded,
+  onToggle,
+  styles,
+  scheme,
+  t,
+  labelForKey,
+}) {
+  const tabTheme = TAB_THEMES.salary;
+  const iconBg = scheme === 'dark' ? `${tabTheme.accent}22` : tabTheme.surface;
+  const collapsed = getSalaryCollapsedDisplay(record, t);
+  const expandProgress = useRef(new Animated.Value(isExpanded ? 1 : 0)).current;
+  const chevronProgress = useRef(
+    new Animated.Value(isExpanded ? 1 : 0),
+  ).current;
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(expandProgress, {
+        toValue: isExpanded ? 1 : 0,
+        duration: BANK_EXPAND_DURATION,
+        easing: BANK_EXPAND_EASING,
+        useNativeDriver: false,
+      }),
+      Animated.timing(chevronProgress, {
+        toValue: isExpanded ? 1 : 0,
+        duration: BANK_EXPAND_DURATION,
+        easing: BANK_EXPAND_EASING,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [chevronProgress, expandProgress, isExpanded]);
+
+  const chevronRotate = chevronProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  const bodyHeight = expandProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, contentHeight > 0 ? contentHeight : 1],
+  });
+
+  const bodyOpacity = expandProgress.interpolate({
+    inputRange: [0, 0.35, 1],
+    outputRange: [0, 1, 1],
+  });
+
+  const handleBodyLayout = useCallback(event => {
+    const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+    if (nextHeight > 0) {
+      setContentHeight(prev => (prev === nextHeight ? prev : nextHeight));
+    }
+  }, []);
+
+  return (
+    <View style={styles.salaryRecordCard}>
+      <Pressable
+        onPress={() => onToggle(recordId)}
+        style={({ pressed }) => [
+          styles.bankRecordHeader,
+          pressed && styles.bankRecordHeaderPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isExpanded }}
+        accessibilityLabel={
+          isExpanded
+            ? t('home.employeeProfile.salary.collapseA11y')
+            : t('home.employeeProfile.salary.expandA11y')
+        }
+      >
+        <View style={[styles.compactRecordIcon, { backgroundColor: iconBg }]}>
+          <MaterialCommunityIcons
+            name={tabTheme.icon}
+            size={18}
+            color={tabTheme.accent}
+          />
+        </View>
+        <View style={styles.compactRecordBody}>
+          <View style={styles.compactRecordTitleRow}>
+            <Text style={styles.compactRecordTitle} numberOfLines={1}>
+              {collapsed.title}
+            </Text>
+            {collapsed.isActive ? (
+              <View style={styles.salaryActiveBadge}>
+                <Text style={styles.salaryActiveBadgeText}>
+                  {t('home.employeeProfile.salary.activeBadge')}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.compactRecordSub} numberOfLines={1}>
+            {collapsed.subtitle}
+          </Text>
+        </View>
+        <Animated.View
+          style={[
+            styles.bankRecordChevron,
+            { transform: [{ rotate: chevronRotate }] },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="chevron-down"
+            size={20}
+            color={tabTheme.accent}
+          />
+        </Animated.View>
+      </Pressable>
+
+      <>
+        <View
+          style={styles.bankMeasureWrap}
+          onLayout={handleBodyLayout}
+          collapsable={false}
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden
+        >
+          <View style={styles.salaryExpandedBlock}>
+            <SalaryExpandedBody
+              record={record}
+              styles={styles}
+              scheme={scheme}
+              t={t}
+              labelForKey={labelForKey}
+            />
+          </View>
+        </View>
+
+        <Animated.View
+          style={{
+            height: contentHeight > 0 ? bodyHeight : 0,
+            opacity: bodyOpacity,
+            overflow: 'hidden',
+          }}
+          pointerEvents={isExpanded ? 'auto' : 'none'}
+        >
+          <View style={styles.salaryExpandedBlock}>
+            <SalaryExpandedBody
+              record={record}
+              styles={styles}
+              scheme={scheme}
+              t={t}
+              labelForKey={labelForKey}
+            />
+          </View>
+        </Animated.View>
+      </>
+    </View>
+  );
+}
+
+function EmployeeSalarySection({
+  styles,
+  sectionData,
+  scheme,
+  t,
+  labelForKey,
+}) {
+  const items = sortSalaryRecords(
+    extractSectionItems(sectionData, 'salary') ?? [],
+  );
+  const [expandedId, setExpandedId] = useState(null);
+
+  const toggleExpanded = useCallback(recordId => {
+    setExpandedId(prev => (prev === recordId ? null : recordId));
+  }, []);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.salaryListRoot}>
+      {items.map((record, index) => {
+        const recordId = getSalaryRecordId(record, index);
+        return (
+          <SalaryRecordCard
+            key={recordId}
+            record={record}
+            recordId={recordId}
+            isExpanded={expandedId === recordId}
+            onToggle={toggleExpanded}
+            styles={styles}
+            scheme={scheme}
+            t={t}
+            labelForKey={labelForKey}
+          />
+        );
+      })}
     </View>
   );
 }
@@ -2005,38 +4100,30 @@ function renderNestedBlocks(
       {primitives}
       {nested.map(([key, value]) => {
         if (Array.isArray(value)) {
-          return value.map((item, index) => (
-            <View
-              key={`${key}-${index}`}
-              style={[styles.card, styles.nestedCard]}
-            >
-              <View style={styles.cardAccent} />
-              <Text style={styles.cardTitle}>
-                {humanizeKey(key)} #{index + 1}
-              </Text>
-              {typeof item === 'object' && item != null ? (
-                renderObjectFields(styles, item, theme, scheme, t, labelForKey)
-              ) : (
-                <DetailField
-                  styles={styles}
-                  label={humanizeKey(key)}
-                  fieldKey={key}
-                  value={item}
-                  theme={theme}
-                  scheme={scheme}
-                  t={t}
-                />
-              )}
+          if (value.length === 0) {
+            return null;
+          }
+          return (
+            <View key={key}>
+              <Text style={styles.compactSectionLabel}>{labelForKey(key)}</Text>
+              {renderCompactRecordList({
+                styles,
+                items: value,
+                theme,
+                scheme,
+                t,
+                labelForKey,
+                includeLabel: labelForKey(key),
+              })}
             </View>
-          ));
+          );
         }
         if (depth > 2) {
           return null;
         }
         return (
-          <View key={key} style={[styles.card, styles.nestedCard]}>
-            <View style={styles.cardAccent} />
-            <Text style={styles.cardTitle}>{labelForKey(key)}</Text>
+          <View key={key}>
+            <Text style={styles.compactSectionLabel}>{labelForKey(key)}</Text>
             {renderNestedBlocks(
               styles,
               value,
@@ -2304,8 +4391,30 @@ function renderSectionContent({
   onAttendanceNextMonth,
   onAttendanceDayPress,
   onLeavePress,
+  onCopyBankField,
+  attendanceBodyLoading = false,
 }) {
   if (include === 'attendance') {
+    if (attendanceBodyLoading) {
+      return (
+        <>
+          <View style={styles.attendanceCard}>
+            {renderAttendanceMonthNav({
+              styles,
+              theme,
+              t,
+              attendanceYear,
+              attendanceMonth,
+              onAttendancePrevMonth,
+              onAttendanceNextMonth,
+            })}
+            <AttendanceCalendarBodySkeleton styles={styles} scheme={scheme} />
+          </View>
+          <AttendanceSummarySkeleton styles={styles} scheme={scheme} t={t} />
+        </>
+      );
+    }
+
     const days = sectionData?.days;
     if (!days || typeof days !== 'object') {
       return (
@@ -2324,35 +4433,15 @@ function renderSectionContent({
     return (
       <>
         <View style={styles.attendanceCard}>
-          <View style={styles.monthNav}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('home.myCalendar.prevMonth')}
-              onPress={onAttendancePrevMonth}
-              style={styles.monthNavBtn}
-            >
-              <MaterialCommunityIcons
-                name="chevron-left"
-                size={24}
-                color={theme.accent}
-              />
-            </Pressable>
-            <Text style={styles.monthNavTitle}>
-              {formatMonthTitle(attendanceYear, attendanceMonth)}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('home.myCalendar.nextMonth')}
-              onPress={onAttendanceNextMonth}
-              style={styles.monthNavBtn}
-            >
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={24}
-                color={theme.accent}
-              />
-            </Pressable>
-          </View>
+          {renderAttendanceMonthNav({
+            styles,
+            theme,
+            t,
+            attendanceYear,
+            attendanceMonth,
+            onAttendancePrevMonth,
+            onAttendanceNextMonth,
+          })}
 
           <View style={styles.weekdayRow}>
             {WEEKDAY_LABELS.map(label => (
@@ -2636,21 +4725,87 @@ function renderSectionContent({
   }
 
   if (include === 'basic') {
-    const rows = {};
-    for (const key of BASIC_FIELD_KEYS) {
-      if (basicData?.[key] != null && basicData[key] !== '') {
-        rows[key] = basicData[key];
-      }
+    return (
+      <EmployeeBasicSection
+        styles={styles}
+        basicData={basicData}
+        scheme={scheme}
+        t={t}
+        onCopyValue={onCopyBankField}
+      />
+    );
+  }
+
+  if (include === 'banks') {
+    const bankItems = extractSectionItems(sectionData, 'banks') ?? [];
+    if (bankItems.length === 0) {
+      return (
+        <View style={styles.card}>
+          <Text style={styles.muted}>
+            {t('home.employeeProfile.noRecords', {
+              section: includeLabel.toLowerCase(),
+            })}
+          </Text>
+        </View>
+      );
     }
     return (
-      <View style={styles.card}>
-        <View style={styles.cardAccent} />
-        <Text style={styles.cardTitle}>
-          {t('home.employeeProfile.snapshot')}
-        </Text>
-        {renderObjectFields(styles, rows, theme, scheme, t, labelForKey)}
-      </View>
+      <EmployeeBanksSection
+        styles={styles}
+        sectionData={sectionData}
+        scheme={scheme}
+        t={t}
+        onCopyValue={onCopyBankField}
+      />
     );
+  }
+
+  if (include === 'salary') {
+    const salaryItems = extractSectionItems(sectionData, 'salary') ?? [];
+    if (salaryItems.length === 0) {
+      return (
+        <View style={styles.card}>
+          <Text style={styles.muted}>
+            {t('home.employeeProfile.noRecords', {
+              section: includeLabel.toLowerCase(),
+            })}
+          </Text>
+        </View>
+      );
+    }
+    return (
+      <EmployeeSalarySection
+        styles={styles}
+        sectionData={sectionData}
+        scheme={scheme}
+        t={t}
+        labelForKey={labelForKey}
+      />
+    );
+  }
+
+  const listItems = extractSectionItems(sectionData, include);
+  if (listItems) {
+    if (listItems.length === 0) {
+      return (
+        <View style={styles.card}>
+          <Text style={styles.muted}>
+            {t('home.employeeProfile.noRecords', {
+              section: includeLabel.toLowerCase(),
+            })}
+          </Text>
+        </View>
+      );
+    }
+    return renderCompactRecordList({
+      styles,
+      items: listItems,
+      theme,
+      scheme,
+      t,
+      labelForKey,
+      includeLabel,
+    });
   }
 
   if (Array.isArray(sectionData)) {
@@ -2665,36 +4820,20 @@ function renderSectionContent({
         </View>
       );
     }
-    return sectionData.map((item, index) => (
-      <View key={`${include}-${index}`} style={styles.card}>
-        <View style={styles.cardAccent} />
-        <Text style={styles.cardTitle}>
-          {t('home.employeeProfile.record', {
-            section: includeLabel,
-            index: index + 1,
-          })}
-        </Text>
-        {typeof item === 'object' && item != null ? (
-          renderNestedBlocks(styles, item, theme, scheme, t, labelForKey)
-        ) : (
-          <DetailField
-            styles={styles}
-            label={includeLabel}
-            fieldKey={include}
-            value={item}
-            theme={theme}
-            scheme={scheme}
-            t={t}
-          />
-        )}
-      </View>
-    ));
+    return renderCompactRecordList({
+      styles,
+      items: sectionData,
+      theme,
+      scheme,
+      t,
+      labelForKey,
+      includeLabel,
+    });
   }
 
   if (typeof sectionData === 'object' && sectionData != null) {
     return (
       <View style={styles.card}>
-        <View style={styles.cardAccent} />
         <Text style={styles.cardTitle}>{includeLabel}</Text>
         {renderNestedBlocks(styles, sectionData, theme, scheme, t, labelForKey)}
       </View>
@@ -2731,6 +4870,7 @@ export function EmployeeProfileScreen({ navigation, route }) {
   const [tabIndex, setTabIndex] = useState(0);
   const include = INCLUDE_KEYS[tabIndex] ?? INCLUDE_KEYS[0];
   const [tabCache, setTabCache] = useState({});
+  const tabCacheRef = useRef({});
   const [loadingKey, setLoadingKey] = useState(null);
   const [profileBasic, setProfileBasic] = useState(null);
   const [pageWidth, setPageWidth] = useState(0);
@@ -2745,6 +4885,11 @@ export function EmployeeProfileScreen({ navigation, route }) {
   const [attendanceMonth, setAttendanceMonth] = useState(
     () => new Date().getMonth() + 1,
   );
+  const attendanceYearRef = useRef(attendanceYear);
+  const attendanceMonthRef = useRef(attendanceMonth);
+  const attendanceFetchKeyRef = useRef(`${attendanceYear}-${attendanceMonth}`);
+  attendanceYearRef.current = attendanceYear;
+  attendanceMonthRef.current = attendanceMonth;
   const [attendanceDetailOpen, setAttendanceDetailOpen] = useState(false);
   const [attendanceSelectedDateKey, setAttendanceSelectedDateKey] =
     useState(null);
@@ -2837,8 +4982,8 @@ export function EmployeeProfileScreen({ navigation, route }) {
           const attendanceReq = authHttpClient.get('/shifts/my-calendar', {
             headers: { company: String(selectedCompany.id) },
             params: {
-              year: attendanceYear,
-              month: attendanceMonth,
+              year: attendanceYearRef.current,
+              month: attendanceMonthRef.current,
               employee_id: employeeId,
             },
           });
@@ -2943,16 +5088,15 @@ export function EmployeeProfileScreen({ navigation, route }) {
         setLoadingKey(null);
       }
     },
-    [
-      attendanceMonth,
-      attendanceYear,
-      employeeId,
-      selectedCompany?.id,
-      t,
-    ],
+    [employeeId, selectedCompany?.id, t],
   );
 
   useEffect(() => {
+    tabCacheRef.current = tabCache;
+  }, [tabCache]);
+
+  useEffect(() => {
+    tabCacheRef.current = {};
     setTabCache({});
     setTabIndex(0);
     setProfileBasic(null);
@@ -2960,20 +5104,26 @@ export function EmployeeProfileScreen({ navigation, route }) {
     pagerRef.current?.scrollTo({ x: 0, animated: false });
   }, [employeeId]);
 
-  const markTabLoadingIfNeeded = useCallback(
-    tabKey => {
-      const cached = tabCache[tabKey];
-      if (cached?.sectionData == null && !cached?.error) {
-        setLoadingKey(tabKey);
-      }
-    },
-    [tabCache],
-  );
+  useEffect(() => {
+    const cached = tabCacheRef.current[include];
+    if (cached?.sectionData != null || cached?.error) {
+      return;
+    }
+    loadTab(include).catch(() => {});
+  }, [include, loadTab]);
 
   useEffect(() => {
-    markTabLoadingIfNeeded(include);
-    loadTab(include).catch(() => {});
-  }, [include, loadTab, markTabLoadingIfNeeded]);
+    const fetchKey = `${attendanceYear}-${attendanceMonth}`;
+    if (include !== 'attendance') {
+      attendanceFetchKeyRef.current = fetchKey;
+      return;
+    }
+    if (attendanceFetchKeyRef.current === fetchKey) {
+      return;
+    }
+    attendanceFetchKeyRef.current = fetchKey;
+    loadTab('attendance').catch(() => {});
+  }, [attendanceMonth, attendanceYear, include, loadTab]);
 
   useEffect(() => {
     if (include === 'permissions') {
@@ -2982,7 +5132,7 @@ export function EmployeeProfileScreen({ navigation, route }) {
     if (include !== 'leaves') {
       setSelectedLeave(null);
     }
-  }, [include, tabCache]);
+  }, [include]);
 
   const includeOptions = useMemo(
     () =>
@@ -3000,21 +5150,32 @@ export function EmployeeProfileScreen({ navigation, route }) {
   );
   const hasProfileImage = Boolean(profileImageUrl);
 
+  const profileDesignation = useMemo(() => {
+    const label = formatEnumLabel(profileBasic?.designation);
+    return label ? label.toUpperCase() : null;
+  }, [profileBasic?.designation]);
+
+  const profilePhone = useMemo(
+    () => formatEmployeePhone(profileBasic?.phone),
+    [profileBasic?.phone],
+  );
+
+  const showProfileHeaderSkeleton =
+    profileBasic == null && !tabCache[include]?.error;
+
   const selectTab = useCallback(
     index => {
       if (index < 0 || index >= INCLUDE_KEYS.length || index === tabIndex) {
         return;
       }
-      const nextKey = INCLUDE_KEYS[index];
       setTabIndex(index);
-      markTabLoadingIfNeeded(nextKey);
       if (pageWidth > 0) {
         pagerRef.current?.scrollTo({ x: index * pageWidth, animated: true });
       }
       const offset = Math.max(0, index * 88 - 48);
       tabBarRef.current?.scrollTo({ x: offset, animated: true });
     },
-    [markTabLoadingIfNeeded, pageWidth, tabIndex],
+    [pageWidth, tabIndex],
   );
 
   const handlePagerMomentumEnd = useCallback(
@@ -3030,14 +5191,12 @@ export function EmployeeProfileScreen({ navigation, route }) {
         nextIndex < INCLUDE_KEYS.length &&
         nextIndex !== tabIndex
       ) {
-        const nextKey = INCLUDE_KEYS[nextIndex];
         setTabIndex(nextIndex);
-        markTabLoadingIfNeeded(nextKey);
         const offset = Math.max(0, nextIndex * 88 - 48);
         tabBarRef.current?.scrollTo({ x: offset, animated: true });
       }
     },
-    [markTabLoadingIfNeeded, pageWidth, tabIndex],
+    [pageWidth, tabIndex],
   );
 
   const handlePagerLayout = useCallback(
@@ -3055,8 +5214,9 @@ export function EmployeeProfileScreen({ navigation, route }) {
   );
 
   const buildJsonPreview = useCallback(entry => {
-    const payload =
-      entry?.apiSnapshot ?? { section: entry?.sectionData ?? null };
+    const payload = entry?.apiSnapshot ?? {
+      section: entry?.sectionData ?? null,
+    };
     const text = JSON.stringify(payload, null, 2);
     if (text.length > 400) {
       return `${text.slice(0, 400)}…`;
@@ -3087,6 +5247,28 @@ export function EmployeeProfileScreen({ navigation, route }) {
       }
     },
     [employeeId, presentError, presentSuccess, profileBasic, t, tabCache],
+  );
+
+  const handleCopyBankField = useCallback(
+    (value, fieldLabel) => {
+      const successMessage = t(
+        'home.employeeProfile.banks.copySuccessMessage',
+        { field: fieldLabel },
+      );
+      const failureMessage = t('home.employeeProfile.copyFailedMessage');
+
+      try {
+        Clipboard.setString(value);
+        if (Platform.OS === 'android') {
+          ToastAndroid.show(successMessage, ToastAndroid.SHORT);
+        }
+      } catch {
+        if (Platform.OS === 'android') {
+          ToastAndroid.show(failureMessage, ToastAndroid.SHORT);
+        }
+      }
+    },
+    [t],
   );
 
   const togglePermissionCategory = useCallback(category => {
@@ -3211,12 +5393,60 @@ export function EmployeeProfileScreen({ navigation, route }) {
       const basicData = entry?.basicData ?? profileBasic;
       const pageError = entry?.error ?? '';
       const loadSettled = entry != null && loadingKey !== tabKey;
+      const attendanceBodyLoading =
+        tabKey === 'attendance' && loadingKey === 'attendance' && !pageError;
       const showSkeleton =
         !pageError &&
         sectionData == null &&
         (loadingKey === tabKey || tabKey === include || !loadSettled);
-      const showNoDetails =
-        !pageError && sectionData == null && loadSettled;
+      const showNoDetails = !pageError && sectionData == null && loadSettled;
+
+      if (
+        tabKey === 'attendance' &&
+        !pageError &&
+        (attendanceBodyLoading || showSkeleton)
+      ) {
+        return (
+          <>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconWrap}>
+                <MaterialCommunityIcons
+                  name={pageTheme.icon}
+                  size={20}
+                  color={pageTheme.accent}
+                />
+              </View>
+              <Text style={styles.sectionTitle}>
+                {t('home.employeeProfile.sectionDetails', {
+                  section: pageLabel,
+                })}
+              </Text>
+            </View>
+
+            {renderSectionContent({
+              styles,
+              include: tabKey,
+              sectionData,
+              basicData,
+              theme: pageTheme,
+              scheme: resolvedScheme,
+              t,
+              labelForKey,
+              includeLabel: pageLabel,
+              expandedPermissionCategories,
+              togglePermissionCategory,
+              attendanceYear,
+              attendanceMonth,
+              onAttendancePrevMonth,
+              onAttendanceNextMonth,
+              onAttendanceDayPress,
+              onLeavePress,
+              onCopyBankField: handleCopyBankField,
+              attendanceBodyLoading: true,
+            })}
+          </>
+        );
+      }
 
       if (showSkeleton) {
         return (
@@ -3305,6 +5535,7 @@ export function EmployeeProfileScreen({ navigation, route }) {
             onAttendanceNextMonth,
             onAttendanceDayPress,
             onLeavePress,
+            onCopyBankField: handleCopyBankField,
           })}
 
           <View style={styles.copyCard}>
@@ -3366,10 +5597,7 @@ export function EmployeeProfileScreen({ navigation, route }) {
   );
 
   return (
-    <SafeAreaView
-      style={styles.safe}
-      edges={TAB_SCREEN_SAFE_AREA_EDGES}
-    >
+    <SafeAreaView style={styles.safe} edges={TAB_SCREEN_SAFE_AREA_EDGES}>
       <View style={styles.header}>
         <HeaderBackButton
           onPress={() => navigation.goBack()}
@@ -3381,31 +5609,51 @@ export function EmployeeProfileScreen({ navigation, route }) {
       </View>
 
       <View style={styles.fixedBlock}>
-        <View style={styles.profileCard}>
-          <View style={styles.profileTop}>
-            {hasProfileImage ? (
-              <Image source={{ uri: profileImageUrl }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {getInitials(profileBasic?.name)}
+        {showProfileHeaderSkeleton ? (
+          <EmployeeProfileHeaderSkeleton
+            styles={styles}
+            scheme={resolvedScheme}
+          />
+        ) : (
+          <View style={styles.profileCard}>
+            <View style={styles.profileTop}>
+              {hasProfileImage ? (
+                <Image
+                  source={{ uri: profileImageUrl }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {getInitials(profileBasic?.name)}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.profileMain}>
+                <Text style={styles.profileName} numberOfLines={1}>
+                  {profileBasic?.name?.trim() || t('home.employeeProfile.na')}
+                </Text>
+                {profileDesignation ? (
+                  <Text style={styles.profileDesignation} numberOfLines={1}>
+                    {profileDesignation}
+                  </Text>
+                ) : null}
+                <Text style={styles.profileCode} numberOfLines={1}>
+                  {profileBasic?.employee_code?.trim() ||
+                    t('home.employeeProfile.na')}
                 </Text>
               </View>
-            )}
-            <View style={styles.profileMain}>
-              <Text style={styles.profileName} numberOfLines={2}>
-                {profileBasic?.name?.trim() || t('home.employeeProfile.na')}
-              </Text>
-              <Text style={styles.profileCode}>
-                {profileBasic?.employee_code?.trim() ||
-                  t('home.employeeProfile.na')}
-              </Text>
             </View>
+            <Text style={styles.profileEmail} numberOfLines={2}>
+              {profileBasic?.email?.trim() || t('home.employeeProfile.na')}
+            </Text>
+            {profilePhone ? (
+              <Text style={styles.profilePhone} numberOfLines={1}>
+                {profilePhone}
+              </Text>
+            ) : null}
           </View>
-          <Text style={styles.profileEmail} numberOfLines={2}>
-            {profileBasic?.email?.trim() || t('home.employeeProfile.na')}
-          </Text>
-        </View>
+        )}
 
         <ScrollView
           ref={tabBarRef}

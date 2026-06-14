@@ -1,14 +1,14 @@
 import type { NavigationContainerRef, ParamListBase } from '@react-navigation/native';
 import { useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { BackHandler, Platform, ToastAndroid } from 'react-native';
+
+import i18n from '@src/i18n';
 
 const EXIT_WINDOW_MS = 2000;
 
 export function useAndroidDoubleBackExit(
   navigationRef: NavigationContainerRef<ParamListBase>,
 ) {
-  const { t } = useTranslation();
   const lastBackPressAt = useRef(0);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function useAndroidDoubleBackExit(
       }
 
       lastBackPressAt.current = now;
-      ToastAndroid.show(t('app.pressBackAgainToExit'), ToastAndroid.SHORT);
+      ToastAndroid.show(i18n.t('app.pressBackAgainToExit'), ToastAndroid.SHORT);
       return true;
     };
 
@@ -38,5 +38,5 @@ export function useAndroidDoubleBackExit(
       onBackPress,
     );
     return () => subscription.remove();
-  }, [navigationRef, t]);
+  }, [navigationRef]);
 }

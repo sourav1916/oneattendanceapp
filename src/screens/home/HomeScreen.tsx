@@ -39,6 +39,42 @@ const H_PAD = 20;
 const GRID_GAP = 10;
 const GRID_COLS = 3;
 
+type HomeGridMetrics = {
+  hPad: number;
+  gridGap: number;
+  cardWidth: number;
+  iconSize: number;
+  iconBubbleSize: number;
+  titleSize: number;
+  titleLineHeight: number;
+  cardPadV: number;
+  cardPadH: number;
+  cardMinH: number;
+};
+
+function getHomeGridMetrics(windowWidth: number): HomeGridMetrics {
+  const compact = windowWidth < 392;
+  const hPad = compact ? 14 : H_PAD;
+  const gridGap = compact ? 8 : GRID_GAP;
+  const inner = windowWidth - hPad * 2;
+  const gaps = gridGap * (GRID_COLS - 1);
+  // Floor so three cards + gaps never exceed the row width on any device.
+  const cardWidth = Math.floor((inner - gaps) / GRID_COLS);
+
+  return {
+    hPad,
+    gridGap,
+    cardWidth,
+    iconSize: compact ? 20 : 22,
+    iconBubbleSize: compact ? 38 : 44,
+    titleSize: compact ? 10 : 12,
+    titleLineHeight: compact ? 13 : 15,
+    cardPadV: compact ? 8 : 12,
+    cardPadH: compact ? 2 : 6,
+    cardMinH: compact ? 84 : 102,
+  };
+}
+
 type HomeMainNavigation = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>,
   BottomTabNavigationProp<MainTabParamList>
@@ -64,12 +100,13 @@ const HOME_MENU_ICONS: Record<string, ActionCardIcon> = {
     color: '#0f766e',
     backgroundColor: '#ccfbf1',
   },
-  calendar: { name: 'calendar-month-outline', color: '#ea580c', backgroundColor: '#ffedd5' },
   company: { name: 'office-building-outline', color: '#0d9488', backgroundColor: '#ccfbf1' },
   employee: { name: 'account-group-outline', color: '#2563eb', backgroundColor: '#dbeafe' },
   leaveReq: { name: 'file-document-edit-outline', color: '#7c3aed', backgroundColor: '#ede9fe' },
   leaveMgmt: { name: 'clipboard-list-outline', color: '#0891b2', backgroundColor: '#cffafe' },
   ledger: { name: 'book-account-outline', color: '#b45309', backgroundColor: '#fef3c7' },
+  mySalary: { name: 'cash-multiple', color: '#059669', backgroundColor: '#d1fae5' },
+  report: { name: 'chart-box-outline', color: '#6366f1', backgroundColor: '#e0e7ff' },
   faceAttendance: { name: 'face-recognition', color: '#0d9488', backgroundColor: '#ccfbf1' },
   onboarding: { name: 'email-open-outline', color: '#d946ef', backgroundColor: '#fae8ff' },
 };
@@ -101,12 +138,10 @@ export function HomeScreen(): React.JSX.Element {
     [colors, resolvedScheme],
   );
   const { width: windowWidth } = useWindowDimensions();
-
-  const cardWidth = useMemo(() => {
-    const inner = windowWidth - H_PAD * 2;
-    const gaps = GRID_GAP * (GRID_COLS - 1);
-    return (inner - gaps) / GRID_COLS;
-  }, [windowWidth]);
+  const gridMetrics = useMemo(
+    () => getHomeGridMetrics(windowWidth),
+    [windowWidth],
+  );
 
   const displayName = useMemo(
     () => displayNameFromSources(name, email, cachedUserProfile, profileRoleUser),
@@ -152,19 +187,14 @@ export function HomeScreen(): React.JSX.Element {
         },
       ),
       actionCardWithIcon(
-        'calendar',
-        t('home.menu.calendar'),
-        () => navigation.navigate('MyCalendar'),
-      ),
-      actionCardWithIcon(
         'company',
         t('home.menu.company'),
         () => navigation.navigate('CompanyList'),
       ),
       actionCardWithIcon(
-        'ledger',
-        t('home.menu.ledger'),
-        () => navigation.navigate('Ledger'),
+        'report',
+        t('home.menu.report'),
+        () => navigation.navigate('Reports'),
       ),
       ...(isOwnerCompany
         ? []
@@ -208,7 +238,10 @@ export function HomeScreen(): React.JSX.Element {
       <MainTopBar />
       <SafeAreaView style={styles.safe} edges={['left', 'right']}>
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingHorizontal: gridMetrics.hPad },
+          ]}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
@@ -249,7 +282,7 @@ export function HomeScreen(): React.JSX.Element {
             </View>
           </View>
 
-          <View style={styles.grid}>
+          <View style={[styles.grid, { gap: gridMetrics.gridGap }]}>
             {actionCards.map(item => (
               <Pressable
                 key={item.id}
@@ -258,22 +291,39 @@ export function HomeScreen(): React.JSX.Element {
                 onPress={item.onPress}
                 style={({ pressed }) => [
                   styles.optionCard,
-                  { width: cardWidth },
+                  {
+                    width: gridMetrics.cardWidth,
+                    minHeight: gridMetrics.cardMinH,
+                    paddingVertical: gridMetrics.cardPadV,
+                    paddingHorizontal: gridMetrics.cardPadH,
+                  },
                   pressed && styles.optionCardPressed,
                 ]}>
                 <View
                   style={[
                     styles.iconBubble,
-                    { backgroundColor: item.icon.backgroundColor },
+                    {
+                      width: gridMetrics.iconBubbleSize,
+                      height: gridMetrics.iconBubbleSize,
+                      backgroundColor: item.icon.backgroundColor,
+                    },
                   ]}>
                   <MaterialCommunityIcons
                     name={item.icon.name}
-                    size={22}
+                    size={gridMetrics.iconSize}
                     color={item.icon.color}
                     accessibilityElementsHidden
                   />
                 </View>
-                <Text style={styles.optionTitle} numberOfLines={2}>
+                <Text
+                  style={[
+                    styles.optionTitle,
+                    {
+                      fontSize: gridMetrics.titleSize,
+                      lineHeight: gridMetrics.titleLineHeight,
+                    },
+                  ]}
+                  numberOfLines={2}>
                   {item.title}
                 </Text>
               </Pressable>
@@ -296,7 +346,6 @@ function buildHomeStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       backgroundColor: colors.background,
     },
     scroll: {
-      paddingHorizontal: H_PAD,
       paddingTop: 12,
       paddingBottom: TAB_SCREEN_SCROLL_PADDING_BOTTOM,
     },
@@ -385,37 +434,31 @@ function buildHomeStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: GRID_GAP,
     },
     optionCard: {
       backgroundColor: colors.surface,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingVertical: 12,
-      paddingHorizontal: 6,
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: 102,
+      flexGrow: 0,
+      flexShrink: 0,
     },
     optionCardPressed: {
       backgroundColor: colors.secondaryButton,
       opacity: 0.96,
     },
     iconBubble: {
-      width: 44,
-      height: 44,
       borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 8,
+      marginBottom: 6,
     },
     optionTitle: {
-      fontSize: 12,
       fontWeight: '600',
       color: colors.text,
       textAlign: 'center',
-      lineHeight: 15,
     },
   });
 }

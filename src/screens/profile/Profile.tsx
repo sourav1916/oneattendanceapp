@@ -189,6 +189,9 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
     },
+    detailRowPressed: {
+      opacity: 0.88,
+    },
     detailIcon: {
       width: 44,
       height: 44,

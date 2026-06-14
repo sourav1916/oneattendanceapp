@@ -442,7 +442,7 @@ export function LeaveConfigFormModal({
                 { paddingBottom: Math.max(16, insets.bottom) },
               ]}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
+              keyboardDismissMode="none"
               showsVerticalScrollIndicator={keyboardHeight > 0}
               bounces={false}>
               <Text style={styles.label}>{t(`${T}codeLabel`)}</Text>

@@ -20,9 +20,12 @@ import { CompanyListScreen } from '@src/screens/company/CompanyList';
 import { InvitePackagesScreen } from '@src/screens/company/employee/InvitePackages';
 import { CompanyLedgerScreen } from '@src/screens/company/CompanyLedger';
 import { HomeScreen } from '@src/screens/home/HomeScreen';
-import { LedgerScreen } from '@src/screens/home/Ledger';
 import { LeaveRequestScreen } from '@src/screens/home/LeaveRequest';
 import { OnboardingRequestScreen } from '@src/screens/home/OnboardingRequest';
+import { BankAccountsScreen } from '@src/screens/report/BankAccounts';
+import { MyLedgerScreen } from '@src/screens/report/MyLedger';
+import { MySalaryScreen } from '@src/screens/report/MySalary';
+import { ReportsScreen } from '@src/screens/report/ReportsScreen';
 import { MyCalendarScreen } from '@src/screens/report/Calendar';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -31,7 +34,10 @@ export function HomeNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
-      <Stack.Screen name="Ledger" component={LedgerScreen} />
+      <Stack.Screen name="Reports" component={ReportsScreen} />
+      <Stack.Screen name="Ledger" component={MyLedgerScreen} />
+      <Stack.Screen name="MySalary" component={MySalaryScreen} />
+      <Stack.Screen name="BankAccounts" component={BankAccountsScreen} />
       <Stack.Screen name="LeaveRequest" component={LeaveRequestScreen} />
       <Stack.Screen name="MyCalendar" component={MyCalendarScreen} />
       <Stack.Screen name="CompanyList" component={CompanyListScreen} />

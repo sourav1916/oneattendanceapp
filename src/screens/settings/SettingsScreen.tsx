@@ -355,6 +355,10 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         navigation.navigate('Support');
         return;
       }
+      if (id === 'about') {
+        navigation.navigate('About');
+        return;
+      }
       present({
         title: t('settings.alerts.comingSoonTitle'),
         message: t('settings.alerts.comingSoonMessage'),

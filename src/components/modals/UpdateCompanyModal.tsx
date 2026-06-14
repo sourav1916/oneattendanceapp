@@ -434,7 +434,7 @@ export function UpdateCompanyModal({
                 { paddingBottom: Math.max(16, insets.bottom) },
               ]}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
+              keyboardDismissMode="none"
               showsVerticalScrollIndicator={keyboardHeight > 0}
               bounces={false}>
               <Text style={styles.sectionLabel}>{t(`${T}sections.profile`)}</Text>

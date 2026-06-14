@@ -28,9 +28,15 @@ import type {
   MarkAttendanceStatus,
   MarkAttendanceType,
 } from '@src/types/markAttendance';
+import { formatDateWithWeekday } from '@src/utils/attendanceListDisplay';
 import {
+  addMinutesToHhMm,
   canComputeHalfDayTimes,
+  durationBetweenHhMm,
+  durationHhMmToMinutes,
+  formatDurationLabel,
   getHalfDayTimesAsHhMm,
+  minutesToDurationHhMm,
   normalizeToHhMm,
 } from '@src/utils/halfDayShiftTimes';
 
@@ -48,6 +54,7 @@ export type MarkAttendanceModalProps = {
   target: MarkAttendanceTarget | null;
   submitting: boolean;
   leaveConfigs: LeaveConfigEntry[];
+  leaveConfigsLoading?: boolean;
   onDismiss: () => void;
   onSubmit: (payload: MarkAttendancePayload) => void;
 };
@@ -61,6 +68,13 @@ const ATTENDANCE_STATUSES: MarkAttendanceStatus[] = [
 
 const HALF_DAY_TYPES: HalfDayType[] = ['first_half', 'second_half'];
 const LEAVE_TYPES: LeaveType[] = ['paid', 'unpaid'];
+
+const BREAK_PRESETS = [
+  { minutes: 10, label: '10m' },
+  { minutes: 15, label: '15m' },
+  { minutes: 30, label: '30m' },
+  { minutes: 60, label: '1h' },
+] as const;
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -93,7 +107,7 @@ function isValidTime(v: string): boolean {
 function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.overlay },
-    backdrop: { ...StyleSheet.absoluteFillObject },
+    backdrop: { ...StyleSheet.absoluteFill },
     sheetWrap: { flex: 1 },
     sheet: {
       backgroundColor: colors.surface,
@@ -293,6 +307,34 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       color: colors.textMuted,
       lineHeight: 18,
     },
+    loadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 8,
+    },
+    durationCard: {
+      marginTop: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: scheme === 'dark' ? '#0f172a' : colors.background,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    durationLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    durationValue: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.primary,
+    },
   });
 }
 
@@ -364,10 +406,11 @@ export function MarkAttendanceModal({
   target,
   submitting,
   leaveConfigs,
+  leaveConfigsLoading = false,
   onDismiss,
   onSubmit,
 }: MarkAttendanceModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
   const styles = useMemo(
@@ -405,6 +448,7 @@ export function MarkAttendanceModal({
   >({});
   const [startPickerOpen, setStartPickerOpen] = useState(false);
   const [endPickerOpen, setEndPickerOpen] = useState(false);
+  const [leaveOvertimePickerOpen, setLeaveOvertimePickerOpen] = useState(false);
 
   useEffect(() => {
     if (!visible || !target) {
@@ -523,7 +567,7 @@ export function MarkAttendanceModal({
       : true;
 
   const paidLeaveOptions = useMemo(
-    () => leaveConfigs.filter(c => c.is_paid),
+    () => leaveConfigs.filter(c => Boolean(c.is_paid)),
     [leaveConfigs],
   );
 
@@ -534,6 +578,32 @@ export function MarkAttendanceModal({
 
   const activeLeaveOptions =
     leaveType === 'paid' ? paidLeaveOptions : unpaidLeaveOptions;
+
+  const leaveOvertimeMinutes = useMemo(() => {
+    const parsed = parseInt(leaveOvertimeMin.trim(), 10);
+    return !isNaN(parsed) && parsed > 0 ? parsed : 0;
+  }, [leaveOvertimeMin]);
+
+  const breakDurationMinutes = useMemo(
+    () => durationBetweenHhMm(startTime, endTime),
+    [endTime, startTime],
+  );
+
+  const applyBreakPreset = useCallback(
+    (minutes: number) => {
+      if (!startTime || !isValidTime(startTime)) {
+        return;
+      }
+      const nextEnd = addMinutesToHhMm(startTime, minutes);
+      setEndTime(nextEnd);
+      setValidationErrors(prev => {
+        const next = { ...prev };
+        delete next.endTime;
+        return next;
+      });
+    },
+    [startTime],
+  );
 
   const validate = useCallback((): Record<string, string> | null => {
     const errs: Record<string, string> = {};
@@ -682,6 +752,8 @@ export function MarkAttendanceModal({
     return null;
   }
 
+  const formattedDate = formatDateWithWeekday(target.date, i18n.language);
+
   const tk = 'home.attendanceManagement.mark';
 
   return (
@@ -706,7 +778,7 @@ export function MarkAttendanceModal({
                 {t(`${tk}.title`)}
               </Text>
               <Text style={styles.headerSubtitle} numberOfLines={2}>
-                {target.employeeName} · {target.date}
+                {target.employeeName} · {formattedDate}
               </Text>
             </View>
 
@@ -804,7 +876,14 @@ export function MarkAttendanceModal({
                   <Text style={styles.sectionLabel}>
                     {t(`${tk}.leaveCodeLabel`)}
                   </Text>
-                  {activeLeaveOptions.length > 0 ? (
+                  {leaveConfigsLoading ? (
+                    <View style={styles.loadingRow}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                      <Text style={styles.infoText}>
+                        {t(`${tk}.leaveCodesLoading`)}
+                      </Text>
+                    </View>
+                  ) : activeLeaveOptions.length > 0 ? (
                     <View style={styles.chipRow}>
                       {activeLeaveOptions.map(opt => (
                         <Chip
@@ -818,8 +897,10 @@ export function MarkAttendanceModal({
                     </View>
                   ) : (
                     <Text style={styles.infoText}>
-                      {leaveConfigs.length === 0
-                        ? t(`${tk}.leaveCodesLoading`)
+                      {leaveConfigs.length > 0
+                        ? t(`${tk}.leaveCodesEmptyForType`, {
+                          type: t(`${tk}.leaveTypes.${leaveType}`),
+                        })
                         : t(`${tk}.leaveCodesEmpty`)}
                     </Text>
                   )}
@@ -832,14 +913,28 @@ export function MarkAttendanceModal({
                   <Text style={styles.sectionLabel}>
                     {t(`${tk}.leaveOvertimeLabel`)}
                   </Text>
-                  <TextInput
-                    value={leaveOvertimeMin}
-                    onChangeText={setLeaveOvertimeMin}
-                    placeholder={t(`${tk}.leaveOvertimePlaceholder`)}
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="number-pad"
-                    style={styles.textInput}
-                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setLeaveOvertimePickerOpen(true)}
+                    style={({ pressed }) => [
+                      styles.timePress,
+                      pressed && { opacity: 0.85 },
+                    ]}>
+                    <MaterialCommunityIcons
+                      name="clock-outline"
+                      size={20}
+                      color={styles.timePressIcon.color}
+                    />
+                    {leaveOvertimeMinutes > 0 ? (
+                      <Text style={styles.timePressValue}>
+                        {formatDurationLabel(leaveOvertimeMinutes)}
+                      </Text>
+                    ) : (
+                      <Text style={styles.timePressPlaceholder}>
+                        {t(`${tk}.leaveOvertimePlaceholder`)}
+                      </Text>
+                    )}
+                  </Pressable>
                 </>
               )}
 
@@ -908,6 +1003,41 @@ export function MarkAttendanceModal({
                       ) : null}
                     </View>
                   </View>
+
+                  {type === 'break' ? (
+                    <>
+                      <Text style={styles.sectionLabel}>
+                        {t(`${tk}.breakPresetsLabel`)}
+                      </Text>
+                      <View style={styles.chipRow}>
+                        {BREAK_PRESETS.map(preset => (
+                          <Chip
+                            key={preset.minutes}
+                            label={preset.label}
+                            active={false}
+                            disabled={!isValidTime(startTime)}
+                            onPress={() => applyBreakPreset(preset.minutes)}
+                            styles={styles}
+                          />
+                        ))}
+                      </View>
+                      {breakDurationMinutes != null ? (
+                        <View style={styles.durationCard}>
+                          <MaterialCommunityIcons
+                            name="timer-outline"
+                            size={18}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.durationLabel}>
+                            {t(`${tk}.breakDurationLabel`)}:
+                          </Text>
+                          <Text style={styles.durationValue}>
+                            {formatDurationLabel(breakDurationMinutes)}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </>
+                  ) : null}
                 </>
               )}
 
@@ -1024,6 +1154,17 @@ export function MarkAttendanceModal({
             delete next.endTime;
             return next;
           });
+        }}
+      />
+      <TimePicker
+        visible={leaveOvertimePickerOpen}
+        value={minutesToDurationHhMm(leaveOvertimeMinutes)}
+        title={t(`${tk}.leaveOvertimeLabel`)}
+        use24Hour
+        onDismiss={() => setLeaveOvertimePickerOpen(false)}
+        onConfirm={(time) => {
+          setLeaveOvertimeMin(String(durationHhMmToMinutes(time)));
+          setLeaveOvertimePickerOpen(false);
         }}
       />
     </Modal>

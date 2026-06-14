@@ -139,7 +139,7 @@ function resolveSheetLayout(
 4. **`sheetWrap`**: `[styles.sheetWrap, layout.wrapStyle]` — do not hard-code `paddingBottom` for keyboard elsewhere.
 5. **`sheet`**: `maxHeight: layout.sheetMaxHeight`; add `height: layout.sheetHeight` only when keyboard is open. Sheet needs `flexDirection: 'column'` + `overflow: 'hidden'`.
 6. **`SafeAreaView`**: `edges={['top']}` on the overlay (bottom inset goes in scroll `paddingBottom`).
-7. **`ScrollView`**: `keyboardShouldPersistTaps="handled"`, `keyboardDismissMode="on-drag"`, `showsVerticalScrollIndicator={keyboardHeight > 0}`, `bounces={false}`.
+7. **`ScrollView`**: `keyboardShouldPersistTaps="handled"`, `keyboardDismissMode="none"`, `showsVerticalScrollIndicator={keyboardHeight > 0}`, `bounces={false}`.
 8. **Lower fields**: optional `scrollRef` + `scrollToEnd({ animated: true })` in `onFocus` via `requestAnimationFrame`.
 
 ### Reference implementations

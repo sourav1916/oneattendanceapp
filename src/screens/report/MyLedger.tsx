@@ -49,7 +49,7 @@ import {
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Ledger'>;
 
-export function LedgerScreen({ navigation }: Props) {
+export function MyLedgerScreen({ navigation }: Props) {
     const { t, i18n } = useTranslation();
     const colors = useThemeColors();
     const { resolvedScheme } = useAppTheme();

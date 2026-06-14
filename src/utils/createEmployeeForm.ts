@@ -5,7 +5,7 @@ import type {
 } from '@src/types/createEmployee';
 import { getAuthContinuePlatform } from '@src/utils/authPlatform';
 import { toShiftHHmmss } from '@src/utils/invitePackagePayload';
-import type { LatLng } from '@src/screens/auth/optionalLocationCoords';
+import type { LatLng } from '@src/utils/optionalLocationCoords';
 
 function durationHHmmToMinutes(value: string): number {
   const trimmed = value.trim();

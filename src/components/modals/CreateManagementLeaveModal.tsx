@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { DatePicker } from '@src/components/modals/DatePicker';
@@ -32,6 +32,14 @@ const MAX_REMARKS = 1000;
 const MAX_ATTACHMENTS = 10;
 const FAR_FUTURE = '2099-12-31';
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+/** Gesture/home-indicator devices report bottom inset; 3-button nav often does not. */
+function resolveModalFooterBottomPadding(bottomInset: number): number {
+  if (bottomInset > 0) {
+    return bottomInset + 8;
+  }
+  return Platform.OS === 'android' ? 28 : 12;
+}
 
 type FieldErrors = {
   employee?: string;
@@ -303,9 +311,10 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       flexDirection: 'row',
       gap: 10,
       paddingHorizontal: 20,
-      paddingVertical: 14,
+      paddingTop: 14,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
+      backgroundColor: colors.surface,
     },
     btnSecondary: {
       flex: 1,
@@ -427,6 +436,11 @@ export function CreateManagementLeaveModal({
   const { t } = useTranslation();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const footerBottomPadding = useMemo(
+    () => resolveModalFooterBottomPadding(insets.bottom),
+    [insets.bottom],
+  );
   const styles = useMemo(
     () => buildStyles(colors, resolvedScheme),
     [colors, resolvedScheme],
@@ -1046,7 +1060,11 @@ export function CreateManagementLeaveModal({
                 </View>
               </ScrollView>
 
-              <View style={styles.footer}>
+              <View
+                style={[
+                  styles.footer,
+                  { paddingBottom: footerBottomPadding },
+                ]}>
                 <Pressable
                   accessibilityRole="button"
                   disabled={submitting}

@@ -97,8 +97,8 @@ export function FaceAttendanceCheckDeniedModal({
   const similarityLabel =
     employee.similarity != null && Number.isFinite(employee.similarity)
       ? t('home.faceAttendance.similarity', {
-          value: (employee.similarity * 100).toFixed(0),
-        })
+        value: (employee.similarity * 100).toFixed(0),
+      })
       : null;
   const reasonText =
     message.trim() || t('home.faceAttendance.errors.notAllowedTitle');
@@ -156,6 +156,7 @@ export function FaceAttendanceCheckDeniedModal({
 
             <ScrollView
               style={styles.scrollBody}
+              contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               bounces={false}
@@ -349,9 +350,12 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       fontWeight: '700',
     },
     scrollBody: {
+      flexShrink: 1,
       paddingHorizontal: 20,
       paddingTop: 16,
-      paddingBottom: 8,
+    },
+    scrollContent: {
+      paddingBottom: 20,
     },
     reasonCard: {
       backgroundColor: isDark ? 'rgba(220,38,38,0.18)' : FAIL_RED_BG_LIGHT,
@@ -395,7 +399,6 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       borderColor: failBorder,
       padding: 16,
       alignItems: 'center',
-      marginBottom: 8,
     },
     avatarWrap: {
       width: AVATAR_SIZE,
@@ -451,7 +454,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     },
     closeBtn: {
       marginHorizontal: 20,
-      marginTop: 8,
+      marginTop: 12,
       marginBottom: 16,
       minHeight: 48,
       borderRadius: 12,

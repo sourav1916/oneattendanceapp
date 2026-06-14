@@ -24,6 +24,7 @@ export type SettingsStackParamList = {
   MyCalendar: undefined;
   Support: undefined;
   Subscription: undefined;
+  About: undefined;
 };
 
 /** Stack inside the Home tab (dashboard + leave balance, etc.). */
@@ -47,7 +48,10 @@ export type HomeStackParamList = {
   EmployeeProfile: { employeeId: number };
   OnboardingRequest: undefined;
   CompanyLedger: undefined;
+  Reports: undefined;
   Ledger: undefined;
+  MySalary: undefined;
+  BankAccounts: undefined;
   PayrollManagement: undefined;
   ShiftManagement: undefined;
   CreateEmployee: undefined;

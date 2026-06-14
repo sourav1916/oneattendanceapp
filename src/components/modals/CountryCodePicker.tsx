@@ -338,7 +338,7 @@ export function CountryCodePicker({
               style={styles.list}
               contentContainerStyle={styles.listContent}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
+              keyboardDismissMode="none"
               nestedScrollEnabled
               showsVerticalScrollIndicator={false}
               showsHorizontalScrollIndicator={false}

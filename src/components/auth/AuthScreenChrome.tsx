@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
-import { buildAuthScreenStyles } from '@src/screens/auth/authScreenVisuals';
+import { buildAuthScreenStyles } from '@src/theme/authScreenVisuals';
 
 type Props = {
   children: ReactNode;

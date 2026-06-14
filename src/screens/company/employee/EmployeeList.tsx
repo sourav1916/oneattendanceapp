@@ -1,4 +1,4 @@
-import { HeaderBackButton } from '@react-navigation/elements';
+﻿import { HeaderBackButton } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { TFunction } from 'i18next';
 import React, {
@@ -10,7 +10,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   FlatList,
@@ -21,33 +20,31 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
+import { EditEmployeeModal } from '@src/components/modals/EditEmployeeModal';
 import {
   StatusAlert,
   useStatusAlert,
 } from '@src/components/modals/StatusAlert';
-import { formatTime12h, TimePicker, useTimePicker } from '@src/components/modals/TimePicker';
+import { formatTime12h } from '@src/components/modals/TimePicker';
+import { TAB_SCREEN_SAFE_AREA_EDGES } from '@src/constants/tabScreenLayout';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import { useEmployeeManagement } from '@src/hooks/useEmployeeManagement';
-import { TAB_SCREEN_SAFE_AREA_EDGES } from '@src/constants/tabScreenLayout';
 import type { HomeStackParamList } from '@src/navigation/types';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type {
-  ConstantOption,
   EmployeeEditFormData,
   EmployeeListItem,
   EmployeeListMeta,
   ModalType,
-  PermissionPackage,
 } from '@src/types/employeeManagement';
 import { API_ENDPOINT } from '@src/utils/config';
 
@@ -55,17 +52,6 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'EmployeeList'>;
 
 const SKELETON_ROWS = 6;
 const SHEET_MAX_HEIGHT = Dimensions.get('window').height * 0.92;
-const DROPDOWN_SHEET_MAX = Dimensions.get('window').height * 0.55;
-
-const ALL_WEEKDAYS = [
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-  'sunday',
-] as const;
 
 function formatJoiningDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim());
@@ -111,19 +97,6 @@ function formatLabel(value: unknown): string {
     .join(' ');
 }
 
-function formatLabelValue(value: unknown): string {
-  if (value == null) {
-    return '';
-  }
-  if (
-    typeof value === 'object' &&
-    'value' in (value as Record<string, unknown>)
-  ) {
-    return (value as { value?: string }).value ?? '';
-  }
-  return typeof value === 'string' ? value : String(value);
-}
-
 function formatShiftSpan(
   start: string | null,
   end: string | null,
@@ -131,7 +104,7 @@ function formatShiftSpan(
   if (!start || !end) {
     return null;
   }
-  return `${start.slice(0, 5)}–${end.slice(0, 5)}`;
+  return `${start.slice(0, 5)}â€“${end.slice(0, 5)}`;
 }
 
 function getInitials(name: string): string {
@@ -151,14 +124,14 @@ function formatStatCount(
   value: number | undefined,
 ): { text: string; isDash: boolean } {
   if (value === undefined || !Number.isFinite(value)) {
-    return { text: '—', isDash: true };
+    return { text: 'â€”', isDash: true };
   }
   return { text: String(value), isDash: false };
 }
 
 function formatDuration(totalMinutes: number | null): string {
   if (totalMinutes == null || !Number.isFinite(totalMinutes)) {
-    return '—';
+    return 'â€”';
   }
   const h = Math.floor(totalMinutes / 60);
   const m = totalMinutes % 60;
@@ -170,24 +143,6 @@ function parseDurationToMinutes(hhMm: string): number {
   const h = parseInt(parts[0] ?? '0', 10) || 0;
   const m = parseInt(parts[1] ?? '0', 10) || 0;
   return h * 60 + m;
-}
-
-function buildFormDataFromEmployee(emp: EmployeeListItem): EmployeeEditFormData {
-  return {
-    designation: formatLabelValue(emp.designation),
-    employment_type: formatLabelValue(emp.employment_type),
-    salary_type: formatLabelValue(emp.salary_type),
-    permission_package_id: emp.permission_package_id ?? null,
-    attendance_methods: emp.attendance_methods.map(m => m.method),
-    auto_approve: emp.attendance_methods.some(m => m.is_auto),
-    shift_start: emp.shift_start ?? '09:00',
-    shift_end: emp.shift_end ?? '18:00',
-    break_minutes: formatDuration(emp.break_minutes),
-    grace_minutes: formatDuration(emp.grace_minutes),
-    weekends: emp.weekends
-      .map(w => (typeof w.day === 'string' ? w.day.toLowerCase() : ''))
-      .filter(Boolean),
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -532,37 +487,6 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       paddingTop: 16,
       paddingBottom: 24,
     },
-    sheetFooter: {
-      flexDirection: 'row',
-      gap: 10,
-      paddingHorizontal: 20,
-      paddingTop: 12,
-      paddingBottom: Platform.OS === 'ios' ? 24 : 16,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    sheetFooterBtn: {
-      flex: 1,
-      paddingVertical: 14,
-      borderRadius: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.secondaryButton,
-    },
-    sheetFooterBtnPrimary: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    sheetFooterBtnDisabled: { opacity: 0.55 },
-    sheetFooterBtnText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    sheetFooterBtnTextPrimary: { color: '#fff', fontWeight: '700' },
 
     // View modal
     viewHero: {
@@ -637,110 +561,6 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       fontWeight: '600',
       color: scheme === 'dark' ? '#93c5fd' : colors.primary,
     },
-
-    // Edit form
-    formSectionCard: {
-      backgroundColor: colors.background,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 14,
-      marginBottom: 14,
-    },
-    formSectionTitle: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.primary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.6,
-      marginBottom: 12,
-    },
-    formGroup: { marginBottom: 14 },
-    formGroupLast: { marginBottom: 0 },
-    formLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.textMuted,
-      marginBottom: 6,
-      textTransform: 'uppercase',
-      letterSpacing: 0.3,
-    },
-    dropdown: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      backgroundColor: colors.surface,
-    },
-    dropdownText: { flex: 1, fontSize: 15, color: colors.text },
-    dropdownPlaceholder: { color: colors.textMuted },
-    methodChipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    methodChip: {
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 20,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    methodChipActive: {
-      borderColor: colors.primary,
-      backgroundColor:
-        scheme === 'dark' ? 'rgba(96,165,250,0.15)' : '#eff6ff',
-    },
-    methodChipText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.textMuted,
-    },
-    methodChipTextActive: { color: colors.primary },
-    switchRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 4,
-    },
-    switchLabel: { fontSize: 15, color: colors.text, fontWeight: '500' },
-    timeRow: {
-      flexDirection: 'row',
-      gap: 10,
-    },
-    timeField: { flex: 1 },
-    timeBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      backgroundColor: colors.surface,
-    },
-    timeBtnText: { fontSize: 15, fontWeight: '600', color: colors.text },
-    durationInput: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 15,
-      color: colors.text,
-      backgroundColor: colors.surface,
-    },
-    formError: {
-      fontSize: 13,
-      color: colors.danger,
-      marginTop: 4,
-      fontWeight: '500',
-    },
-    optionsLoadingText: {
-      marginTop: 12,
-      textAlign: 'center',
-    },
     statusPillMarginTop: {
       marginTop: 6,
     },
@@ -750,46 +570,6 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
     skBarWide: {
       width: '62%',
     },
-
-    // Dropdown modal
-    dropdownModalSafe: { flex: 1, backgroundColor: colors.overlay },
-    dropdownSheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      maxHeight: DROPDOWN_SHEET_MAX,
-      height: DROPDOWN_SHEET_MAX,
-      flexDirection: 'column',
-      overflow: 'hidden',
-      ...Platform.select({
-        ios: {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
-        },
-        android: { elevation: 12 },
-      }),
-    },
-    dropdownList: { flex: 1, minHeight: 0 },
-    dropdownOption: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 20,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-    },
-    dropdownOptionActive: {
-      backgroundColor:
-        scheme === 'dark' ? 'rgba(96,165,250,0.12)' : '#eff6ff',
-    },
-    dropdownOptionText: { flex: 1, fontSize: 16, color: colors.text },
-    dropdownOptionTextActive: {
-      color: colors.primary,
-      fontWeight: '600',
-    },
-    dropdownCheck: { marginLeft: 8 },
   });
 }
 
@@ -989,100 +769,6 @@ function AvatarView({
 }
 
 // ---------------------------------------------------------------------------
-// DropdownPicker modal
-// ---------------------------------------------------------------------------
-type DropdownPickerProps = {
-  visible: boolean;
-  title: string;
-  options: { value: string; label: string }[];
-  selected: string;
-  onSelect: (value: string) => void;
-  onDismiss: () => void;
-  styles: ReturnType<typeof buildStyles>;
-  colors: AppThemeColors;
-};
-
-function DropdownPicker({
-  visible,
-  title,
-  options,
-  selected,
-  onSelect,
-  onDismiss,
-  styles,
-  colors,
-}: DropdownPickerProps) {
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      statusBarTranslucent
-      onRequestClose={onDismiss}>
-      <SafeAreaView
-        style={styles.dropdownModalSafe}
-        edges={TAB_SCREEN_SAFE_AREA_EDGES}>
-        <Pressable style={styles.modalBackdrop} onPress={onDismiss} />
-        <View style={styles.sheetWrap} pointerEvents="box-none">
-          <View style={styles.dropdownSheet}>
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{title}</Text>
-              <Pressable
-                style={styles.sheetCloseBtn}
-                onPress={onDismiss}
-                accessibilityRole="button">
-                <MaterialCommunityIcons
-                  name="close"
-                  size={22}
-                  color={colors.textMuted}
-                />
-              </Pressable>
-            </View>
-            <FlatList
-              style={styles.dropdownList}
-              data={options}
-              keyExtractor={item => item.value}
-              bounces={false}
-              renderItem={({ item }) => {
-                const active = item.value === selected;
-                return (
-                  <Pressable
-                    style={[
-                      styles.dropdownOption,
-                      active && styles.dropdownOptionActive,
-                    ]}
-                    onPress={() => {
-                      onSelect(item.value);
-                      onDismiss();
-                    }}>
-                    <Text
-                      style={[
-                        styles.dropdownOptionText,
-                        active && styles.dropdownOptionTextActive,
-                      ]}>
-                      {item.label}
-                    </Text>
-                    {active ? (
-                      <MaterialCommunityIcons
-                        name="check"
-                        size={20}
-                        color={colors.primary}
-                        style={styles.dropdownCheck}
-                      />
-                    ) : null}
-                  </Pressable>
-                );
-              }}
-            />
-          </View>
-        </View>
-      </SafeAreaView>
-    </Modal>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // ViewDetailsModal
 // ---------------------------------------------------------------------------
 type ViewDetailsModalProps = {
@@ -1102,6 +788,8 @@ function ViewDetailsModal({
   colors,
   t,
 }: ViewDetailsModalProps) {
+  const insets = useSafeAreaInsets();
+
   if (!employee) {
     return null;
   }
@@ -1116,7 +804,7 @@ function ViewDetailsModal({
       onRequestClose={onDismiss}>
       <SafeAreaView
         style={styles.modalSafe}
-        edges={TAB_SCREEN_SAFE_AREA_EDGES}>
+        edges={['top']}>
         <Pressable style={styles.modalBackdrop} onPress={onDismiss} />
         <View style={styles.sheetWrap} pointerEvents="box-none">
           <View style={[styles.sheet, styles.sheetForm]}>
@@ -1139,7 +827,10 @@ function ViewDetailsModal({
             </View>
             <ScrollView
               style={styles.sheetScroll}
-              contentContainerStyle={styles.sheetBody}
+              contentContainerStyle={[
+                styles.sheetBody,
+                { paddingBottom: Math.max(24, insets.bottom) },
+              ]}
               bounces={false}
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled>
@@ -1175,7 +866,7 @@ function ViewDetailsModal({
                       {t('home.employeeList.viewModal.code')}
                     </Text>
                     <Text style={styles.viewValue}>
-                      {employee.employee_code || '—'}
+                      {employee.employee_code || 'â€”'}
                     </Text>
                   </View>
                   <View style={styles.viewRow}>
@@ -1183,7 +874,7 @@ function ViewDetailsModal({
                       {t('home.employeeList.viewModal.email')}
                     </Text>
                     <Text style={styles.viewValue}>
-                      {employee.email || '—'}
+                      {employee.email || 'â€”'}
                     </Text>
                   </View>
                   <View style={styles.viewRow}>
@@ -1191,7 +882,7 @@ function ViewDetailsModal({
                       {t('home.employeeList.viewModal.phone')}
                     </Text>
                     <Text style={styles.viewValue}>
-                      {employee.phone || '—'}
+                      {employee.phone || 'â€”'}
                     </Text>
                   </View>
                   <View style={styles.viewRow}>
@@ -1199,7 +890,7 @@ function ViewDetailsModal({
                       {t('home.employeeList.viewModal.employmentType')}
                     </Text>
                     <Text style={styles.viewValue}>
-                      {formatLabel(employee.employment_type) || '—'}
+                      {formatLabel(employee.employment_type) || 'â€”'}
                     </Text>
                   </View>
                   <View style={styles.viewRow}>
@@ -1207,7 +898,7 @@ function ViewDetailsModal({
                       {t('home.employeeList.viewModal.salaryType')}
                     </Text>
                     <Text style={styles.viewValue}>
-                      {formatLabel(employee.salary_type) || '—'}
+                      {formatLabel(employee.salary_type) || 'â€”'}
                     </Text>
                   </View>
                   <View style={[styles.viewRow, styles.viewRowLast]}>
@@ -1217,7 +908,7 @@ function ViewDetailsModal({
                     <Text style={styles.viewValue}>
                       {employee.joining_date
                         ? formatJoiningDate(employee.joining_date)
-                        : '—'}
+                        : 'â€”'}
                     </Text>
                   </View>
                 </View>
@@ -1235,7 +926,7 @@ function ViewDetailsModal({
                     <Text style={styles.viewValue}>
                       {employee.shift_start
                         ? formatTime12h(employee.shift_start)
-                        : '—'}
+                        : 'â€”'}
                     </Text>
                   </View>
                   <View style={styles.viewRow}>
@@ -1245,7 +936,7 @@ function ViewDetailsModal({
                     <Text style={styles.viewValue}>
                       {employee.shift_end
                         ? formatTime12h(employee.shift_end)
-                        : '—'}
+                        : 'â€”'}
                     </Text>
                   </View>
                   <View style={styles.viewRow}>
@@ -1277,7 +968,7 @@ function ViewDetailsModal({
                       {t('home.employeeList.viewModal.permissionPackage')}
                     </Text>
                     <Text style={styles.viewValue}>
-                      {employee.package_name || '—'}
+                      {employee.package_name || 'â€”'}
                     </Text>
                   </View>
                   <View style={[styles.viewRow, styles.viewRowLast]}>
@@ -1348,14 +1039,14 @@ function ViewDetailsModal({
                                 ? t(
                                   `home.employeeList.days.${dayValue}` as never,
                                 ) || formatLabel(w.day)
-                                : '—'}
+                                : 'â€”'}
                             </Text>
                           </View>
                         );
                       })}
                     </View>
                   ) : (
-                    <Text style={styles.muted}>—</Text>
+                    <Text style={styles.muted}>â€”</Text>
                   )}
                 </View>
               </View>
@@ -1367,617 +1058,6 @@ function ViewDetailsModal({
   );
 }
 
-// ---------------------------------------------------------------------------
-// EditEmployeeModal
-// ---------------------------------------------------------------------------
-type EditEmployeeModalProps = {
-  visible: boolean;
-  employee: EmployeeListItem | null;
-  constants: {
-    designations: ConstantOption[];
-    employment_types: ConstantOption[];
-    salary_types: ConstantOption[];
-    attendance_methods: { id: string; name: string; available: boolean }[];
-  } | null;
-  permissionPackages: PermissionPackage[];
-  onSave: (data: EmployeeEditFormData) => void;
-  onDismiss: () => void;
-  saving: boolean;
-  optionsLoading: boolean;
-  styles: ReturnType<typeof buildStyles>;
-  colors: AppThemeColors;
-  t: TFunction;
-};
-
-function EditEmployeeModal({
-  visible,
-  employee,
-  constants,
-  permissionPackages,
-  onSave,
-  onDismiss,
-  saving,
-  optionsLoading,
-  styles,
-  colors,
-  t,
-}: EditEmployeeModalProps) {
-  const [form, setForm] = useState<EmployeeEditFormData | null>(null);
-  const [dropdownField, setDropdownField] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  const shiftStartPicker = useTimePicker({
-    initialValue: form?.shift_start ?? '09:00',
-    onConfirm: (time: string) =>
-      setForm(f => (f ? { ...f, shift_start: time } : f)),
-  });
-  const shiftEndPicker = useTimePicker({
-    initialValue: form?.shift_end ?? '18:00',
-    onConfirm: (time: string) =>
-      setForm(f => (f ? { ...f, shift_end: time } : f)),
-  });
-
-  useEffect(() => {
-    if (visible && employee) {
-      const data = buildFormDataFromEmployee(employee);
-      setForm(data);
-      shiftStartPicker.setValue(data.shift_start);
-      shiftEndPicker.setValue(data.shift_end);
-      setFormError(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, employee]);
-
-  const handleSave = useCallback(() => {
-    if (!form) {
-      return;
-    }
-    if (form.attendance_methods.length === 0) {
-      setFormError(
-        t('home.employeeList.editModal.errors.attendanceRequired'),
-      );
-      return;
-    }
-    setFormError(null);
-    onSave(form);
-  }, [form, onSave, t]);
-
-  const toggleMethod = useCallback((method: string) => {
-    setForm(f => {
-      if (!f) {
-        return f;
-      }
-      const methods = f.attendance_methods.includes(method)
-        ? f.attendance_methods.filter(m => m !== method)
-        : [...f.attendance_methods, method];
-      return { ...f, attendance_methods: methods };
-    });
-    setFormError(null);
-  }, []);
-
-  const toggleWeekend = useCallback((day: string) => {
-    setForm(f => {
-      if (!f) {
-        return f;
-      }
-      const weekends = f.weekends.includes(day)
-        ? f.weekends.filter(d => d !== day)
-        : [...f.weekends, day];
-      return { ...f, weekends };
-    });
-  }, []);
-
-  const dropdownOptions = useMemo(() => {
-    if (!constants) {
-      return [];
-    }
-    switch (dropdownField) {
-      case 'designation':
-        return constants.designations;
-      case 'employment_type':
-        return constants.employment_types;
-      case 'salary_type':
-        return constants.salary_types;
-      case 'permission_package':
-        return permissionPackages.map(p => ({
-          value: String(p.id),
-          label: p.name,
-        }));
-      default:
-        return [];
-    }
-  }, [constants, dropdownField, permissionPackages]);
-
-  const dropdownTitle = useMemo(() => {
-    switch (dropdownField) {
-      case 'designation':
-        return t('home.employeeList.editModal.designation');
-      case 'employment_type':
-        return t('home.employeeList.editModal.employmentType');
-      case 'salary_type':
-        return t('home.employeeList.editModal.salaryType');
-      case 'permission_package':
-        return t('home.employeeList.editModal.permissionPackage');
-      default:
-        return '';
-    }
-  }, [dropdownField, t]);
-
-  const dropdownSelected = useMemo(() => {
-    if (!form) {
-      return '';
-    }
-    switch (dropdownField) {
-      case 'designation':
-        return form.designation;
-      case 'employment_type':
-        return form.employment_type;
-      case 'salary_type':
-        return form.salary_type;
-      case 'permission_package':
-        return form.permission_package_id != null
-          ? String(form.permission_package_id)
-          : '';
-      default:
-        return '';
-    }
-  }, [form, dropdownField]);
-
-  const handleDropdownSelect = useCallback(
-    (value: string) => {
-      setForm(f => {
-        if (!f) {
-          return f;
-        }
-        switch (dropdownField) {
-          case 'designation':
-            return { ...f, designation: value };
-          case 'employment_type':
-            return { ...f, employment_type: value };
-          case 'salary_type':
-            return { ...f, salary_type: value };
-          case 'permission_package':
-            return {
-              ...f,
-              permission_package_id: parseInt(value, 10) || null,
-            };
-          default:
-            return f;
-        }
-      });
-    },
-    [dropdownField],
-  );
-
-  const getDropdownDisplayText = useCallback(
-    (field: string): string => {
-      if (!form || !constants) {
-        return '';
-      }
-      let options: { value: string; label: string }[] = [];
-      let currentVal = '';
-      switch (field) {
-        case 'designation':
-          options = constants.designations;
-          currentVal = form.designation;
-          break;
-        case 'employment_type':
-          options = constants.employment_types;
-          currentVal = form.employment_type;
-          break;
-        case 'salary_type':
-          options = constants.salary_types;
-          currentVal = form.salary_type;
-          break;
-        case 'permission_package':
-          options = permissionPackages.map(p => ({
-            value: String(p.id),
-            label: p.name,
-          }));
-          currentVal =
-            form.permission_package_id != null
-              ? String(form.permission_package_id)
-              : '';
-          break;
-      }
-      const found = options.find(o => o.value === currentVal);
-      return found?.label ?? (currentVal ? formatLabel(currentVal) : '');
-    },
-    [form, constants, permissionPackages],
-  );
-
-  if (!form) {
-    return null;
-  }
-
-  return (
-    <>
-      <Modal
-        visible={visible}
-        transparent
-        animationType="slide"
-        statusBarTranslucent
-        onRequestClose={onDismiss}>
-        <SafeAreaView
-          style={styles.modalSafe}
-          edges={TAB_SCREEN_SAFE_AREA_EDGES}>
-          <Pressable style={styles.modalBackdrop} onPress={onDismiss} />
-          <View style={styles.sheetWrap} pointerEvents="box-none">
-            <View style={[styles.sheet, styles.sheetForm]}>
-              <View style={styles.sheetHandle} />
-              <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>
-                  {t('home.employeeList.editModal.title')}
-                </Text>
-                <Pressable
-                  style={styles.sheetCloseBtn}
-                  onPress={onDismiss}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('home.employeeList.editModal.close')}>
-                  <MaterialCommunityIcons
-                    name="close"
-                    size={20}
-                    color={colors.textMuted}
-                  />
-                </Pressable>
-              </View>
-              <ScrollView
-                style={styles.sheetScroll}
-                contentContainerStyle={styles.sheetBody}
-                bounces={false}
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled
-                keyboardShouldPersistTaps="handled">
-                {optionsLoading ? (
-                  <View style={styles.centerBox}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={[styles.muted, styles.optionsLoadingText]}>
-                      {t('home.employeeList.editModal.loadingOptions')}
-                    </Text>
-                  </View>
-                ) : null}
-                {!optionsLoading && constants ? (
-                  <>
-                    <View style={styles.formSectionCard}>
-                      <Text style={styles.formSectionTitle}>
-                        {t('home.employeeList.viewModal.infoSection')}
-                      </Text>
-                      {/* Designation */}
-                      <View style={styles.formGroup}>
-                        <Text style={styles.formLabel}>
-                          {t('home.employeeList.editModal.designation')}
-                        </Text>
-                        <Pressable
-                          style={styles.dropdown}
-                          onPress={() => setDropdownField('designation')}>
-                          <Text
-                            style={[
-                              styles.dropdownText,
-                              !getDropdownDisplayText('designation') &&
-                              styles.dropdownPlaceholder,
-                            ]}>
-                            {getDropdownDisplayText('designation') ||
-                              t('home.employeeList.editModal.selectDesignation')}
-                          </Text>
-                          <MaterialCommunityIcons
-                            name="chevron-down"
-                            size={20}
-                            color={colors.textMuted}
-                          />
-                        </Pressable>
-                      </View>
-
-                      {/* Permission Package */}
-                      <View style={styles.formGroup}>
-                        <Text style={styles.formLabel}>
-                          {t('home.employeeList.editModal.permissionPackage')}
-                        </Text>
-                        <Pressable
-                          style={styles.dropdown}
-                          onPress={() => setDropdownField('permission_package')}>
-                          <Text
-                            style={[
-                              styles.dropdownText,
-                              !getDropdownDisplayText('permission_package') &&
-                              styles.dropdownPlaceholder,
-                            ]}>
-                            {getDropdownDisplayText('permission_package') ||
-                              t('home.employeeList.editModal.selectPackage')}
-                          </Text>
-                          <MaterialCommunityIcons
-                            name="chevron-down"
-                            size={20}
-                            color={colors.textMuted}
-                          />
-                        </Pressable>
-                      </View>
-
-                      {/* Employment Type */}
-                      <View style={styles.formGroup}>
-                        <Text style={styles.formLabel}>
-                          {t('home.employeeList.editModal.employmentType')}
-                        </Text>
-                        <Pressable
-                          style={styles.dropdown}
-                          onPress={() => setDropdownField('employment_type')}>
-                          <Text
-                            style={[
-                              styles.dropdownText,
-                              !getDropdownDisplayText('employment_type') &&
-                              styles.dropdownPlaceholder,
-                            ]}>
-                            {getDropdownDisplayText('employment_type') ||
-                              t('home.employeeList.editModal.selectEmploymentType')}
-                          </Text>
-                          <MaterialCommunityIcons
-                            name="chevron-down"
-                            size={20}
-                            color={colors.textMuted}
-                          />
-                        </Pressable>
-                      </View>
-
-                      {/* Salary Type */}
-                      <View style={styles.formGroup}>
-                        <Text style={styles.formLabel}>
-                          {t('home.employeeList.editModal.salaryType')}
-                        </Text>
-                        <Pressable
-                          style={styles.dropdown}
-                          onPress={() => setDropdownField('salary_type')}>
-                          <Text
-                            style={[
-                              styles.dropdownText,
-                              !getDropdownDisplayText('salary_type') &&
-                              styles.dropdownPlaceholder,
-                            ]}>
-                            {getDropdownDisplayText('salary_type') ||
-                              t('home.employeeList.editModal.selectSalaryType')}
-                          </Text>
-                          <MaterialCommunityIcons
-                            name="chevron-down"
-                            size={20}
-                            color={colors.textMuted}
-                          />
-                        </Pressable>
-                      </View>
-                    </View>
-
-                    <View style={styles.formSectionCard}>
-                      <Text style={styles.formSectionTitle}>
-                        {t('home.employeeList.viewModal.attendanceSection')}
-                      </Text>
-                      {/* Attendance Methods */}
-                      <View style={styles.formGroup}>
-                        <Text style={styles.formLabel}>
-                          {t('home.employeeList.editModal.attendanceMethods')}
-                        </Text>
-                        <View style={styles.methodChipWrap}>
-                          {(constants?.attendance_methods ?? []).map(method => {
-                            const active = form.attendance_methods.includes(
-                              method.id,
-                            );
-                            return (
-                              <Pressable
-                                key={method.id}
-                                style={[
-                                  styles.methodChip,
-                                  active && styles.methodChipActive,
-                                ]}
-                                onPress={() => toggleMethod(method.id)}
-                                accessibilityRole="button"
-                                accessibilityState={{ selected: active }}>
-                                <Text
-                                  style={[
-                                    styles.methodChipText,
-                                    active && styles.methodChipTextActive,
-                                  ]}>
-                                  {method.name}
-                                </Text>
-                              </Pressable>
-                            );
-                          })}
-                        </View>
-                        {formError ? (
-                          <Text style={styles.formError}>{formError}</Text>
-                        ) : null}
-                      </View>
-
-                      {/* Auto Approve */}
-                      <View style={[styles.formGroup, styles.switchRow]}>
-                        <Text style={styles.switchLabel}>
-                          {t('home.employeeList.editModal.autoApprove')}
-                        </Text>
-                        <Switch
-                          value={form.auto_approve}
-                          onValueChange={v =>
-                            setForm(f => (f ? { ...f, auto_approve: v } : f))
-                          }
-                          trackColor={{
-                            false: colors.border,
-                            true: colors.primary,
-                          }}
-                          thumbColor="#fff"
-                        />
-                      </View>
-                    </View>
-
-                    <View style={styles.formSectionCard}>
-                      <Text style={styles.formSectionTitle}>
-                        {t('home.employeeList.viewModal.scheduleSection')}
-                      </Text>
-                      {/* Shift Times */}
-                      <View style={styles.formGroup}>
-                        <View style={styles.timeRow}>
-                          <View style={styles.timeField}>
-                            <Text style={styles.formLabel}>
-                              {t('home.employeeList.editModal.shiftStart')}
-                            </Text>
-                            <Pressable
-                              style={styles.timeBtn}
-                              onPress={shiftStartPicker.present}>
-                              <MaterialCommunityIcons
-                                name="clock-outline"
-                                size={18}
-                                color={colors.primary}
-                              />
-                              <Text style={styles.timeBtnText}>
-                                {formatTime12h(form.shift_start)}
-                              </Text>
-                            </Pressable>
-                          </View>
-                          <View style={styles.timeField}>
-                            <Text style={styles.formLabel}>
-                              {t('home.employeeList.editModal.shiftEnd')}
-                            </Text>
-                            <Pressable
-                              style={styles.timeBtn}
-                              onPress={shiftEndPicker.present}>
-                              <MaterialCommunityIcons
-                                name="clock-outline"
-                                size={18}
-                                color={colors.primary}
-                              />
-                              <Text style={styles.timeBtnText}>
-                                {formatTime12h(form.shift_end)}
-                              </Text>
-                            </Pressable>
-                          </View>
-                        </View>
-                      </View>
-
-                      {/* Break / Grace */}
-                      <View style={styles.formGroup}>
-                        <View style={styles.timeRow}>
-                          <View style={styles.timeField}>
-                            <Text style={styles.formLabel}>
-                              {t('home.employeeList.editModal.breakMinutes')}
-                            </Text>
-                            <TextInput
-                              style={styles.durationInput}
-                              value={form.break_minutes}
-                              onChangeText={v =>
-                                setForm(f => (f ? { ...f, break_minutes: v } : f))
-                              }
-                              placeholder="00:30"
-                              placeholderTextColor={colors.textMuted}
-                              keyboardType="numbers-and-punctuation"
-                              maxLength={5}
-                            />
-                          </View>
-                          <View style={styles.timeField}>
-                            <Text style={styles.formLabel}>
-                              {t('home.employeeList.editModal.graceMinutes')}
-                            </Text>
-                            <TextInput
-                              style={styles.durationInput}
-                              value={form.grace_minutes}
-                              onChangeText={v =>
-                                setForm(f => (f ? { ...f, grace_minutes: v } : f))
-                              }
-                              placeholder="00:15"
-                              placeholderTextColor={colors.textMuted}
-                              keyboardType="numbers-and-punctuation"
-                              maxLength={5}
-                            />
-                          </View>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={styles.formSectionCard}>
-                      <Text style={styles.formSectionTitle}>
-                        {t('home.employeeList.editModal.weekends')}
-                      </Text>
-                      {/* Weekends */}
-                      <View style={[styles.formGroup, styles.formGroupLast]}>
-                        <Text style={styles.formLabel}>
-                          {t('home.employeeList.editModal.weekends')}
-                        </Text>
-                        <View style={styles.methodChipWrap}>
-                          {ALL_WEEKDAYS.map(day => {
-                            const active = form.weekends.includes(day);
-                            return (
-                              <Pressable
-                                key={day}
-                                style={[
-                                  styles.methodChip,
-                                  active && styles.methodChipActive,
-                                ]}
-                                onPress={() => toggleWeekend(day)}
-                                accessibilityRole="button"
-                                accessibilityState={{ selected: active }}>
-                                <Text
-                                  style={[
-                                    styles.methodChipText,
-                                    active && styles.methodChipTextActive,
-                                  ]}>
-                                  {t(`home.employeeList.days.${day}` as never)}
-                                </Text>
-                              </Pressable>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    </View>
-                  </>
-                ) : null}
-              </ScrollView>
-
-              {/* Footer */}
-              <View style={styles.sheetFooter}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.sheetFooterBtn,
-                    pressed && { opacity: 0.88 },
-                  ]}
-                  onPress={onDismiss}
-                  accessibilityRole="button">
-                  <Text style={styles.sheetFooterBtnText}>
-                    {t('home.employeeList.editModal.cancel')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.sheetFooterBtn,
-                    styles.sheetFooterBtnPrimary,
-                    (saving || optionsLoading || !constants) &&
-                    styles.sheetFooterBtnDisabled,
-                    pressed && !saving && { opacity: 0.88 },
-                  ]}
-                  onPress={handleSave}
-                  disabled={saving || optionsLoading || !constants}
-                  accessibilityRole="button">
-                  <Text style={styles.sheetFooterBtnTextPrimary}>
-                    {saving
-                      ? t('home.employeeList.editModal.saving')
-                      : t('home.employeeList.editModal.save')}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Time pickers */}
-      <TimePicker {...shiftStartPicker.pickerProps} />
-      <TimePicker {...shiftEndPicker.pickerProps} />
-
-      {/* Dropdown picker */}
-      <DropdownPicker
-        visible={dropdownField != null}
-        title={dropdownTitle}
-        options={dropdownOptions}
-        selected={dropdownSelected}
-        onSelect={handleDropdownSelect}
-        onDismiss={() => setDropdownField(null)}
-        styles={styles}
-        colors={colors}
-      />
-    </>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Employee Row (list view)
@@ -2021,7 +1101,7 @@ const EmployeeRow = React.memo(function EmployeeRow({
             {item.name}
           </Text>
           <Text style={styles.subline} numberOfLines={2}>
-            {[item.employee_code, item.email].filter(Boolean).join(' · ')}
+            {[item.employee_code, item.email].filter(Boolean).join(' Â· ')}
           </Text>
           {item.phone ? (
             <Text style={styles.sublineMuted} numberOfLines={1}>
@@ -2041,16 +1121,16 @@ const EmployeeRow = React.memo(function EmployeeRow({
         </Text>
         {item.package_name ? (
           <Text style={styles.metaMuted} numberOfLines={1}>
-            {' · '}
+            {' Â· '}
             {item.package_name}
           </Text>
         ) : null}
       </View>
       <Text style={styles.shiftLine}>
         {formatLabel(item.employment_type)}
-        {shift ? ` · ${shift}` : ''}
+        {shift ? ` Â· ${shift}` : ''}
         {item.joining_date
-          ? ` · ${joinedLabel}: ${formatJoiningDate(item.joining_date)}`
+          ? ` Â· ${joinedLabel}: ${formatJoiningDate(item.joining_date)}`
           : ''}
       </Text>
       <View style={styles.actionRow}>
@@ -2490,9 +1570,6 @@ export function EmployeeListScreen({ navigation }: Props) {
         onDismiss={closeModal}
         saving={mutating}
         optionsLoading={formOptionsLoading}
-        styles={styles}
-        colors={colors}
-        t={t}
       />
 
       {/* Alerts */}

@@ -15,6 +15,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { changePassword } from '@src/api/changePassword';
 import { SvgEyeOffOutline, SvgEyeOutline } from '@src/components/icons/PasswordVisibilityIcon';
@@ -61,7 +62,18 @@ type Props = NativeStackScreenProps<SettingsStackParamList, 'ChangePassword'>;
 
 const STACK_HEADER_HEIGHT = 52;
 
+const SECURITY_HIGHLIGHTS = [
+  { icon: 'lock-check-outline' as const, labelKey: 'settings.changePassword.highlightStrong' },
+  { icon: 'key-variant' as const, labelKey: 'settings.changePassword.highlightUnique' },
+  { icon: 'shield-key-outline' as const, labelKey: 'settings.changePassword.highlightProtected' },
+];
+
 function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
+    const isDark = scheme === 'dark';
+    const accentSoft = isDark ? 'rgba(96, 165, 250, 0.14)' : 'rgba(37, 99, 235, 0.1)';
+    const heroCardBg = isDark ? 'rgba(30, 41, 59, 0.72)' : '#ffffff';
+    const heroCardBorder = isDark ? 'rgba(148, 163, 184, 0.18)' : 'rgba(226, 232, 240, 0.95)';
+
     return StyleSheet.create({
         safe: {
             flex: 1,
@@ -89,34 +101,127 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         },
         scroll: {
             paddingHorizontal: 20,
-            paddingTop: 20,
+            paddingTop: 16,
         },
-        heroWrap: {
+        heroCard: {
+            borderRadius: 22,
+            padding: 20,
             marginBottom: 22,
-            paddingLeft: 14,
-            borderLeftWidth: 4,
-            borderLeftColor: colors.primary,
+            backgroundColor: heroCardBg,
+            borderWidth: 1,
+            borderColor: heroCardBorder,
+            overflow: 'hidden',
+            ...Platform.select({
+                ios: {
+                    shadowColor: '#0f172a',
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: isDark ? 0.28 : 0.08,
+                    shadowRadius: 18,
+                },
+                android: { elevation: isDark ? 4 : 3 },
+            }),
         },
-        eyebrow: {
-            fontSize: 12,
-            fontWeight: '700',
-            color: colors.primary,
+        heroGlow: {
+            position: 'absolute',
+            top: -52,
+            right: -36,
+            width: 168,
+            height: 168,
+            borderRadius: 84,
+            backgroundColor: accentSoft,
+        },
+        heroGlowSecondary: {
+            position: 'absolute',
+            bottom: -40,
+            left: -24,
+            width: 120,
+            height: 120,
+            borderRadius: 60,
+            backgroundColor: isDark ? 'rgba(52, 211, 153, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+        },
+        heroTop: {
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            gap: 14,
+            marginBottom: 14,
+        },
+        heroIconRing: {
+            width: 64,
+            height: 64,
+            borderRadius: 20,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: accentSoft,
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(96, 165, 250, 0.28)' : 'rgba(37, 99, 235, 0.16)',
+        },
+        heroTextBlock: {
+            flex: 1,
+            minWidth: 0,
+            paddingTop: 2,
+        },
+        heroEyebrow: {
+            alignSelf: 'flex-start',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: 999,
+            backgroundColor: isDark ? 'rgba(51, 65, 85, 0.65)' : '#eff6ff',
+            marginBottom: 10,
+        },
+        heroEyebrowText: {
+            fontSize: 11,
+            fontWeight: '800',
+            letterSpacing: 0.8,
             textTransform: 'uppercase',
-            letterSpacing: 0.9,
-            marginBottom: 6,
+            color: colors.primary,
         },
         heroTitle: {
-            fontSize: 26,
+            fontSize: 24,
             fontWeight: '800',
             color: colors.text,
-            letterSpacing: -0.5,
-            marginBottom: 8,
+            letterSpacing: -0.4,
+            lineHeight: 30,
         },
         heroSubtitle: {
             fontSize: 15,
             color: colors.textMuted,
             lineHeight: 22,
-            maxWidth: 360,
+        },
+        heroHighlightsRow: {
+            flexDirection: 'row',
+            gap: 8,
+            marginTop: 16,
+            paddingTop: 16,
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: isDark ? 'rgba(148, 163, 184, 0.22)' : '#e2e8f0',
+        },
+        heroHighlightItem: {
+            flex: 1,
+            alignItems: 'center',
+            gap: 6,
+            paddingVertical: 10,
+            paddingHorizontal: 6,
+            borderRadius: 14,
+            backgroundColor: isDark ? 'rgba(15, 23, 42, 0.55)' : '#f8fafc',
+            borderWidth: 1,
+            borderColor: isDark ? 'rgba(148, 163, 184, 0.2)' : '#e2e8f0',
+        },
+        heroHighlightIcon: {
+            width: 32,
+            height: 32,
+            borderRadius: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: accentSoft,
+        },
+        heroHighlightLabel: {
+            fontSize: 11,
+            fontWeight: '700',
+            color: colors.textMuted,
+            textAlign: 'center',
         },
         formCard: {
             backgroundColor: colors.surface,
@@ -445,10 +550,52 @@ export function ChangePasswordScreen({ navigation }: Props) {
                         keyboardShouldPersistTaps="handled"
                         automaticallyAdjustKeyboardInsets={Platform.OS === 'android'}
                         showsVerticalScrollIndicator={false}>
-                        <View style={styles.heroWrap}>
-                            <Text style={styles.eyebrow}>{t('settings.changePassword.eyebrow')}</Text>
-                            <Text style={styles.heroTitle}>{t('settings.changePassword.heroTitle')}</Text>
-                            <Text style={styles.heroSubtitle}>{t('settings.changePassword.heroSubtitle')}</Text>
+                        <View style={styles.heroCard}>
+                            <View style={styles.heroGlow} />
+                            <View style={styles.heroGlowSecondary} />
+                            <View style={styles.heroTop}>
+                                <View style={styles.heroIconRing}>
+                                    <MaterialCommunityIcons
+                                        name="shield-lock-outline"
+                                        size={32}
+                                        color={colors.primary}
+                                    />
+                                </View>
+                                <View style={styles.heroTextBlock}>
+                                    <View style={styles.heroEyebrow}>
+                                        <MaterialCommunityIcons
+                                            name="shield-check"
+                                            size={14}
+                                            color={colors.primary}
+                                        />
+                                        <Text style={styles.heroEyebrowText}>
+                                            {t('settings.changePassword.eyebrow')}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.heroTitle}>
+                                        {t('settings.changePassword.heroTitle')}
+                                    </Text>
+                                </View>
+                            </View>
+                            <Text style={styles.heroSubtitle}>
+                                {t('settings.changePassword.heroSubtitle')}
+                            </Text>
+                            <View style={styles.heroHighlightsRow}>
+                                {SECURITY_HIGHLIGHTS.map(item => (
+                                    <View key={item.labelKey} style={styles.heroHighlightItem}>
+                                        <View style={styles.heroHighlightIcon}>
+                                            <MaterialCommunityIcons
+                                                name={item.icon}
+                                                size={18}
+                                                color={colors.primary}
+                                            />
+                                        </View>
+                                        <Text style={styles.heroHighlightLabel}>
+                                            {t(item.labelKey)}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
                         </View>
 
                         <View style={styles.formCard}>

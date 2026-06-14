@@ -525,7 +525,7 @@ export function CreateCompany({ visible, onDismiss, onSubmit }: Props) {
                             ref={scrollRef}
                             style={styles.sheetScroll}
                             keyboardShouldPersistTaps="handled"
-                            keyboardDismissMode="on-drag"
+                            keyboardDismissMode="none"
                             showsVerticalScrollIndicator={false}
                             showsHorizontalScrollIndicator={false}
                             automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}

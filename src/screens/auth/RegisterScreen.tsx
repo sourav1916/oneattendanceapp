@@ -22,9 +22,9 @@ import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAle
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import type { AuthStackParamList } from '@src/navigation/types';
-import { AuthScreenChrome } from '@src/screens/auth/AuthScreenChrome';
-import { buildAuthScreenStyles } from '@src/screens/auth/authScreenVisuals';
-import { tryOptionalLocationCoords } from '@src/screens/auth/optionalLocationCoords';
+import { AuthScreenChrome } from '@src/components/auth/AuthScreenChrome';
+import { buildAuthScreenStyles } from '@src/theme/authScreenVisuals';
+import { tryOptionalLocationCoords } from '@src/utils/optionalLocationCoords';
 import type { SignupType } from '@src/types/signupAuth';
 import { parseAuthSessionResponse } from '@src/utils/parseAuthSessionResponse';
 import {

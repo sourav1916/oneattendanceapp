@@ -2,18 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
-  Dimensions,
   FlatList,
   Image,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
+  type ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { createCompany } from '@src/api/createCompany';
@@ -26,8 +28,70 @@ import type { StoredSelectedCompany } from '@src/types/company';
 import { companiesFromProfileRole } from '@src/utils/companiesFromProfileRole';
 import { readApiError } from '@src/utils/readApiError';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SHEET_MAX_HEIGHT = Math.min(SCREEN_HEIGHT * 0.78, 560);
+const SHEET_HEIGHT_CAP = 560;
+const MIN_SHEET_HEIGHT = 220;
+const MIN_LIST_HEIGHT = 96;
+const SHEET_CHROME_WITH_SEARCH = 200;
+const SHEET_CHROME_EMPTY = 140;
+
+type SheetLayout = {
+  wrapStyle: ViewStyle;
+  sheetMaxHeight: number;
+  listMaxHeight: number;
+};
+
+function resolveSheetLayout(
+  windowHeight: number,
+  keyboardHeight: number,
+  topInset: number,
+  bottomInset: number,
+  chromeHeight: number,
+): SheetLayout {
+  const keyboardOpen = keyboardHeight > 0;
+  const topGap = topInset + 8;
+  const keyboardGap = 8;
+
+  if (keyboardOpen) {
+    const spaceAboveKeyboard = windowHeight - keyboardHeight - keyboardGap;
+    const sheetMaxHeight = Math.max(
+      MIN_SHEET_HEIGHT,
+      Math.min(SHEET_HEIGHT_CAP, spaceAboveKeyboard - topGap),
+    );
+    const listMaxHeight = Math.max(
+      MIN_LIST_HEIGHT,
+      sheetMaxHeight - chromeHeight,
+    );
+
+    return {
+      wrapStyle: {
+        justifyContent: 'flex-start',
+        paddingTop: topGap,
+        paddingBottom: 0,
+      },
+      sheetMaxHeight,
+      listMaxHeight,
+    };
+  }
+
+  const sheetMaxHeight = Math.min(
+    SHEET_HEIGHT_CAP,
+    Math.max(MIN_SHEET_HEIGHT, windowHeight * 0.78),
+  );
+  const listMaxHeight = Math.max(
+    MIN_LIST_HEIGHT,
+    sheetMaxHeight - chromeHeight,
+  );
+
+  return {
+    wrapStyle: {
+      justifyContent: 'center',
+      paddingTop: 0,
+      paddingBottom: Math.max(bottomInset, 16),
+    },
+    sheetMaxHeight,
+    listMaxHeight,
+  };
+}
 
 function CompanyLogoChip({
   company,
@@ -53,7 +117,12 @@ function CompanyLogoChip({
   );
 }
 
-function buildSwitcherStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
+function buildSwitcherStyles(
+  colors: AppThemeColors,
+  scheme: 'light' | 'dark',
+  sheetMaxHeight: number,
+  listMaxHeight: number,
+) {
   return StyleSheet.create({
     safe: {
       flex: 1,
@@ -71,7 +140,8 @@ function buildSwitcherStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       alignSelf: 'center',
       width: '100%',
       maxWidth: 400,
-      maxHeight: SHEET_MAX_HEIGHT,
+      height: sheetMaxHeight,
+      maxHeight: sheetMaxHeight,
       backgroundColor: colors.surface,
       borderRadius: 16,
       borderWidth: 1,
@@ -122,8 +192,8 @@ function buildSwitcherStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       color: colors.text,
     },
     list: {
-      flexGrow: 0,
-      flexShrink: 1,
+      flex: 1,
+      maxHeight: listMaxHeight,
     },
     listContent: {
       paddingBottom: 4,
@@ -257,13 +327,33 @@ export function CompanySwitcher({
   const { refreshProfileRole } = useAuth();
   const colors = useThemeColors();
   const { resolvedScheme } = useAppTheme();
-  const ms = useMemo(() => buildSwitcherStyles(colors, resolvedScheme), [colors, resolvedScheme]);
-  const { props: statusAlertProps, presentSuccess, presentError } = useStatusAlert();
-
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const [displayCompanies, setDisplayCompanies] = useState(companies);
   const [createOpen, setCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const isEmpty = displayCompanies.length === 0;
+
+  const chromeHeight = isEmpty ? SHEET_CHROME_EMPTY : SHEET_CHROME_WITH_SEARCH;
+
+  const layout = useMemo(
+    () =>
+      resolveSheetLayout(
+        windowHeight,
+        keyboardHeight,
+        insets.top,
+        insets.bottom,
+        chromeHeight,
+      ),
+    [chromeHeight, insets.bottom, insets.top, keyboardHeight, windowHeight],
+  );
+
+  const ms = useMemo(
+    () => buildSwitcherStyles(colors, resolvedScheme, layout.sheetMaxHeight, layout.listMaxHeight),
+    [colors, layout.listMaxHeight, layout.sheetMaxHeight, resolvedScheme],
+  );
+  const { props: statusAlertProps, presentSuccess, presentError } = useStatusAlert();
 
   const filteredCompanies = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -285,8 +375,31 @@ export function CompanySwitcher({
     if (visible) {
       setDisplayCompanies(companies);
       setSearchQuery('');
+    } else {
+      setKeyboardHeight(0);
     }
   }, [visible, companies]);
+
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, event => {
+      setKeyboardHeight(event.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [visible]);
 
   const openCreateCompany = useCallback(() => {
     setCreateOpen(true);
@@ -349,15 +462,15 @@ export function CompanySwitcher({
         statusBarTranslucent
         visible={visible}
         onRequestClose={onClose}>
-        <SafeAreaView style={ms.safe} edges={['top', 'right', 'left', 'bottom']}>
+        <SafeAreaView style={ms.safe} edges={['top', 'left', 'right']}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('modals.companySwitcher.closeList')}
             style={ms.backdrop}
             onPress={onClose}
           />
-          <View style={ms.sheetWrap} pointerEvents="box-none">
-            <View style={ms.sheet}>
+          <View style={[ms.sheetWrap, layout.wrapStyle]} pointerEvents="box-none">
+            <View style={ms.sheet} pointerEvents="auto">
               <View style={ms.titleRow}>
                 <Text style={ms.title} accessibilityRole="header">
                   {t('home.companySwitcher.title')}
@@ -403,8 +516,11 @@ export function CompanySwitcher({
                 style={ms.list}
                 contentContainerStyle={ms.listContent}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="none"
+                nestedScrollEnabled
                 showsVerticalScrollIndicator={false}
                 showsHorizontalScrollIndicator={false}
+                extraData={`${searchQuery}-${keyboardHeight}`}
                 ListEmptyComponent={
                   !refreshing ? (
                     isEmpty ? (

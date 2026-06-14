@@ -52,7 +52,7 @@ import { TAB_SCREEN_SAFE_AREA_EDGES } from '@src/constants/tabScreenLayout';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import type { HomeStackParamList } from '@src/navigation/types';
-import { tryOptionalLocationCoords } from '@src/screens/auth/optionalLocationCoords';
+import { tryOptionalLocationCoords } from '@src/utils/optionalLocationCoords';
 import type { AppThemeColors } from '@src/theme/palettes';
 import {
   EMPTY_CREATE_EMPLOYEE_FORM,

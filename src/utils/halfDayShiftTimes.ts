@@ -64,3 +64,54 @@ export function getHalfDayTimesAsHhMm(
     end_time: normalizeToHhMm(times.end_time),
   };
 }
+
+export function hhMmToMinutes(hhmm: string): number {
+  const normalized = normalizeToHhMm(hhmm);
+  const [h, m] = normalized.split(':').map(Number);
+  return h * 60 + m;
+}
+
+export function addMinutesToHhMm(hhmm: string, deltaMinutes: number): string {
+  const total = Math.min(
+    Math.max(hhMmToMinutes(hhmm) + deltaMinutes, 0),
+    23 * 60 + 59,
+  );
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+export function durationBetweenHhMm(start: string, end: string): number | null {
+  if (!start.trim() || !end.trim()) {
+    return null;
+  }
+  const startMin = hhMmToMinutes(start);
+  const endMin = hhMmToMinutes(end);
+  if (endMin <= startMin) {
+    return null;
+  }
+  return endMin - startMin;
+}
+
+export function formatDurationLabel(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h > 0 && m > 0) {
+    return `${h}h ${m}m`;
+  }
+  if (h > 0) {
+    return `${h}h`;
+  }
+  return `${m}m`;
+}
+
+export function minutesToDurationHhMm(totalMinutes: number): string {
+  const safe = Math.max(0, totalMinutes);
+  const h = Math.floor(safe / 60);
+  const m = safe % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+export function durationHhMmToMinutes(hhmm: string): number {
+  return hhMmToMinutes(hhmm);
+}

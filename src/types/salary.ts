@@ -51,3 +51,41 @@ export type AssignSalaryResponse = {
   message: string;
   data: AssignSalaryData | null;
 };
+
+export type MySalaryComponentLine = {
+  component_id: number;
+  code: string;
+  name: string;
+  type: 'earning' | 'deduction';
+  is_taxable: boolean;
+  is_statutory: boolean;
+  calc_type: SalaryCalcType;
+  calc_value: number;
+  amount: number;
+  remark: string | null;
+};
+
+export type MySalaryData = {
+  salary_structure_id: number;
+  month: number;
+  year: number;
+  base_amount: number;
+  effective_from: string;
+  effective_to: string | null;
+  total_earnings: number;
+  total_deductions: number;
+  net_salary: number;
+  earnings: MySalaryComponentLine[];
+  deductions: MySalaryComponentLine[];
+};
+
+export type MySalaryResponse = {
+  success: boolean;
+  message: string;
+  data: MySalaryData | null;
+};
+
+export type FetchMySalaryParams = {
+  month?: number;
+  year?: number;
+};

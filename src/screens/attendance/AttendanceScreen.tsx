@@ -31,7 +31,7 @@ import {
 import { StatusAlert, useStatusAlert } from '@src/components/modals/StatusAlert';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
-import { ensureLocationForVerify } from '@src/screens/auth/optionalLocationCoords';
+import { ensureLocationForVerify } from '@src/utils/optionalLocationCoords';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type {
   ApiAttendanceMethod,

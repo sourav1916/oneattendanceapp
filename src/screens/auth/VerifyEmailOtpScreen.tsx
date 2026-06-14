@@ -26,7 +26,7 @@ import { readApiError } from '../../utils/readApiError';
 import { useThemeColors } from '@src/context/ThemeContext';
 import type { AppThemeColors } from '@src/theme/palettes';
 
-import { ensureLocationForVerify } from './optionalLocationCoords';
+import { ensureLocationForVerify } from '@src/utils/optionalLocationCoords';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SEC = 30;

@@ -688,6 +688,32 @@ export function AttendanceManagementScreen({ navigation }: Props) {
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [leaveConfigs, setLeaveConfigs] = useState<LeaveConfigEntry[]>([]);
+  const [leaveConfigsLoading, setLeaveConfigsLoading] = useState(true);
+
+  const loadLeaveConfigs = useCallback(async () => {
+    if (companyId == null) {
+      setLeaveConfigs([]);
+      setLeaveConfigsLoading(false);
+      return;
+    }
+    setLeaveConfigsLoading(true);
+    try {
+      const res = await attendanceApi.fetchLeaveConfigs(companyId);
+      const items = res.success && Array.isArray(res.data) ? res.data : [];
+      setLeaveConfigs(
+        items.map(item => ({
+          ...item,
+          code: String(item.code ?? '').trim(),
+          name: String(item.name ?? '').trim(),
+          is_paid: Boolean(item.is_paid),
+        })),
+      );
+    } catch {
+      setLeaveConfigs([]);
+    } finally {
+      setLeaveConfigsLoading(false);
+    }
+  }, [companyId]);
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
@@ -695,20 +721,8 @@ export function AttendanceManagementScreen({ navigation }: Props) {
   }, [search]);
 
   useEffect(() => {
-    if (companyId == null) {
-      return;
-    }
-    let cancelled = false;
-    attendanceApi.fetchLeaveConfigs(companyId).then(res => {
-      if (cancelled) {
-        return;
-      }
-      if (res.success && res.data) {
-        setLeaveConfigs(res.data);
-      }
-    }).catch(() => { });
-    return () => { cancelled = true; };
-  }, [companyId]);
+    loadLeaveConfigs().catch(() => {});
+  }, [loadLeaveConfigs]);
 
   const onApiError = useCallback(
     (message: string) => {
@@ -800,8 +814,9 @@ export function AttendanceManagementScreen({ navigation }: Props) {
         shift: employee.shift ?? null,
       });
       setMarkVisible(true);
+      loadLeaveConfigs().catch(() => {});
     },
-    [selectedDate],
+    [loadLeaveConfigs, selectedDate],
   );
 
   const closeMarkModal = useCallback(() => {
@@ -1252,6 +1267,7 @@ export function AttendanceManagementScreen({ navigation }: Props) {
         target={markTarget}
         submitting={markSubmitting}
         leaveConfigs={leaveConfigs}
+        leaveConfigsLoading={leaveConfigsLoading}
         onDismiss={closeMarkModal}
         onSubmit={handleMarkSubmit}
       />
