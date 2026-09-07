@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-export const API_ENDPOINT = 'https://api-attendance.onesaas.in';
+export const API_ENDPOINT = 'https://oneattendanceserver.onesaas.in';
 
 /**
  * Truecaller OAuth (Android). Create a client ID at

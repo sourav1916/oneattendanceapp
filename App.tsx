@@ -2,6 +2,9 @@
  * @format
  */
 
+import { DevTools, installDevTools } from './rn-devtools';
+import { authHttpClient } from '@src/api/authHttpClient';
+
 import '@src/i18n';
 
 import {
@@ -92,8 +95,16 @@ function AppBody() {
   const { colors } = useAppTheme();
 
   useEffect(() => {
-    void hydrateLanguageFromPreference();
+    const cleanupDevTools = __DEV__
+      ? installDevTools({ axiosInstance: authHttpClient })
+      : undefined;
+
+    hydrateLanguageFromPreference();
     configureGoogleSignIn();
+
+    return () => {
+      cleanupDevTools?.();
+    };
   }, []);
 
   return (
@@ -108,9 +119,12 @@ function AppBody() {
 function App() {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <AppBody />
-      </ThemeProvider>
+      <>
+        <ThemeProvider>
+          <AppBody />
+        </ThemeProvider>
+        <DevTools />
+      </>
     </SafeAreaProvider>
   );
 }
