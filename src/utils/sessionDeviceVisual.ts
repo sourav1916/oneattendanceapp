@@ -19,14 +19,14 @@ const CURRENT_VISUAL: SessionDeviceVisual = {
 };
 
 export function resolveSessionDeviceVisual(
-  userAgent: string,
+  userAgent: string | null | undefined,
   deviceName: string,
   isCurrent: boolean,
 ): SessionDeviceVisual {
   if (isCurrent) {
     return CURRENT_VISUAL;
   }
-  const haystack = `${userAgent} ${deviceName}`.toLowerCase();
+  const haystack = `${userAgent ?? ''} ${deviceName ?? ''}`.toLowerCase();
   if (/ipad|tablet/.test(haystack)) {
     return { icon: 'tablet', accent: '#7c3aed', tint: '#ede9fe' };
   }

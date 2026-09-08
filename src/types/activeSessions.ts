@@ -1,14 +1,14 @@
 export type ActiveSessionLocation = {
-  latitude: string | null;
-  longitude: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
 };
 
 export type ActiveSession = {
   id: number;
   device_name: string;
   ip_address: string;
-  location: ActiveSessionLocation;
-  user_agent: string;
+  location?: ActiveSessionLocation | null;
+  user_agent?: string | null;
   is_current: boolean;
   last_active: string;
   expires_at: string;
@@ -21,6 +21,14 @@ export type ActiveSessionsMeta = {
   total: number;
   total_pages: number;
   is_last_page: boolean;
+};
+
+export type ActiveSessionsServerResponse = {
+  success: boolean;
+  message: string;
+  data?: ActiveSession[];
+  sessions?: ActiveSession[];
+  meta?: ActiveSessionsMeta;
 };
 
 export type ActiveSessionsResponse = {

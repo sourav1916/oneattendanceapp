@@ -426,7 +426,7 @@ export function SessionDetails({ visible, session, onDismiss }: Props) {
     {
       icon: 'web',
       labelKey: 'settings.sessions.detailsUserAgent',
-      value: session.user_agent,
+      value: session.user_agent || session.device_name || '—',
       accent: '#6366f1',
       tint: '#eef2ff',
       multiline: true,
