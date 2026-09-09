@@ -1,4 +1,4 @@
-export type InviteStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled';
+export type InviteStatus = 'pending' | 'accepted' | 'rejected' | 'expired';
 
 export type InviteCompany = {
   name: string;
@@ -30,6 +30,17 @@ export type InviteAttendanceMethod = {
   is_auto: boolean;
 };
 
+export type InviteSalaryComponent = {
+  id?: string | number;
+  component_id?: string | number;
+  component_name?: string;
+  component_code?: string;
+  calc_type?: string;
+  calc_value?: number | string | null;
+  remark?: string | null;
+  is_active?: boolean;
+};
+
 export type InviteRecord = {
   invite_id: string;
   invite_token: string;
@@ -48,7 +59,16 @@ export type InviteRecord = {
   weekends: InviteWeekend[];
   permissions: InvitePermission[];
   attendance_methods: InviteAttendanceMethod[];
+  base_amount?: number | string | null;
+  effective_from?: string | null;
+  effective_to?: string | null;
+  joining_date?: string | null;
+  salary_components?: InviteSalaryComponent[];
 };
+
+export type InviteApiWeekendRaw = string | InviteWeekend;
+export type InviteApiAttendanceMethodRaw = string | InviteAttendanceMethod;
+
 
 export type InviteListResponse = {
   success: boolean;

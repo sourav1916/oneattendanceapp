@@ -345,7 +345,7 @@ export const en = {
       filterPending: 'Pending',
       filterAccepted: 'Accepted',
       filterRejected: 'Rejected',
-      filterCancelled: 'Cancelled',
+      filterExpired: 'Expired',
       status: {
         pending: 'Pending',
         accepted: 'Accepted',

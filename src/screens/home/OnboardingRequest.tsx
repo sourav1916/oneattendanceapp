@@ -43,7 +43,7 @@ const STATUS_FILTERS: Array<{ key: string; labelKey: string }> = [
     { key: 'pending', labelKey: 'home.onboarding.filterPending' },
     { key: 'accepted', labelKey: 'home.onboarding.filterAccepted' },
     { key: 'rejected', labelKey: 'home.onboarding.filterRejected' },
-    { key: 'cancelled', labelKey: 'home.onboarding.filterCancelled' },
+    { key: 'expired', labelKey: 'home.onboarding.filterExpired' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -119,6 +119,26 @@ function formatDate(date: string): string {
     });
 }
 
+function formatMoney(value: string | number | null | undefined): string {
+    if (value === null || value === undefined || value === '') {
+        return 'N/A';
+    }
+    const numeric = typeof value === 'number' ? value : Number(value);
+    if (Number.isNaN(numeric)) {
+        return String(value);
+    }
+    return new Intl.NumberFormat('en-IN', {
+        maximumFractionDigits: 0,
+    }).format(numeric);
+}
+
+function formatEffectiveDate(value: string | null | undefined): string {
+    if (!value) {
+        return 'N/A';
+    }
+    return formatDate(value);
+}
+
 function resolveLogoUrl(url: string | null): string | null {
     if (!url || !url.trim()) {
         return null;
@@ -160,8 +180,7 @@ function statusColor(
             return scheme === 'dark'
                 ? { bg: 'rgba(34,197,94,0.15)', fg: '#4ade80' }
                 : { bg: '#f0fdf4', fg: '#15803d' };
-        case 'rejected':
-        case 'cancelled':
+        case 'rejected':        
             return scheme === 'dark'
                 ? { bg: 'rgba(148,163,184,0.15)', fg: '#94a3b8' }
                 : { bg: '#f8fafc', fg: '#64748b' };
@@ -175,8 +194,16 @@ function statusColor(
 function locationString(
     city: string | null,
     state: string | null,
+    country?: string | null,
 ): string {
-    return [city, state].filter(Boolean).join(', ') || 'N/A';
+    const parts = [city, state].filter(Boolean);
+    if (parts.length > 0) {
+        return parts.join(', ');
+    }
+    if (country) {
+        return country;
+    }
+    return 'N/A';
 }
 
 // ---------------------------------------------------------------------------
@@ -419,6 +446,10 @@ function DetailModal({
         },
         { label: t('home.onboarding.detail.sentDate'), value: formatDate(invite.created_at) },
         { label: t('home.onboarding.detail.expiresAt'), value: formatDate(invite.expires_at) },
+        { label: 'Base Amount', value: formatMoney(invite.base_amount) },
+        { label: 'Effective From', value: formatEffectiveDate(invite.effective_from) },
+        { label: 'Effective To', value: formatEffectiveDate(invite.effective_to) },
+        { label: 'Joining Date', value: formatEffectiveDate(invite.joining_date) },
     ];
 
     return (
@@ -469,7 +500,7 @@ function DetailModal({
                                 <View style={sty.companyTextCol}>
                                     <Text style={sty.companyName}>{invite.company.name}</Text>
                                     <Text style={sty.companyLocation}>
-                                        {locationString(invite.company.city, invite.company.state)}
+                                        {locationString(invite.company.city, invite.company.state, invite.company.country)}
                                     </Text>
                                 </View>
                             </View>
@@ -510,13 +541,60 @@ function DetailModal({
                             <View style={sty.sectionCard}>
                                 {infoRows.map((row, idx) => (
                                     <View
-                                        key={row.label}
+                                        key={`info-${idx}-${row.label}`}
                                         style={[sty.infoRow, idx > 0 && sty.infoRowBorder]}>
                                         <Text style={sty.infoLabel}>{row.label}</Text>
                                         <Text style={sty.infoValue}>{row.value}</Text>
                                     </View>
                                 ))}
                             </View>
+
+                            {/* Salary details */}
+                            {(invite.base_amount || invite.effective_from || invite.effective_to || invite.joining_date || invite.salary_components?.length) ? (
+                                <CollapsibleSection
+                                    title="Salary Details"
+                                    count={(invite.salary_components?.length ?? 0).toString()}
+                                    colors={colors}
+                                    scheme={scheme}>
+                                    <View style={sty.collapsibleItem}>
+                                        <Text style={sty.collapsibleItemText}>Base Amount</Text>
+                                        <Text style={sty.collapsibleItemSub}>{formatMoney(invite.base_amount)}</Text>
+                                    </View>
+                                    <View style={sty.collapsibleItem}>
+                                        <Text style={sty.collapsibleItemText}>Effective From</Text>
+                                        <Text style={sty.collapsibleItemSub}>{formatEffectiveDate(invite.effective_from)}</Text>
+                                    </View>
+                                    <View style={sty.collapsibleItem}>
+                                        <Text style={sty.collapsibleItemText}>Effective To</Text>
+                                        <Text style={sty.collapsibleItemSub}>{formatEffectiveDate(invite.effective_to)}</Text>
+                                    </View>
+                                    <View style={sty.collapsibleItem}>
+                                        <Text style={sty.collapsibleItemText}>Joining Date</Text>
+                                        <Text style={sty.collapsibleItemSub}>{formatEffectiveDate(invite.joining_date)}</Text>
+                                    </View>
+                                    {invite.salary_components?.length ? (
+                                        <View style={sty.collapsibleSectionGroup}>
+                                            {invite.salary_components.map((component, idx) => (
+                                                <View key={`component-${idx}-${component.component_id ?? component.id ?? idx}`} style={sty.componentRow}>
+                                                    <View style={sty.componentHeader}>
+                                                        <Text style={sty.componentName}>{component.component_name || 'Salary Component'}</Text>
+                                                        <Text style={sty.componentCode}>{component.component_code || 'N/A'}</Text>
+                                                    </View>
+                                                    <View style={sty.componentMeta}>
+                                                        <Text style={sty.componentType}>{component.calc_type || 'N/A'}</Text>
+                                                        <Text style={sty.componentValue}>
+                                                            {component.calc_type === 'percentage'
+                                                                ? `${component.calc_value}%`
+                                                                : formatMoney(component.calc_value as string | number | null | undefined)}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    ) : null}
+                                </CollapsibleSection>
+                            ) : null}
+
 
                             {/* Weekends */}
                             {invite.weekends.length > 0 ? (
@@ -527,8 +605,8 @@ function DetailModal({
                                     })}
                                     colors={colors}
                                     scheme={scheme}>
-                                    {invite.weekends.map(w => (
-                                        <View key={w.day} style={sty.collapsibleItem}>
+                                    {invite.weekends.map((w, idx) => (
+                                        <View key={`weekend-${idx}-${w.day}`} style={sty.collapsibleItem}>
                                             <Text style={sty.collapsibleItemText}>
                                                 {formatDisplay(w.day)}
                                             </Text>
@@ -553,8 +631,8 @@ function DetailModal({
                                     })}
                                     colors={colors}
                                     scheme={scheme}>
-                                    {invite.permissions.map(p => (
-                                        <View key={p.id} style={sty.collapsibleItem}>
+                                    {invite.permissions.map((p, idx) => (
+                                        <View key={`permission-${idx}-${p.id}`} style={sty.collapsibleItem}>
                                             <Text style={sty.collapsibleItemText}>
                                                 {formatDisplay(p.name)}
                                             </Text>
@@ -572,8 +650,8 @@ function DetailModal({
                                     })}
                                     colors={colors}
                                     scheme={scheme}>
-                                    {invite.attendance_methods.map(m => (
-                                        <View key={m.method} style={sty.collapsibleItem}>
+                                    {invite.attendance_methods.map((m, idx) => (
+                                        <View key={`attendance-method-${idx}-${m.method}`} style={sty.collapsibleItem}>
                                             <Text style={sty.collapsibleItemText}>
                                                 {formatDisplay(m.method)}
                                             </Text>
@@ -823,6 +901,52 @@ function buildDetailStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
         collapsibleItemSub: {
             fontSize: 12,
             color: colors.textMuted,
+        },
+        collapsibleSectionGroup: {
+            gap: 8,
+            marginTop: 10,
+        },
+        componentRow: {
+            borderRadius: 8,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: colors.border,
+            backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc',
+            padding: 10,
+        },
+        componentHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+        },
+        componentName: {
+            fontSize: 12,
+            fontWeight: '700',
+            color: colors.text,
+            flex: 1,
+        },
+        componentCode: {
+            fontSize: 11,
+            color: colors.textMuted,
+            fontWeight: '600',
+            textTransform: 'uppercase',
+        },
+        componentMeta: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            marginTop: 6,
+        },
+        componentType: {
+            fontSize: 11,
+            color: colors.textMuted,
+            textTransform: 'capitalize',
+        },
+        componentValue: {
+            fontSize: 12,
+            color: colors.primary,
+            fontWeight: '700',
         },
         sheetFooter: {
             flexDirection: 'row',
@@ -1100,7 +1224,7 @@ export function OnboardingRequestScreen({ navigation }: Props): React.JSX.Elemen
                                 {item.company.name}
                             </Text>
                             <Text style={styles.cardLocation} numberOfLines={1}>
-                                {locationString(item.company.city, item.company.state)}
+                                {locationString(item.company.city, item.company.state, item.company.country)}
                             </Text>
                         </View>
                         <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
