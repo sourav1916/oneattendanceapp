@@ -24,5 +24,5 @@ export type FaceEnrollCheckResponse = {
 
 export type CheckFaceEnrollPayload = {
   employee_id: number;
-  image: string;
+  embedding: number[];
 };

@@ -23,14 +23,11 @@ import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import { useFaceCaptureCamera } from '@src/hooks/useFaceCaptureCamera';
 import type { PendingStatusAlert } from '@src/navigation/faceCaptureNavigation';
 import type { AppThemeColors } from '@src/theme/palettes';
-import {
-  uploadFileToOneSaas,
-  type UploadableFile,
-} from '@src/utils/FileUpload';
 import { parseFaceEnrollCheckResult } from '@src/utils/parseFaceEnrollCheckResult';
 import { readApiError } from '@src/utils/readApiError';
 import { isCameraCaptureFailure } from '@src/utils/isCameraCaptureFailure';
 import { saveCameraPhotoForUpload } from '@src/utils/saveCameraPhotoForUpload';
+import { generateFaceEmbedding } from '@src/utils/faceEmbedding';
 
 export type FaceEnrollCaptureModalProps = {
   visible: boolean;
@@ -346,7 +343,7 @@ export function FaceEnrollCaptureModal({
   );
 
   const submitFaceImage = useCallback(
-    async (image: string) => {
+    async (embedding: number[]) => {
       if (companyId == null) {
         return;
       }
@@ -358,7 +355,7 @@ export function FaceEnrollCaptureModal({
         if (isCheckMode) {
           const res = await checkEmployeeFaceEnroll(companyId, {
             employee_id: employeeId,
-            image,
+            embedding,
           });
           if (!res.success) {
             logFaceEnrollError('checkApi', res.message ?? res);
@@ -413,7 +410,7 @@ export function FaceEnrollCaptureModal({
 
         const res = await setEmployeeFaceEnroll(companyId, {
           employee_id: employeeId,
-          image,
+          embedding,
         });
         if (!res.success) {
           logFaceEnrollError('enrollApi', res.message ?? res);
@@ -470,15 +467,11 @@ export function FaceEnrollCaptureModal({
         return saveCameraPhotoForUpload(photo);
       })
       .then(path => {
-        pipelineStageRef.current = 'upload';
-        setPipelineStage('upload');
-        return uploadFileToOneSaas(uploadableFileFromLocalPath(path));
-      })
-      .then(imageUrl => {
         pipelineStageRef.current = 'api';
         setPipelineStage('api');
-        return submitFaceImage(imageUrl);
+        return generateFaceEmbedding(path);
       })
+      .then(embedding => submitFaceImage(embedding))
       .catch(err => {
         const stage = pipelineStageRef.current;
         const message = readApiError(err);

@@ -1,6 +1,6 @@
 export type SetFaceEnrollPayload = {
   employee_id: number;
-  image: string;
+  embedding: number[];
 };
 
 export type SetFaceEnrollResponse = {

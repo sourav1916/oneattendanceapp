@@ -6,7 +6,7 @@ export type FaceAttendanceActionType =
 
 export type FaceAttendanceCheckPayload = {
   type: FaceAttendanceActionType;
-  image: string;
+  embedding: number[];
 };
 
 /** Employee fields returned in `data` (allowed) or `errors` (not allowed). */
@@ -33,7 +33,7 @@ export type FaceAttendanceCheckResponse = {
 
 export type FaceAttendanceMarkPayload = {
   type: FaceAttendanceActionType;
-  image: string;
+  embedding: number[];
   employee_id: number;
 };
 

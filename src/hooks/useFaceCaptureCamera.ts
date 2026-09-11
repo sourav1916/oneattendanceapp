@@ -62,6 +62,7 @@ export function useFaceCaptureCamera({
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
   const [faceReady, setFaceReady] = useState(false);
   const [multipleFaces, setMultipleFaces] = useState(false);
+  const [livenessReady, setLivenessReady] = useState(false);
 
   const captureBusyRef = useRef(captureBusy);
   captureBusyRef.current = captureBusy;
@@ -71,6 +72,7 @@ export function useFaceCaptureCamera({
   const torchApplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const torchEnabledOnDeviceRef = useRef(false);
   const autoCaptureFiredRef = useRef(false);
+  const eyesClosedRef = useRef(false);
   const onAutoCaptureRef = useRef(onAutoCapture);
   onAutoCaptureRef.current = onAutoCapture;
 
@@ -208,7 +210,7 @@ export function useFaceCaptureCamera({
   }, [canUseTorch, device?.id, disableTorchOnDevice]);
 
   const canCapture =
-    faceReady && !multipleFaces && previewReady && !captureBusy;
+    faceReady && livenessReady && !multipleFaces && previewReady && !captureBusy;
 
   useEffect(() => {
     if (!faceReady || multipleFaces || captureBusy) {
@@ -230,6 +232,7 @@ export function useFaceCaptureCamera({
         autoCaptureFiredRef.current ||
         !cameraActiveRef.current ||
         !faceReady ||
+        !livenessReady ||
         multipleFaces
       ) {
         return;
@@ -241,11 +244,13 @@ export function useFaceCaptureCamera({
     return () => {
       clearTimeout(timer);
     };
-  }, [autoCapture, canCapture, faceReady, multipleFaces]);
+  }, [autoCapture, canCapture, faceReady, livenessReady, multipleFaces]);
 
   const resetFaceStability = useCallback(() => {
     setFaceReady(false);
     setMultipleFaces(false);
+    setLivenessReady(false);
+    eyesClosedRef.current = false;
   }, []);
 
   const onFacesDetected = useCallback(
@@ -268,6 +273,17 @@ export function useFaceCaptureCamera({
         return;
       }
       setMultipleFaces(false);
+      const leftEye = face.leftEyeOpenProbability;
+      const rightEye = face.rightEyeOpenProbability;
+      if (leftEye != null && rightEye != null) {
+        const eyesOpen = leftEye > 0.65 && rightEye > 0.65;
+        const eyesClosed = leftEye < 0.25 && rightEye < 0.25;
+        if (eyesClosed) {
+          eyesClosedRef.current = true;
+        } else if (eyesOpen && eyesClosedRef.current) {
+          setLivenessReady(true);
+        }
+      }
       const area = face.bounds.width * face.bounds.height;
       const frameArea = previewWidth * previewHeight;
       if (frameArea > 0 && area / frameArea < MIN_FACE_RATIO) {
@@ -287,7 +303,7 @@ export function useFaceCaptureCamera({
     windowHeight: faceDetectorWindow.height,
     runLandmarks: false,
     runContours: false,
-    runClassifications: false,
+    runClassifications: true,
     performanceMode: 'fast',
     cameraFacing: cameraPosition,
   });
@@ -345,6 +361,7 @@ export function useFaceCaptureCamera({
     previewHeight,
     cameraActive,
     faceReady,
+    livenessReady,
     multipleFaces,
     canCapture,
     handleCameraLayout,

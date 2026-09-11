@@ -33,10 +33,6 @@ import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
 import { useFaceCaptureCamera } from '@src/hooks/useFaceCaptureCamera';
 import type { AppThemeColors } from '@src/theme/palettes';
 import type { FaceAttendanceActionType } from '@src/types/faceAttendance';
-import {
-  uploadFileToOneSaas,
-  type UploadableFile,
-} from '@src/utils/FileUpload';
 import { faceAttendanceActionLabel } from '@src/utils/faceAttendanceActions';
 import { humanizeLedgerKey } from '@src/utils/ledgerFormat';
 import {
@@ -48,6 +44,7 @@ import { readApiError } from '@src/utils/readApiError';
 import { resolveMediaUrl } from '@src/utils/resolveMediaUrl';
 import { isCameraCaptureFailure } from '@src/utils/isCameraCaptureFailure';
 import { saveCameraPhotoForUpload } from '@src/utils/saveCameraPhotoForUpload';
+import { generateFaceEmbedding } from '@src/utils/faceEmbedding';
 
 export type FaceAttendanceCaptureModalProps = {
   visible: boolean;
@@ -63,7 +60,7 @@ const AVATAR_SIZE = 80;
 
 type ScreenPhase = 'camera' | 'confirm';
 
-type PendingMatch = FaceAttendanceMatchedEmployee & { imageUrl: string };
+type PendingMatch = FaceAttendanceMatchedEmployee & { embedding: number[] };
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -544,7 +541,7 @@ export function FaceAttendanceCaptureModal({
   }, [pipelineStage, t]);
 
   const runFaceCheck = useCallback(
-    async (imageUrl: string) => {
+    async (embedding: number[]) => {
       if (companyId == null) {
         return;
       }
@@ -552,7 +549,7 @@ export function FaceAttendanceCaptureModal({
       try {
         res = await postFaceAttendanceCheck(companyId, {
           type: action,
-          image: imageUrl,
+          embedding,
         });
       } catch (err) {
         const fromAxios = faceAttendanceCheckFromAxiosError(err);
@@ -564,7 +561,7 @@ export function FaceAttendanceCaptureModal({
       }
       const parsed = parseFaceAttendanceCheckResponse(res);
       if (parsed.kind === 'allowed') {
-        setPendingMatch({ ...parsed.employee, imageUrl });
+        setPendingMatch({ ...parsed.employee, embedding });
         setPhase('confirm');
         return;
       }
@@ -600,15 +597,11 @@ export function FaceAttendanceCaptureModal({
         return saveCameraPhotoForUpload(photo);
       })
       .then(path => {
-        pipelineStageRef.current = 'upload';
-        setPipelineStage('upload');
-        return uploadFileToOneSaas(uploadableFileFromLocalPath(path));
-      })
-      .then(imageUrl => {
         pipelineStageRef.current = 'api';
         setPipelineStage('api');
-        return runFaceCheck(imageUrl);
+        return generateFaceEmbedding(path);
       })
+      .then(embedding => runFaceCheck(embedding))
       .catch(err => {
         const stage = pipelineStageRef.current;
         const message = readApiError(err);
@@ -659,7 +652,7 @@ export function FaceAttendanceCaptureModal({
     try {
       const res = await postFaceAttendance(companyId, {
         type: action,
-        image: pendingMatch.imageUrl,
+        embedding: pendingMatch.embedding,
         employee_id: pendingMatch.employeeId,
       });
       if (!res.success) {
