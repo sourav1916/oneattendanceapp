@@ -1257,12 +1257,6 @@ function ViewDetailsModal({
                           style={[styles.chip, styles.chipWeekend]}>
                           <Text style={styles.chipWeekendText}>
                             {formatLabel(w.day)}
-                            {' Â· '}
-                            {w.type === 'full'
-                              ? t('home.companyInvites.viewModal.full')
-                              : w.type === 'half'
-                                ? t('home.companyInvites.viewModal.half')
-                                : t('home.companyInvites.viewModal.na')}
                           </Text>
                         </View>
                       ),

@@ -14,7 +14,6 @@ export type CompanyInviteInvitedBy = {
 
 export type CompanyInviteWeekend = {
   day: string;
-  type: 'full' | 'half' | string;
 };
 
 export type CompanyInviteAttendanceMethod = {

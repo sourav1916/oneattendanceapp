@@ -605,10 +605,10 @@ function DetailModal({
                                     })}
                                     colors={colors}
                                     scheme={scheme}>
-                                    {invite.weekends.map((w, idx) => (
-                                        <View key={`weekend-${idx}-${w.day}`} style={sty.collapsibleItem}>
+                                    {invite.weekends.map((weekend, idx) => (
+                                        <View key={`weekend-${idx}-${typeof weekend === 'string' ? weekend : weekend.day}`} style={sty.collapsibleItem}>
                                             <Text style={sty.collapsibleItemText}>
-                                                {formatDisplay(w.day)}
+                                                {formatDisplay(typeof weekend === 'string' ? weekend : weekend.day)}
                                             </Text>
                                         </View>
                                     ))}
@@ -643,16 +643,11 @@ function DetailModal({
                                     })}
                                     colors={colors}
                                     scheme={scheme}>
-                                    {invite.attendance_methods.map((m, idx) => (
-                                        <View key={`attendance-method-${idx}-${m.method}`} style={sty.collapsibleItem}>
+                                    {invite.attendance_methods.map((method, idx) => (
+                                        <View key={`attendance-method-${idx}-${typeof method === 'string' ? method : method.method}`} style={sty.collapsibleItem}>
                                             <Text style={sty.collapsibleItemText}>
-                                                {formatDisplay(m.method)}
+                                                {formatDisplay(typeof method === 'string' ? method : method.method)}
                                             </Text>
-                                            {m.is_auto ? (
-                                                <Text style={sty.collapsibleItemSub}>
-                                                    {t('home.onboarding.detail.auto')}
-                                                </Text>
-                                            ) : null}
                                         </View>
                                     ))}
                                 </CollapsibleSection>
@@ -1327,7 +1322,7 @@ export function OnboardingRequestScreen({ navigation }: Props): React.JSX.Elemen
     );
 
     const keyExtractor = useCallback(
-        (item: InviteRecord) => item.invite_id,
+        (item: InviteRecord) => String(item.invite_id),
         [],
     );
 

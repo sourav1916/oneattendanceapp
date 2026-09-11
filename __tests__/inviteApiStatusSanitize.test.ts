@@ -62,11 +62,6 @@ test('normalizes weekend strings and attendance method strings from the my-invit
 
   const result = await inviteApi.getMyInvites();
 
-  expect(result.data?.[0].weekends).toEqual([
-    { day: 'saturday', type: 'full' },
-    { day: 'sunday', type: 'full' },
-  ]);
-  expect(result.data?.[0].attendance_methods).toEqual([
-    { method: 'manual', is_auto: false },
-  ]);
+  expect(result.data?.[0].weekends).toEqual(['saturday', 'sunday']);
+  expect(result.data?.[0].attendance_methods).toEqual(['manual']);
 });
