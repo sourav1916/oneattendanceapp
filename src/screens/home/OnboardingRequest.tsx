@@ -610,13 +610,6 @@ function DetailModal({
                                             <Text style={sty.collapsibleItemText}>
                                                 {formatDisplay(w.day)}
                                             </Text>
-                                            <Text style={sty.collapsibleItemSub}>
-                                                {w.type === 'full'
-                                                    ? t('home.onboarding.detail.full')
-                                                    : w.type === 'half'
-                                                        ? t('home.onboarding.detail.half')
-                                                        : formatDisplay(w.type)}
-                                            </Text>
                                         </View>
                                     ))}
                                 </CollapsibleSection>
