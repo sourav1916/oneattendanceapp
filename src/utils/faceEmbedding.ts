@@ -4,6 +4,8 @@ type FaceEmbeddingNativeModule = {
   generateEmbedding(path: string): Promise<number[]>;
 };
 
+export const FACE_EMBEDDING_DIMENSION = 512;
+
 const nativeModule = (NativeModules as Record<string, unknown>)
   .OneAttendanceFaceEmbedding as FaceEmbeddingNativeModule | undefined;
 
@@ -15,16 +17,23 @@ const nativeModule = (NativeModules as Record<string, unknown>)
 export async function generateFaceEmbedding(path: string): Promise<number[]> {
   if (!nativeModule?.generateEmbedding) {
     throw new Error(
-      'Face embedding is unavailable. Install the OneAttendanceFaceEmbedding native module.',
+      'Face embedding is unavailable in this app binary. Rebuild the Android app after enabling the OneAttendanceFaceEmbedding native module.',
     );
   }
   const embedding = await nativeModule.generateEmbedding(path);
   if (
     !Array.isArray(embedding) ||
-    embedding.length < 8 ||
+    embedding.length !== FACE_EMBEDDING_DIMENSION ||
     embedding.some(value => !Number.isFinite(Number(value)))
   ) {
-    throw new Error('The device returned an invalid face embedding.');
+    throw new Error(
+      `The device returned an invalid face embedding (expected ${FACE_EMBEDDING_DIMENSION} values).`,
+    );
   }
-  return embedding.map(Number);
+  const numeric = embedding.map(Number);
+  const norm = Math.sqrt(numeric.reduce((sum, value) => sum + value * value, 0));
+  if (!Number.isFinite(norm) || norm <= 0) {
+    throw new Error('The device returned an invalid face embedding norm.');
+  }
+  return numeric.map(value => value / norm);
 }

@@ -7,7 +7,12 @@ export function readApiError(err: unknown): string {
 
   const body = err.response?.data;
   if (typeof body === 'string' && body.trim()) {
-    return body;
+    const text = body.trim();
+    // Host/CDN error pages are HTML, not actionable API messages.
+    if (/<\/?(html|head|body|script)\b/i.test(text)) {
+      return `Server rejected the request (HTTP ${err.response?.status ?? 'error'}). Please try again.`;
+    }
+    return text;
   }
   if (body && typeof body === 'object') {
     const o = body as { message?: unknown; error?: unknown };

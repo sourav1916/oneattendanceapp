@@ -41,6 +41,7 @@ export function verifyLoginOtp(params: VerifyLoginOtpParams) {
     url: `${API_ENDPOINT}/auth/login/verify-otp`,
     headers: {
       'Content-Type': 'application/json',
+      Accept: 'application/json',
     },
     data,
   });

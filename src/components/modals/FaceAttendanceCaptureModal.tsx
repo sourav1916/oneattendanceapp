@@ -75,15 +75,6 @@ function getInitials(name: string): string {
   return ch ? ch.toUpperCase() : '?';
 }
 
-function uploadableFileFromLocalPath(path: string): UploadableFile {
-  const uri = path.startsWith('file://') ? path : `file://${path}`;
-  return {
-    uri,
-    mimeType: 'image/jpeg',
-    fileName: `face-attendance-${Date.now()}.jpg`,
-  };
-}
-
 function buildCameraStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   const dark = scheme === 'dark';
   return StyleSheet.create({
@@ -590,19 +581,18 @@ export function FaceAttendanceCaptureModal({
     }
     captureBusyRef.current = true;
     pipelineStageRef.current = 'photo';
-    photoOutput
-      .capturePhoto(capturePhotoSettings, {})
-      .then(photo => {
+    (async () => {
+      try {
+        const photo = await photoOutput.capturePhoto(capturePhotoSettings, {});
         setPipelineStage('photo');
-        return saveCameraPhotoForUpload(photo);
-      })
-      .then(path => {
+        pipelineStageRef.current = 'upload';
+        setPipelineStage('upload');
+        const path = await saveCameraPhotoForUpload(photo);
         pipelineStageRef.current = 'api';
         setPipelineStage('api');
-        return generateFaceEmbedding(path);
-      })
-      .then(embedding => runFaceCheck(embedding))
-      .catch(err => {
+        const embedding = await generateFaceEmbedding(path);
+        await runFaceCheck(embedding);
+      } catch (err) {
         const stage = pipelineStageRef.current;
         const message = readApiError(err);
         const captureFailed =
@@ -618,12 +608,12 @@ export function FaceAttendanceCaptureModal({
             ? t('home.faceAttendance.errors.captureMessage')
             : message,
         });
-      })
-      .finally(() => {
+      } finally {
         captureBusyRef.current = false;
         pipelineStageRef.current = 'photo';
         setPipelineStage('idle');
-      });
+      }
+    })();
   }, [
     canCapture,
     capturePhotoSettings,

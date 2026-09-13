@@ -8,14 +8,19 @@ Attach when working on **face enroll list/capture**, **face check**, upload + `/
 
 ## Overview
 
-Face enrollment is **server-side**: the app uploads a **JPEG URL** to OneSaaS upload, then calls attendance API with `{ employee_id, image }`. There is **no** client-side face descriptor / `face_data` / face-api.js / TensorFlow on device.
+Face enrollment & check use an **on-device native embedding pipeline** (Android):
+1. **Live Face Detection**: Google ML Kit (`react-native-vision-camera-face-detector` during preview, and native ML Kit `FaceDetection` on captured image).
+2. **On-Device Embedding**: Native `FaceEmbeddingModule.kt` crops the face with a 15% margin and passes it through a 512-dimensional FaceNet TFLite model (`face_embedding.tflite`), returning a normalized 512-D float vector.
+3. **Server Verification**: The client sends the 512-D vector to the backend server, which computes cosine similarity against enrolled employee embeddings (match threshold: 0.75).
 
 | Step | Where |
 |------|--------|
 | List employees + enroll status | `FaceEnrollList.tsx` |
-| Capture + upload + API | `FaceEnrollCapture.tsx` |
+| Capture + embedding + API | `FaceEnrollCaptureModal.tsx` / `FaceAttendanceCaptureModal.tsx` |
 | Live “face ready” hint | ML Kit via `react-native-vision-camera-face-detector` |
-| Oriented JPEG for upload | `saveCameraPhotoForUpload.ts` (Vision Camera `Photo.toImageAsync` → nitro-image save) |
+| Oriented JPEG for upload/storage | `saveCameraPhotoForUpload.ts` |
+| On-device 512-D embedding | `FaceEmbeddingModule.kt` + `face_embedding.tflite` |
+| Server matching & cosine check | `oneattendanceserver/utils/faceCheckUtil.js` |
 
 **Entry:** Home → Employee Management → **Face enrollment** → list → **Set up face** / **Check face**.
 

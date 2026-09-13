@@ -30,6 +30,11 @@ export function parseAuthSessionResponse(
     return null;
   }
 
+  const token = rawToken.replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    return null;
+  }
+
   let userEmail = fallbackEmail.trim();
   let userName = '';
   const user = payload.user ?? root.user;
@@ -44,7 +49,7 @@ export function parseAuthSessionResponse(
   }
 
   return {
-    token: rawToken,
+    token,
     email: userEmail,
     name: userName,
   };

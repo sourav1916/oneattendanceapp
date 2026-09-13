@@ -33,6 +33,7 @@ export function requestLoginOtp(params: RequestLoginOtpParams) {
     url: `${API_ENDPOINT}/auth/login/request-otp`,
     headers: {
       'Content-Type': 'application/json',
+      Accept: 'application/json',
     },
     data,
   });

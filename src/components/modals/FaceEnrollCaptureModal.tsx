@@ -172,15 +172,6 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   });
 }
 
-function uploadableFileFromLocalPath(path: string): UploadableFile {
-  const uri = path.startsWith('file://') ? path : `file://${path}`;
-  return {
-    uri,
-    mimeType: 'image/jpeg',
-    fileName: `face-enroll-${Date.now()}.jpg`,
-  };
-}
-
 export function FaceEnrollCaptureModal({
   visible,
   employeeId,
@@ -460,19 +451,18 @@ export function FaceEnrollCaptureModal({
     }
     captureBusyRef.current = true;
     pipelineStageRef.current = 'photo';
-    photoOutput
-      .capturePhoto(capturePhotoSettings, {})
-      .then(photo => {
+    (async () => {
+      try {
+        const photo = await photoOutput.capturePhoto(capturePhotoSettings, {});
         setPipelineStage('photo');
-        return saveCameraPhotoForUpload(photo);
-      })
-      .then(path => {
+        pipelineStageRef.current = 'upload';
+        setPipelineStage('upload');
+        const path = await saveCameraPhotoForUpload(photo);
         pipelineStageRef.current = 'api';
         setPipelineStage('api');
-        return generateFaceEmbedding(path);
-      })
-      .then(embedding => submitFaceImage(embedding))
-      .catch(err => {
+        const embedding = await generateFaceEmbedding(path);
+        await submitFaceImage(embedding);
+      } catch (err) {
         const stage = pipelineStageRef.current;
         const message = readApiError(err);
         const captureFailed =
@@ -493,12 +483,12 @@ export function FaceEnrollCaptureModal({
             ? t('home.faceAttendance.errors.captureMessage')
             : message,
         });
-      })
-      .finally(() => {
+      } finally {
         captureBusyRef.current = false;
         pipelineStageRef.current = 'photo';
         setPipelineStage('idle');
-      });
+      }
+    })();
   }, [
     canCapture,
     capturePhotoSettings,
