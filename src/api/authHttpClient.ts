@@ -6,7 +6,7 @@ import { API_ENDPOINT } from '@src/utils/config';
  * Authenticated API transport: attaches Bearer from `getAccessToken`, and on **401**
  * runs `onUnauthorized` once (typically `signOut` → clears storage → root shows login).
  *
- * **Do not use** for public routes (login, OTP, register, password reset). Use `axios`
+ * **Do not use** for public routes (login, OTP, register). Use `axios`
  * or a dedicated client there so a 401 does not wipe the session.
  */
 export type ConfigureAuthHttpClientOptions = {

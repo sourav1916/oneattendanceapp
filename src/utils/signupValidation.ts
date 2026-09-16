@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 
 import { isValidEmail, isValidNationalMobile } from '@src/utils/loginIdentifier';
-import { validatePasswordWithConfirm } from '@src/utils/passwordPolicy';
 import type { SignupType } from '@src/types/signupAuth';
 
 export const SIGNUP_DEV_OTP_HINT = '123456';
@@ -43,8 +42,6 @@ export function validateSignupVerifyStep(params: {
   phone: string;
   otp: string;
   name: string;
-  password: string;
-  confirmPassword: string;
 }): string | null {
   const otp = params.otp.replace(/\D/g, '');
   if (otp.length !== 6) {
@@ -69,11 +66,6 @@ export function validateSignupVerifyStep(params: {
   const name = params.name.trim();
   if (!name) {
     return 'Full name is required.';
-  }
-
-  const passwordError = validatePasswordWithConfirm(params.password, params.confirmPassword);
-  if (passwordError) {
-    return passwordError;
   }
 
   return null;

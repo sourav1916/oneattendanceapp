@@ -14,10 +14,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { buildRequestSignupOtpParams, requestSignupOtp } from '@src/api/requestSignupOtp';
 import { verifySignupOtp } from '@src/api/verifySignupOtp';
-import {
-  SvgEyeOffOutline,
-  SvgEyeOutline,
-} from '@src/components/icons/PasswordVisibilityIcon';
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
 import { useAuth } from '@src/context/AuthContext';
 import { useAppTheme, useThemeColors } from '@src/context/ThemeContext';
@@ -27,11 +23,6 @@ import { buildAuthScreenStyles } from '@src/theme/authScreenVisuals';
 import { tryOptionalLocationCoords } from '@src/utils/optionalLocationCoords';
 import type { SignupType } from '@src/types/signupAuth';
 import { parseAuthSessionResponse } from '@src/utils/parseAuthSessionResponse';
-import {
-  analyzePasswordPolicy,
-  isPasswordPolicySatisfied,
-  type PasswordPolicyAnalysis,
-} from '@src/utils/passwordPolicy';
 import { readApiError } from '@src/utils/readApiError';
 import {
   getSignupPlatform,
@@ -47,15 +38,6 @@ type RegisterStep = 'contact' | 'verify';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SEC = 30;
-
-const PASSWORD_RULE_ROWS: { key: keyof Omit<PasswordPolicyAnalysis, 'noEdgeSpaces'>; label: string }[] =
-  [
-    { key: 'minLength', label: '8+ characters' },
-    { key: 'upper', label: 'Uppercase letter' },
-    { key: 'lower', label: 'Lowercase letter' },
-    { key: 'digit', label: 'Number' },
-    { key: 'special', label: 'Special character' },
-  ];
 
 export function RegisterScreen({ navigation }: Props) {
   const colors = useThemeColors();
@@ -78,10 +60,6 @@ export function RegisterScreen({ navigation }: Props) {
   const [digits, setDigits] = useState<string[]>(() => Array(OTP_LENGTH).fill(''));
   const otpInputsRef = useRef<Array<TextInput | null>>([]);
   const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
   const [sendOtpLoading, setSendOtpLoading] = useState(false);
   const [verifySubmitting, setVerifySubmitting] = useState(false);
@@ -296,8 +274,6 @@ export function RegisterScreen({ navigation }: Props) {
       phone: activePhone,
       otp,
       name,
-      password,
-      confirmPassword,
     });
 
     if (validationError) {
@@ -309,7 +285,6 @@ export function RegisterScreen({ navigation }: Props) {
     try {
       const coords = await tryOptionalLocationCoords();
       const verifyBase = {
-        password,
         otp,
         name: name.trim(),
         platform: getSignupPlatform(),
@@ -346,15 +321,6 @@ export function RegisterScreen({ navigation }: Props) {
   const codeComplete = digits.every(d => d.length === 1);
   const resendBlocked = secondsLeft > 0 || resendLoading;
 
-  const passwordAnalysis = useMemo(() => analyzePasswordPolicy(password), [password]);
-
-  const passwordsMatch = useMemo(() => {
-    if (!password || !confirmPassword) {
-      return false;
-    }
-    return password === confirmPassword;
-  }, [password, confirmPassword]);
-
   const isVerifyFormValid = useMemo(() => {
     if (!codeComplete) {
       return false;
@@ -362,27 +328,8 @@ export function RegisterScreen({ navigation }: Props) {
     if (!name.trim()) {
       return false;
     }
-    if (!isPasswordPolicySatisfied(passwordAnalysis)) {
-      return false;
-    }
-    if (!confirmPassword) {
-      return false;
-    }
-    return passwordsMatch;
-  }, [codeComplete, name, passwordAnalysis, confirmPassword, passwordsMatch]);
-
-  const ruleStatusStyle = useCallback(
-    (ok: boolean, showFailure: boolean) => {
-      if (ok) {
-        return styles.ruleMet;
-      }
-      if (showFailure) {
-        return styles.ruleFail;
-      }
-      return styles.ruleNeutral;
-    },
-    [styles.ruleMet, styles.ruleFail, styles.ruleNeutral],
-  );
+    return true;
+  }, [codeComplete, name]);
 
   const verifyDisabled = verifySubmitting || !isVerifyFormValid;
 
@@ -562,96 +509,6 @@ export function RegisterScreen({ navigation }: Props) {
                     autoComplete="name"
                     style={styles.input}
                   />
-                </View>
-
-                <View style={styles.field}>
-                  <Text style={styles.label}>Password</Text>
-                  <View style={styles.passwordField}>
-                    <TextInput
-                      value={password}
-                      onChangeText={text => {
-                        setPassword(text);
-                      }}
-                      placeholder="Create a strong password"
-                      placeholderTextColor={colors.textMuted}
-                      secureTextEntry={!passwordVisible}
-                      autoCapitalize="none"
-                      autoComplete="password-new"
-                      textContentType="newPassword"
-                      style={styles.passwordInput}
-                    />
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
-                      onPress={() => setPasswordVisible(v => !v)}
-                      style={({ pressed }) => [
-                        styles.passwordToggle,
-                        pressed && styles.passwordTogglePressed,
-                      ]}>
-                      {passwordVisible ? (
-                        <SvgEyeOffOutline size={22} color={colors.textMuted} />
-                      ) : (
-                        <SvgEyeOutline size={22} color={colors.textMuted} />
-                      )}
-                    </Pressable>
-                  </View>
-                  <View style={styles.requirementsBlock}>
-                    <Text style={styles.requirementsTitle}>Password must include</Text>
-                    {PASSWORD_RULE_ROWS.map(({ key, label }) => {
-                      const ok = passwordAnalysis[key];
-                      const showFailure = password.length > 0 && !ok;
-                      const status = ruleStatusStyle(ok, showFailure);
-                      return (
-                        <View key={key} style={styles.ruleRow}>
-                          <Text style={[styles.ruleBullet, status]}>{ok ? '✓' : '○'}</Text>
-                          <Text style={[styles.ruleLabel, status]}>{label}</Text>
-                        </View>
-                      );
-                    })}
-                    {password.length > 0 && !passwordAnalysis.noEdgeSpaces ? (
-                      <Text style={styles.confirmHint}>
-                        Remove leading or trailing spaces.
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-
-                <View style={styles.field}>
-                  <Text style={styles.label}>Confirm password</Text>
-                  <View style={styles.passwordField}>
-                    <TextInput
-                      value={confirmPassword}
-                      onChangeText={text => {
-                        setConfirmPassword(text);
-                      }}
-                      placeholder="Repeat password"
-                      placeholderTextColor={colors.textMuted}
-                      secureTextEntry={!confirmPasswordVisible}
-                      autoCapitalize="none"
-                      autoComplete="password-new"
-                      textContentType="newPassword"
-                      style={styles.passwordInput}
-                    />
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={
-                        confirmPasswordVisible ? 'Hide password' : 'Show password'
-                      }
-                      onPress={() => setConfirmPasswordVisible(v => !v)}
-                      style={({ pressed }) => [
-                        styles.passwordToggle,
-                        pressed && styles.passwordTogglePressed,
-                      ]}>
-                      {confirmPasswordVisible ? (
-                        <SvgEyeOffOutline size={22} color={colors.textMuted} />
-                      ) : (
-                        <SvgEyeOutline size={22} color={colors.textMuted} />
-                      )}
-                    </Pressable>
-                  </View>
-                  {confirmPassword.length > 0 && !passwordsMatch ? (
-                    <Text style={styles.confirmHint}>Passwords do not match.</Text>
-                  ) : null}
                 </View>
 
                 <Pressable

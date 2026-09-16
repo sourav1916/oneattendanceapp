@@ -6,7 +6,6 @@ import { API_ENDPOINT } from '../utils/config';
 
 export type VerifyLoginOtpParams = {
   loginType: LoginType;
-  password: string;
   otp: string;
   platform: AuthContinuePlatform;
   latitude: number;
@@ -22,7 +21,6 @@ export type VerifyLoginOtpParams = {
 export function verifyLoginOtp(params: VerifyLoginOtpParams) {
   const data: VerifyLoginOtpBody = {
     login_type: params.loginType,
-    password: params.password,
     otp: params.otp,
     platform: params.platform,
     latitude: params.latitude,

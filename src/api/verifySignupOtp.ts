@@ -10,7 +10,6 @@ import { API_ENDPOINT } from '../utils/config';
 import { normalizeSignupPhoneDigits } from '../utils/signupValidation';
 
 type VerifySignupOtpBaseParams = {
-  password: string;
   otp: string;
   name?: string;
   platform: SignupPlatform;
@@ -57,7 +56,6 @@ export function verifySignupOtp(params: VerifySignupOtpParams) {
         signup_type: 'email',
         email: params.email.trim().toLowerCase(),
         otp: params.otp.trim(),
-        password: params.password,
         platform: params.platform,
       },
       params,
@@ -68,7 +66,6 @@ export function verifySignupOtp(params: VerifySignupOtpParams) {
         signup_type: 'phone',
         phone: normalizeSignupPhoneDigits(params.phone),
         otp: params.otp.trim(),
-        password: params.password,
         platform: params.platform,
       },
       params,

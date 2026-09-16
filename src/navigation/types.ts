@@ -4,13 +4,11 @@ export type VerifyOtpRouteParams = {
   loginType: LoginType;
   /** Formatted email or phone (`+91 9876543210`) sent to the API. */
   identifier: string;
-  password: string;
 };
 
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
-  ForgotPassword: undefined;
   VerifyEmailOtp: VerifyOtpRouteParams;
 };
 
@@ -20,7 +18,6 @@ export type SettingsStackParamList = {
   Profile: undefined;
   EditProfile: undefined;
   Sessions: undefined;
-  ChangePassword: undefined;
   MyCalendar: undefined;
   Support: undefined;
   Subscription: undefined;

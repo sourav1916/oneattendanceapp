@@ -21,10 +21,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ConfirmAlert, useConfirmAlert } from '@src/components/modals/ConfirmAlert';
 import { CountryCodePicker } from '@src/components/modals/CountryCodePicker';
 import {
-  SvgEyeOffOutline,
-  SvgEyeOutline,
-} from '@src/components/icons/PasswordVisibilityIcon';
-import {
   SocialLoginIcon,
   type SocialBrand,
 } from '@src/components/icons/SocialLoginIcon';
@@ -82,9 +78,6 @@ export function LoginScreen({ navigation }: Props) {
   const [selectedCountry, setSelectedCountry] = useState<LoginCountry>(DEFAULT_LOGIN_COUNTRY);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [password, setPassword] = useState('');
-  /** false = bullets (default); toggle eye to show plaintext. */
-  const [passwordVisible, setPasswordVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [truecallerBusy, setTruecallerBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -180,14 +173,11 @@ export function LoginScreen({ navigation }: Props) {
   );
 
   const isLoginFormFilled = useMemo(() => {
-    if (!password.trim()) {
-      return false;
-    }
     if (loginType === 'email') {
       return email.trim().length > 0;
     }
     return phoneNumber.trim().length > 0;
-  }, [loginType, email, phoneNumber, password]);
+  }, [loginType, email, phoneNumber]);
 
   const loginDisabled = authBusy || !isLoginFormFilled;
 
@@ -258,11 +248,6 @@ export function LoginScreen({ navigation }: Props) {
   };
 
   const handleRequestOtp = async () => {
-    if (!password) {
-      presentError('Check your details', 'Please enter your password.');
-      return;
-    }
-
     let identifier = '';
     const otpParams =
       loginType === 'email'
@@ -275,7 +260,6 @@ export function LoginScreen({ navigation }: Props) {
             identifier = trimmedEmail;
             return {
               loginType: 'email' as const,
-              password,
               email: trimmedEmail,
             };
           })()
@@ -291,7 +275,6 @@ export function LoginScreen({ navigation }: Props) {
             identifier = formattedPhone;
             return {
               loginType: 'phone' as const,
-              password,
               phone: formattedPhone,
             };
           })();
@@ -310,7 +293,6 @@ export function LoginScreen({ navigation }: Props) {
         navigation.navigate('VerifyEmailOtp', {
           loginType: otpParams.loginType,
           identifier,
-          password,
         });
       }
     } catch (error) {
@@ -430,52 +412,6 @@ export function LoginScreen({ navigation }: Props) {
               </View>
             </View>
           )}
-
-          <View style={styles.field}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Password</Text>
-              <Pressable
-                accessibilityRole="link"
-                accessibilityLabel="Forgot password"
-                hitSlop={8}
-                onPress={() => navigation.navigate('ForgotPassword')}>
-                <Text style={styles.forgotLink}>Forgot password?</Text>
-              </Pressable>
-            </View>
-            <View style={styles.passwordField}>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor={colors.textMuted}
-                secureTextEntry={!passwordVisible}
-                autoCapitalize="none"
-                autoComplete="password"
-                style={styles.passwordInput}
-                textContentType="password"
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  passwordVisible ? 'Hide password' : 'Show password'
-                }
-                hitSlop={10}
-                onPress={() => setPasswordVisible(prev => !prev)}
-                style={({ pressed }) => [
-                  styles.passwordToggle,
-                  pressed && styles.passwordTogglePressed,
-                ]}>
-                {passwordVisible ? (
-                  <SvgEyeOffOutline
-                    size={22}
-                    color={colors.textMuted}
-                  />
-                ) : (
-                  <SvgEyeOutline size={22} color={colors.textMuted} />
-                )}
-              </Pressable>
-            </View>
-          </View>
 
           <Pressable
             disabled={loginDisabled}

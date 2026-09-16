@@ -179,7 +179,7 @@ export function VerifyEmailOtpScreen({ navigation, route }: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => buildVerifyStyles(colors), [colors]);
   const { signIn } = useAuth();
-  const { loginType, identifier, password } = route.params;
+  const { loginType, identifier } = route.params;
   const isEmailLogin = loginType === 'email';
   const [digits, setDigits] = useState<string[]>(() =>
     Array(OTP_LENGTH).fill(''),
@@ -291,8 +291,8 @@ export function VerifyEmailOtpScreen({ navigation, route }: Props) {
     try {
       const response = await requestLoginOtp(
         isEmailLogin
-          ? { loginType: 'email', password, email: identifier.trim() }
-          : { loginType: 'phone', password, phone: identifier },
+          ? { loginType: 'email', email: identifier.trim() }
+          : { loginType: 'phone', phone: identifier },
       );
       if (response.status === 200) {
         setDigits(Array(OTP_LENGTH).fill(''));
@@ -329,7 +329,6 @@ export function VerifyEmailOtpScreen({ navigation, route }: Props) {
           ? {
               loginType: 'email',
               email: identifier.trim(),
-              password,
               otp,
               platform: getAuthContinuePlatform(),
               latitude: location.coords.latitude,
@@ -338,7 +337,6 @@ export function VerifyEmailOtpScreen({ navigation, route }: Props) {
           : {
               loginType: 'phone',
               phone: identifier,
-              password,
               otp,
               platform: getAuthContinuePlatform(),
               latitude: location.coords.latitude,

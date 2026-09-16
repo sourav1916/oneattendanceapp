@@ -283,11 +283,6 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
             t('settings.rows.sessions.title'),
             t('settings.rows.sessions.subtitle'),
           ),
-          menuRowWithIcon(
-            'security',
-            t('settings.rows.security.title'),
-            t('settings.rows.security.subtitle'),
-          ),
         ],
       },
       {
@@ -322,7 +317,7 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
         ],
       },
     ],
-    [t, i18n.language, themeSubtitle],
+    [t, themeSubtitle],
   );
 
   const handleRowPress = useCallback(
@@ -345,10 +340,6 @@ export function SettingsScreen({ navigation }: SettingsScreenProps) {
       }
       if (id === 'subscription') {
         navigation.navigate('Subscription');
-        return;
-      }
-      if (id === 'security') {
-        navigation.navigate('ChangePassword');
         return;
       }
       if (id === 'help') {

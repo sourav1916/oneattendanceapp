@@ -5,7 +5,6 @@ import { API_ENDPOINT } from '../utils/config';
 
 export type RequestLoginOtpParams = {
   loginType: LoginType;
-  password: string;
   email?: string;
   phone?: string;
 };
@@ -18,7 +17,6 @@ export type RequestLoginOtpParams = {
 export function requestLoginOtp(params: RequestLoginOtpParams) {
   const data: RequestLoginOtpBody = {
     login_type: params.loginType,
-    password: params.password,
   };
 
   if (params.loginType === 'email') {

@@ -16,7 +16,6 @@ export type RequestSignupOtpBody = RequestOtpEmailBody | RequestOtpPhoneBody;
 
 type VerifySignupOtpBase = {
   otp: string;
-  password: string;
   name?: string;
   latitude?: number;
   longitude?: number;
