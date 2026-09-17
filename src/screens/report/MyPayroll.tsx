@@ -54,6 +54,12 @@ const MONTHS = [
 
 const money = (value: number) => `₹${formatLedgerAmount(Number(value) || 0)}`;
 
+const metric = (value: number) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return '0';
+  return String(numericValue);
+};
+
 function buildStyles(colors: AppThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
@@ -209,11 +215,11 @@ export function MyPayrollScreen({ navigation }: Props) {
         <View style={styles.stats}>
           <View style={styles.stat}><Text style={styles.statLabel}>{t('home.myPayroll.earnings')}</Text><Text style={styles.statValue}>{money(p.total_earnings)}</Text></View>
           <View style={styles.stat}><Text style={styles.statLabel}>{t('home.myPayroll.deductions')}</Text><Text style={styles.statValue}>{money(p.total_deductions)}</Text></View>
-          <View style={styles.stat}><Text style={styles.statLabel}>{t('home.myPayroll.present')}</Text><Text style={styles.statValue}>{p.attendance.present_days}</Text></View>
+          <View style={styles.stat}><Text style={styles.statLabel}>{t('home.myPayroll.present')}</Text><Text style={styles.statValue}>{metric(p.attendance.present_days)}</Text></View>
         </View>
         <Text style={styles.sectionTitle}>{t('home.myPayroll.attendance')}</Text>
-        <Text style={styles.detail}>{t('home.myPayroll.attendanceDetail', { working: p.attendance.working_days, absent: p.attendance.absent_days, leave: p.attendance.paid_leave_days + p.attendance.unpaid_leave_days })}</Text>
-        <Text style={styles.detail}>{t('home.myPayroll.workDetail', { worked: Number(p.work.worked_hours || 0).toFixed(1), overtime: Number(p.work.overtime_hours || 0).toFixed(1) })}</Text>
+        <Text style={styles.detail}>{t('home.myPayroll.attendanceDetail', { working: metric(p.attendance.working_days), absent: metric(p.attendance.absent_days), leave: metric(Number(p.attendance.paid_leave_days || 0) + Number(p.attendance.unpaid_leave_days || 0)) })}</Text>
+        <Text style={styles.detail}>{t('home.myPayroll.workDetail', { worked: metric(p.work.worked_hours), overtime: metric(p.work.overtime_hours) })}</Text>
         {p.adjustments.length > 0 ? <><Text style={styles.sectionTitle}>{t('home.myPayroll.adjustments')}</Text>{p.adjustments.map(adjustment => <View key={adjustment.id} style={styles.adjustment}><Text style={styles.adjustmentName}>{adjustment.name}</Text><Text style={[styles.adjustmentAmount, adjustment.type === 'fine' ? styles.fine : styles.credit]}>{adjustment.type === 'fine' ? '-' : '+'}{money(adjustment.amount)}</Text></View>)}</> : null}
       </View>
     );
@@ -255,7 +261,7 @@ export function MyPayrollScreen({ navigation }: Props) {
         <Pressable style={styles.modalBackdrop} onPress={() => setMonthPickerVisible(false)}><Pressable style={styles.modalSheet} onPress={event => event.stopPropagation()}><Text style={styles.modalTitle}>{t('home.myPayroll.chooseMonth')}</Text><View style={styles.monthGrid}>{MONTHS.map((name, index) => <Pressable key={name} style={[styles.monthOption, month === index + 1 && styles.monthOptionActive]} onPress={() => { setMonth(index + 1); setMonthPickerVisible(false); }}><Text style={[styles.monthOptionText, month === index + 1 && styles.monthOptionTextActive]}>{name.slice(0, 3)}</Text></Pressable>)}</View><Pressable style={styles.clearMonth} onPress={() => { setMonth(null); setMonthPickerVisible(false); }}><Text style={styles.clearMonthText}>{t('home.myPayroll.allMonths')}</Text></Pressable></Pressable></Pressable>
       </Modal>
       <Modal visible={yearPickerVisible} transparent animationType="slide" onRequestClose={() => setYearPickerVisible(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setYearPickerVisible(false)}><Pressable style={styles.modalSheet} onPress={event => event.stopPropagation()}><Text style={styles.modalTitle}>{t('home.myPayroll.chooseYear')}</Text><View style={styles.monthGrid}>{years.map(value => <Pressable key={value} style={[styles.monthOption, year === value && styles.monthOptionActive]} onPress={() => { setYear(value); setYearPickerVisible(false); }}><Text style={[styles.monthOptionText, year === value && styles.monthOptionTextActive]}>{value}</Text></Pressable>)}</View><Pressable style={styles.clearMonth} onPress={() => { setYear(''); setYearPickerVisible(false); }}><Text style={styles.clearMonthText}>{t('home.myPayroll.allYears')}</Text></Pressable></Pressable></Pressable>
+        <Pressable style={styles.modalBackdrop} onPress={() => setYearPickerVisible(false)}><Pressable style={styles.modalSheet} onPress={event => event.stopPropagation()}><Text style={styles.modalTitle}>{t('home.myPayroll.chooseYear')}</Text><View style={styles.monthGrid}>{years.map(value => <Pressable key={value} style={[styles.monthOption, year === value && styles.monthOptionActive]} onPress={() => { setYear(value); setYearPickerVisible(false); }}><Text style={[styles.monthOptionText, year === value && styles.monthOptionTextActive]}>{value}</Text></Pressable>)}</View></Pressable></Pressable>
       </Modal>
     </SafeAreaView>
   );
