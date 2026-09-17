@@ -11,7 +11,6 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -119,11 +118,18 @@ export function MyPayrollScreen({ navigation }: Props) {
   const companyId = selectedCompany?.id ?? null;
   const isEmployee = selectedCompany?.relation === 'employee';
   const now = new Date();
-  const [year, setYear] = useState('');
-  const [month, setMonth] = useState<number | null>(null);
-  const [appliedYear, setAppliedYear] = useState('');
-  const [appliedMonth, setAppliedMonth] = useState<number | null>(null);
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const years = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => String(currentYear - 5 + index)),
+    [currentYear],
+  );
+  const [year, setYear] = useState(String(currentYear));
+  const [month, setMonth] = useState<number | null>(currentMonth);
+  const [appliedYear, setAppliedYear] = useState(String(currentYear));
+  const [appliedMonth, setAppliedMonth] = useState<number | null>(currentMonth);
   const [monthPickerVisible, setMonthPickerVisible] = useState(false);
+  const [yearPickerVisible, setYearPickerVisible] = useState(false);
   const [items, setItems] = useState<Array<{ payroll: Payroll }>>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -233,7 +239,7 @@ export function MyPayrollScreen({ navigation }: Props) {
         renderItem={renderItem}
         keyExtractor={item => String(item.payroll.id)}
         contentContainerStyle={styles.content}
-        ListHeaderComponent={<View><View style={styles.intro}><Text style={styles.eyebrow}>{t('home.myPayroll.eyebrow')}</Text><Text style={styles.heading}>{t('home.myPayroll.heading')}</Text><Text style={styles.subheading}>{t('home.myPayroll.subtitle')}</Text></View><View style={styles.filterCard}><Text style={styles.filterLabel}>{t('home.myPayroll.filterLabel')}</Text><View style={styles.filterRow}><TextInput value={year} onChangeText={setYear} keyboardType="number-pad" maxLength={4} placeholder={String(now.getFullYear())} placeholderTextColor={colors.textMuted} style={styles.input} /><Pressable style={styles.monthButton} onPress={() => setMonthPickerVisible(true)}><Text style={styles.monthText}>{month == null ? t('home.myPayroll.allMonths') : MONTHS[month - 1]}</Text><MaterialCommunityIcons name="chevron-down" size={20} color={colors.textMuted} /></Pressable><Pressable style={styles.apply} onPress={applyFilters}><Text style={styles.applyText}>{t('home.myPayroll.filter')}</Text></Pressable></View>{appliedYear || appliedMonth != null ? <Text style={styles.activeFilter}>{t('home.myPayroll.activeFilter', { value: `${appliedMonth == null ? t('home.myPayroll.allMonths') : MONTHS[appliedMonth - 1]} ${appliedYear || t('home.myPayroll.allYears')}` })}</Text> : null}</View></View>}
+        ListHeaderComponent={<View><View style={styles.intro}><Text style={styles.eyebrow}>{t('home.myPayroll.eyebrow')}</Text><Text style={styles.heading}>{t('home.myPayroll.heading')}</Text><Text style={styles.subheading}>{t('home.myPayroll.subtitle')}</Text></View><View style={styles.filterCard}><Text style={styles.filterLabel}>{t('home.myPayroll.filterLabel')}</Text><View style={styles.filterRow}><Pressable style={styles.monthButton} onPress={() => setMonthPickerVisible(true)}><Text style={styles.monthText}>{month == null ? t('home.myPayroll.allMonths') : MONTHS[month - 1]}</Text><MaterialCommunityIcons name="chevron-down" size={20} color={colors.textMuted} /></Pressable><Pressable style={styles.monthButton} onPress={() => setYearPickerVisible(true)}><Text style={styles.monthText}>{year || t('home.myPayroll.allYears')}</Text><MaterialCommunityIcons name="chevron-down" size={20} color={colors.textMuted} /></Pressable><Pressable style={styles.apply} onPress={applyFilters}><Text style={styles.applyText}>{t('home.myPayroll.filter')}</Text></Pressable></View>{appliedYear || appliedMonth != null ? <Text style={styles.activeFilter}>{t('home.myPayroll.activeFilter', { value: `${appliedMonth == null ? t('home.myPayroll.allMonths') : MONTHS[appliedMonth - 1]} ${appliedYear || t('home.myPayroll.allYears')}` })}</Text> : null}</View></View>}
         ListEmptyComponent={empty}
         ListFooterComponent={loadingMore ? <View style={styles.footer}><ActivityIndicator color={colors.primary} /></View> : null}
         onEndReached={() => {
@@ -247,6 +253,9 @@ export function MyPayrollScreen({ navigation }: Props) {
       />}
       <Modal visible={monthPickerVisible} transparent animationType="slide" onRequestClose={() => setMonthPickerVisible(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setMonthPickerVisible(false)}><Pressable style={styles.modalSheet} onPress={event => event.stopPropagation()}><Text style={styles.modalTitle}>{t('home.myPayroll.chooseMonth')}</Text><View style={styles.monthGrid}>{MONTHS.map((name, index) => <Pressable key={name} style={[styles.monthOption, month === index + 1 && styles.monthOptionActive]} onPress={() => { setMonth(index + 1); setMonthPickerVisible(false); }}><Text style={[styles.monthOptionText, month === index + 1 && styles.monthOptionTextActive]}>{name.slice(0, 3)}</Text></Pressable>)}</View><Pressable style={styles.clearMonth} onPress={() => { setMonth(null); setMonthPickerVisible(false); }}><Text style={styles.clearMonthText}>{t('home.myPayroll.allMonths')}</Text></Pressable></Pressable></Pressable>
+      </Modal>
+      <Modal visible={yearPickerVisible} transparent animationType="slide" onRequestClose={() => setYearPickerVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setYearPickerVisible(false)}><Pressable style={styles.modalSheet} onPress={event => event.stopPropagation()}><Text style={styles.modalTitle}>{t('home.myPayroll.chooseYear')}</Text><View style={styles.monthGrid}>{years.map(value => <Pressable key={value} style={[styles.monthOption, year === value && styles.monthOptionActive]} onPress={() => { setYear(value); setYearPickerVisible(false); }}><Text style={[styles.monthOptionText, year === value && styles.monthOptionTextActive]}>{value}</Text></Pressable>)}</View><Pressable style={styles.clearMonth} onPress={() => { setYear(''); setYearPickerVisible(false); }}><Text style={styles.clearMonthText}>{t('home.myPayroll.allYears')}</Text></Pressable></Pressable></Pressable>
       </Modal>
     </SafeAreaView>
   );

@@ -134,6 +134,7 @@ export const en = {
       allYears: 'all years',
       activeFilter: 'Showing {{value}}',
       chooseMonth: 'Choose a month',
+      chooseYear: 'Choose a year',
       employeePayroll: 'Employee payroll',
       netSalary: 'Net salary',
       earnings: 'Earnings',
