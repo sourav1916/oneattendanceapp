@@ -1,9 +1,10 @@
 import { HeaderBackButton } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -99,6 +100,94 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       paddingHorizontal: 20,
       paddingTop: 16,
       paddingBottom: TAB_SCREEN_SCROLL_PADDING_BOTTOM,
+    },
+    filterCard: {
+      padding: 14,
+      marginBottom: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: cardBg,
+    },
+    filterLabel: {
+      marginBottom: 9,
+      color: colors.textMuted,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    filterRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    filterButton: {
+      flex: 1,
+      height: 44,
+      paddingHorizontal: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderRadius: 11,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: isDark ? colors.background : '#f8fafc',
+    },
+    filterButtonText: {
+      color: colors.text,
+      fontSize: 14,
+    },
+    applyButton: {
+      height: 44,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 11,
+      backgroundColor: colors.primary,
+    },
+    applyButtonText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '800',
+    },
+    modalBackdrop: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0,0,0,0.45)',
+    },
+    modalSheet: {
+      padding: 20,
+      paddingBottom: 32,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      backgroundColor: cardBg,
+    },
+    modalTitle: {
+      marginBottom: 14,
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '800',
+    },
+    monthGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    monthOption: {
+      width: '31%',
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderRadius: 10,
+      backgroundColor: isDark ? colors.background : '#f1f5f9',
+    },
+    monthOptionActive: {
+      backgroundColor: colors.primary,
+    },
+    monthOptionText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    monthOptionTextActive: {
+      color: '#fff',
     },
     heroCard: {
       backgroundColor: heroBg,
@@ -497,6 +586,30 @@ export function MySalaryScreen({ navigation }: Props) {
   const companyId = selectedCompany?.id ?? null;
   const isEmployee = selectedCompany?.relation === 'employee';
   const { props: statusAlertProps, presentError } = useStatusAlert();
+  const [month, setMonth] = useState(CURRENT_MONTH);
+  const [year, setYear] = useState(String(CURRENT_YEAR));
+  const [appliedMonth, setAppliedMonth] = useState(CURRENT_MONTH);
+  const [appliedYear, setAppliedYear] = useState(CURRENT_YEAR);
+  const [monthPickerVisible, setMonthPickerVisible] = useState(false);
+  const [yearPickerVisible, setYearPickerVisible] = useState(false);
+  const years = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => CURRENT_YEAR - 5 + index),
+    [],
+  );
+  const months = [
+    t('home.mySalary.months.january'),
+    t('home.mySalary.months.february'),
+    t('home.mySalary.months.march'),
+    t('home.mySalary.months.april'),
+    t('home.mySalary.months.may'),
+    t('home.mySalary.months.june'),
+    t('home.mySalary.months.july'),
+    t('home.mySalary.months.august'),
+    t('home.mySalary.months.september'),
+    t('home.mySalary.months.october'),
+    t('home.mySalary.months.november'),
+    t('home.mySalary.months.december'),
+  ];
 
   const onSalaryError = useCallback(
     (message: string) => {
@@ -510,8 +623,8 @@ export function MySalaryScreen({ navigation }: Props) {
 
   const { data, loading, refreshing, error, notFound, refresh, retry } = useMySalary({
     companyId,
-    month: CURRENT_MONTH,
-    year: CURRENT_YEAR,
+    month: appliedMonth,
+    year: appliedYear,
     enabled: isEmployee,
     onError: onSalaryError,
   });
@@ -546,6 +659,29 @@ export function MySalaryScreen({ navigation }: Props) {
             tintColor={colors.primary}
           />
         }>
+        {companyId != null && isEmployee ? (
+          <View style={styles.filterCard}>
+            <Text style={styles.filterLabel}>{t('home.myPayroll.filterLabel')}</Text>
+            <View style={styles.filterRow}>
+              <Pressable style={styles.filterButton} onPress={() => setMonthPickerVisible(true)}>
+                <Text style={styles.filterButtonText}>{months[month - 1]}</Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={colors.textMuted} />
+              </Pressable>
+              <Pressable style={styles.filterButton} onPress={() => setYearPickerVisible(true)}>
+                <Text style={styles.filterButtonText}>{year}</Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={colors.textMuted} />
+              </Pressable>
+              <Pressable
+                style={styles.applyButton}
+                onPress={() => {
+                  setAppliedMonth(month);
+                  setAppliedYear(Number(year));
+                }}>
+                <Text style={styles.applyButtonText}>{t('home.myPayroll.filter')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
         {companyId == null ? (
           <View style={styles.centerBox}>
             <View style={styles.centerIconWrap}>
@@ -735,6 +871,53 @@ export function MySalaryScreen({ navigation }: Props) {
         ) : null}
       </ScrollView>
 
+      <Modal visible={monthPickerVisible} transparent animationType="slide" onRequestClose={() => setMonthPickerVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setMonthPickerVisible(false)}>
+          <Pressable style={styles.modalSheet} onPress={event => event.stopPropagation()}>
+            <Text style={styles.modalTitle}>{t('home.myPayroll.chooseMonth')}</Text>
+            <View style={styles.monthGrid}>
+              {months.map((name, index) => (
+                <Pressable
+                  key={name}
+                  style={[styles.monthOption, month === index + 1 && styles.monthOptionActive]}
+                  onPress={() => {
+                    setMonth(index + 1);
+                    setMonthPickerVisible(false);
+                  }}>
+                  <Text style={[styles.monthOptionText, month === index + 1 && styles.monthOptionTextActive]}>
+                    {name.slice(0, 3)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+      <Modal visible={yearPickerVisible} transparent animationType="slide" onRequestClose={() => setYearPickerVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setYearPickerVisible(false)}>
+          <Pressable style={styles.modalSheet} onPress={event => event.stopPropagation()}>
+            <Text style={styles.modalTitle}>{t('home.myPayroll.chooseYear')}</Text>
+            <View style={styles.monthGrid}>
+              {years.map(value => {
+                const valueText = String(value);
+                return (
+                  <Pressable
+                    key={valueText}
+                    style={[styles.monthOption, year === valueText && styles.monthOptionActive]}
+                    onPress={() => {
+                      setYear(valueText);
+                      setYearPickerVisible(false);
+                    }}>
+                    <Text style={[styles.monthOptionText, year === valueText && styles.monthOptionTextActive]}>
+                      {valueText}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <StatusAlert {...statusAlertProps} />
     </SafeAreaView>
   );

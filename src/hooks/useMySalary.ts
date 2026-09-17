@@ -55,7 +55,13 @@ export function useMySalary({
         if (fetchId !== fetchIdRef.current) {
           return;
         }
-        if (!res.success || !res.data) {
+        if (res.success && !res.data) {
+          setData(null);
+          setNotFound(true);
+          setError(null);
+          return;
+        }
+        if (!res.success) {
           const msg = res.message?.trim() || 'Could not load salary.';
           setData(null);
           setError(msg);

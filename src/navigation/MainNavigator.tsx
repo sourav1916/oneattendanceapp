@@ -7,8 +7,10 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
+  InteractionManager,
   Platform,
   Pressable,
+  StyleSheet,
   Text,
   type PressableProps,
 } from 'react-native';
@@ -42,6 +44,14 @@ const TAB_ICON_SIZE = 22;
 /** Active tab icon + label shift upward (px). */
 const TAB_ACTIVE_LIFT = 6;
 
+const tabBarLabelStyles = StyleSheet.create({
+  text: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+});
+
 const tabLiftSpring = {
   friction: 9,
   tension: 120,
@@ -50,10 +60,8 @@ const tabLiftSpring = {
 
 /** No Material ripple; active state is the animated lift. */
 function TabBarPressable(props: BottomTabBarButtonProps) {
-  const { ref: _ignoredRef, ...rest } = props as BottomTabBarButtonProps &
-    Record<string, unknown>;
   return (
-    <Pressable {...(rest as PressableProps)} android_ripple={null} />
+    <Pressable {...(props as PressableProps)} android_ripple={null} />
   );
 }
 
@@ -124,12 +132,7 @@ function TabBarLiftedLabel({
     <Animated.View style={{ transform: [{ translateY: lift }] }}>
       <Text
         numberOfLines={1}
-        style={{
-          color,
-          fontSize: 12,
-          fontWeight: '600',
-          marginTop: 2,
-        }}>
+        style={[tabBarLabelStyles.text, { color }]}>
         {children}
       </Text>
     </Animated.View>
@@ -147,6 +150,7 @@ function tabBarLabelRenderer(props: {
 
 type TabStackNavigation = {
   getState: () => {
+    index: number;
     routes: Array<{ name: string; state?: { index?: number } }>;
   };
   navigate: (tab: keyof MainTabParamList, params: { screen: string }) => void;
@@ -159,11 +163,14 @@ type TabStackNavigation = {
 function nestedStackResetOnTabFocus(tabName: keyof MainTabParamList, rootScreen: string) {
   return ({ navigation }: { navigation: TabStackNavigation }) => ({
     focus: () => {
-      const tabRoute = navigation.getState().routes.find(r => r.name === tabName);
-      const nestedIndex = tabRoute?.state?.index ?? 0;
-      if (nestedIndex > 0) {
-        navigation.navigate(tabName, { screen: rootScreen });
-      }
+      InteractionManager.runAfterInteractions(() => {
+        const state = navigation.getState();
+        const tabRoute = state.routes.find(r => r.name === tabName);
+        const nestedIndex = tabRoute?.state?.index ?? 0;
+        if (state.routes[state.index]?.name === tabName && nestedIndex > 0) {
+          navigation.navigate(tabName, { screen: rootScreen });
+        }
+      });
     },
   });
 }
@@ -188,7 +195,7 @@ function MainTabNavigator() {
       tabBarHideOnKeyboard: true,
       tabBarActiveTintColor: colors.primary,
       tabBarInactiveTintColor: colors.textMuted,
-      tabBarButton: props => <TabBarPressable {...props} />,
+      tabBarButton: TabBarPressable,
       tabBarLabel: tabBarLabelRenderer,
       tabBarStyle: {
         backgroundColor: colors.surface,
