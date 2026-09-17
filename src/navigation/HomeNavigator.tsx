@@ -25,6 +25,7 @@ import { OnboardingRequestScreen } from '@src/screens/home/OnboardingRequest';
 import { BankAccountsScreen } from '@src/screens/report/BankAccounts';
 import { MyLedgerScreen } from '@src/screens/report/MyLedger';
 import { MySalaryScreen } from '@src/screens/report/MySalary';
+import { MyPayrollScreen } from '@src/screens/report/MyPayroll';
 import { ReportsScreen } from '@src/screens/report/ReportsScreen';
 import { MyCalendarScreen } from '@src/screens/report/Calendar';
 
@@ -37,6 +38,7 @@ export function HomeNavigator() {
       <Stack.Screen name="Reports" component={ReportsScreen} />
       <Stack.Screen name="Ledger" component={MyLedgerScreen} />
       <Stack.Screen name="MySalary" component={MySalaryScreen} />
+      <Stack.Screen name="MyPayroll" component={MyPayrollScreen} />
       <Stack.Screen name="BankAccounts" component={BankAccountsScreen} />
       <Stack.Screen name="LeaveRequest" component={LeaveRequestScreen} />
       <Stack.Screen name="MyCalendar" component={MyCalendarScreen} />

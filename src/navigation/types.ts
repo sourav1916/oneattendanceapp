@@ -48,6 +48,7 @@ export type HomeStackParamList = {
   Reports: undefined;
   Ledger: undefined;
   MySalary: undefined;
+  MyPayroll: undefined;
   BankAccounts: undefined;
   PayrollManagement: undefined;
   ShiftManagement: undefined;

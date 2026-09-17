@@ -28,7 +28,7 @@ type MenuTheme = {
 
 type ReportMenuItem = {
   id: string;
-  route: keyof Pick<HomeStackParamList, 'Ledger' | 'MySalary' | 'MyCalendar' | 'BankAccounts'>;
+  route: keyof Pick<HomeStackParamList, 'Ledger' | 'MySalary' | 'MyPayroll' | 'MyCalendar' | 'BankAccounts'>;
   iconName: IconProps['name'];
   titleKey: string;
   subtitleKey: string;
@@ -59,6 +59,14 @@ const REPORT_ITEMS: ReportMenuItem[] = [
     titleKey: 'home.reports.mySalaryTitle',
     subtitleKey: 'home.reports.mySalarySubtitle',
     theme: { accent: '#0891b2', tint: '#cffafe', border: '#a5f3fc' },
+  },
+  {
+    id: 'myPayroll',
+    route: 'MyPayroll',
+    iconName: 'file-document-multiple-outline',
+    titleKey: 'home.reports.myPayrollTitle',
+    subtitleKey: 'home.reports.myPayrollSubtitle',
+    theme: { accent: '#4f46e5', tint: '#eef2ff', border: '#c7d2fe' },
   },
   {
     id: 'bankAccounts',
