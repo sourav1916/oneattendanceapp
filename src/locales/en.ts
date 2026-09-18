@@ -36,6 +36,18 @@ export const en = {
       mySalary: 'My salary',
       report: 'Reports',
       onboarding: 'Onboarding Request',
+      createCompany: 'Create Company',
+    },
+    noCompanyBanner: {
+      title: 'Set up your company',
+      message: 'Create your company to begin tracking attendance, managing staff, and unlocking all workspace features.',
+      button: 'Create Company',
+    },
+    lockedModal: {
+      noCompanyTitle: 'Company Required',
+      noCompanyMessage: 'Create or join a company to unlock and use this module.',
+      noPermissionTitle: 'Permission Required',
+      noPermissionMessage: 'You do not have permission to access this module in this company.',
     },
     myLedger: {
       title: 'My ledger',
