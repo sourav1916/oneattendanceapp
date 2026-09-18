@@ -44,12 +44,14 @@ const TYPE_ICONS: Record<EmployeeAccountType, IconProps['name']> = {
   savings: 'piggy-bank-outline',
   current: 'bank-outline',
   upi: 'qrcode',
+  cash: 'cash',
 };
 
 const TYPE_THEMES: Record<EmployeeAccountType, { accent: string; tint: string }> = {
   savings: { accent: '#2563eb', tint: '#dbeafe' },
   current: { accent: '#7c3aed', tint: '#ede9fe' },
   upi: { accent: '#0891b2', tint: '#cffafe' },
+  cash: { accent: '#16a34a', tint: '#dcfce7' },
 };
 
 function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {

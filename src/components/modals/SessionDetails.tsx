@@ -55,7 +55,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       backgroundColor: colors.overlay,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     sheetWrap: {
       flex: 1,

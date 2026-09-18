@@ -42,7 +42,7 @@ export function buildAuthScreenStyles(
       },
       flex: { flex: 1 },
       bgDecor: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         overflow: 'hidden',
         backgroundColor: colors.background,
       },

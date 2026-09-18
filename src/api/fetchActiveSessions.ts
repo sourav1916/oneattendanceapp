@@ -16,8 +16,8 @@ const DEFAULT_META: ActiveSessionsMeta = {
 export function normalizeActiveSessionsPayload(
   payload: ActiveSessionsServerResponse | ActiveSessionsResponse,
 ): ActiveSessionsResponse {
-  const array = Array.isArray(payload.data)
-    ? payload.data
+  const array = Array.isArray((payload as ActiveSessionsServerResponse).data)
+    ? (payload as ActiveSessionsServerResponse).data!
     : Array.isArray(payload.sessions)
       ? payload.sessions
       : [];

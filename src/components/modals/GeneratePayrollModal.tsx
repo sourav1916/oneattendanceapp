@@ -39,7 +39,7 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
   const cardBg = scheme === 'dark' ? colors.background : '#f8fafc';
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.overlay },
-    backdrop: { ...StyleSheet.absoluteFillObject },
+    backdrop: { ...StyleSheet.absoluteFill },
     sheetWrap: { flex: 1, justifyContent: 'flex-end', paddingTop: 48 },
     sheet: {
       backgroundColor: colors.surface,

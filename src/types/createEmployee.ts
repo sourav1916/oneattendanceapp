@@ -21,10 +21,21 @@ export type CreateEmployeeBody = {
   shift_start: string;
   shift_end: string;
   joining_date?: string;
-  permission_package_id?: number;
-  designation?: string;
-  salary_type?: string;
-  employment_type?: string;
+  permission_package_id: number;
+  designation: string;
+  salary_type: string;
+  employment_type: string;
+  base_amount?: number;
+  effective_from?: string;
+  effective_to?: string;
+  components?: Array<{
+    component_id: number;
+    calc_type: 'fixed' | 'percentage';
+    calc_value: number;
+    effective_from?: string;
+    effective_to?: string | null;
+    reason?: string;
+  }>;
   weekends?: string[];
   break_minutes?: number;
   grace_minutes?: number;
@@ -33,6 +44,15 @@ export type CreateEmployeeBody = {
 export type CreateEmployeeResponse = {
   success: boolean;
   message?: string;
+};
+
+export type SalaryComponentEntry = {
+  component_id: number;
+  calc_type: 'fixed' | 'percentage';
+  calc_value: string;
+  effective_from?: string;
+  effective_to?: string | null;
+  reason?: string;
 };
 
 export type CreateEmployeeFormData = {
@@ -47,6 +67,11 @@ export type CreateEmployeeFormData = {
   break_minutes: string;
   grace_minutes: string;
   weekends: string[];
+  base_amount: string;
+  effective_from: string;
+  effective_to: string;
+  component_package_id: string | number;
+  components: SalaryComponentEntry[];
 };
 
 export const EMPTY_CREATE_EMPLOYEE_FORM: CreateEmployeeFormData = {
@@ -61,4 +86,9 @@ export const EMPTY_CREATE_EMPLOYEE_FORM: CreateEmployeeFormData = {
   break_minutes: '01:00',
   grace_minutes: '00:15',
   weekends: [],
+  base_amount: '',
+  effective_from: '',
+  effective_to: '',
+  component_package_id: '',
+  components: [],
 };

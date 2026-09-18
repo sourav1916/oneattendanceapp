@@ -16,6 +16,29 @@ export type SalaryComponentsListResponse = {
   data: SalaryComponent[] | null;
 };
 
+export type SalaryPackageItem = {
+  component_id: number;
+  name: string;
+  code: string;
+  type: string;
+  calc_type: SalaryCalcType;
+  calc_value: number | string;
+};
+
+export type SalaryPackage = {
+  id: number;
+  name: string;
+  code: string;
+  description?: string | null;
+  items: SalaryPackageItem[];
+};
+
+export type SalaryPackagesListResponse = {
+  success: boolean;
+  message: string;
+  data: SalaryPackage[] | null;
+};
+
 export type AssignSalaryComponentPayload = {
   component_id: number;
   calc_type: SalaryCalcType;

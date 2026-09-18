@@ -51,7 +51,7 @@ function buildStyles(
       backgroundColor: colors.overlay,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     sheetWrap: {
       flex: 1,

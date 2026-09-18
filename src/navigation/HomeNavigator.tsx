@@ -2,7 +2,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import type { HomeStackParamList } from '@src/navigation/types';
 import { AttendanceManagementScreen } from '@src/screens/company/attendance/AttendanceManagement';
-import { FaceAttendanceScreen } from '@src/screens/company/attendance/FaceAttendance';
 import { CompanyInvitesScreen } from '@src/screens/company/employee/CompanyInvites';
 import { CreateEmployeeScreen } from '@src/screens/company/employee/CreateEmployee';
 import { EmployeeListScreen } from '@src/screens/company/employee/EmployeeList';
@@ -60,7 +59,6 @@ export function HomeNavigator() {
       <Stack.Screen name="LeaveConfig" component={LeaveConfigScreen} />
       <Stack.Screen name="EmployeeList" component={EmployeeListScreen} />
       <Stack.Screen name="FaceEnroll" component={FaceEnrollScreen} />
-      <Stack.Screen name="FaceAttendance" component={FaceAttendanceScreen} />
       <Stack.Screen name="CompanyLedger" component={CompanyLedgerScreen} />
       <Stack.Screen name="CreateEmployee" component={CreateEmployeeScreen} />
       <Stack.Screen name="InvitePackages" component={InvitePackagesScreen} />

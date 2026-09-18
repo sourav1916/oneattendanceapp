@@ -5,6 +5,7 @@ import type {
   FetchMySalaryParams,
   MySalaryResponse,
   SalaryComponentsListResponse,
+  SalaryPackagesListResponse,
 } from '@src/types/salary';
 
 function withCompany(companyId: number) {
@@ -15,6 +16,14 @@ export const salaryApi = {
   async listComponents(companyId: number): Promise<SalaryComponentsListResponse> {
     const { data } = await authHttpClient.get<SalaryComponentsListResponse>(
       '/salary/components/list',
+      { headers: withCompany(companyId) },
+    );
+    return data;
+  },
+
+  async listPackages(companyId: number): Promise<SalaryPackagesListResponse> {
+    const { data } = await authHttpClient.get<SalaryPackagesListResponse>(
+      '/salary/components/packages',
       { headers: withCompany(companyId) },
     );
     return data;

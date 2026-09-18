@@ -674,17 +674,17 @@ export function CompanyListScreen({ navigation }: Props) {
                     throw new Error(res.message?.trim() || t('home.companyList.actions.updateFailed'));
                 }
                 setEditCompany(null);
-                presentSuccess(res.message?.trim() || t('home.companyList.actions.updateSuccess'));
+                presentSuccess({ title: res.message?.trim() || t('home.companyList.actions.updateSuccess') });
                 if (selectedCompany?.id === payload.id) {
                     await refreshProfileRole({ silent: true }).catch(() => {});
                 }
                 await loadFirst();
             } catch (e) {
-                presentError(
-                    e instanceof Error && e.message
+                presentError({
+                    title: e instanceof Error && e.message
                         ? e.message
                         : readApiError(e) || t('home.companyList.actions.updateFailed'),
-                );
+                });
             } finally {
                 setUpdateSubmitting(false);
                 pendingUpdateRef.current = null;
@@ -700,17 +700,17 @@ export function CompanyListScreen({ navigation }: Props) {
                 if (!res.success) {
                     throw new Error(res.message?.trim() || t('home.companyList.actions.deleteFailed'));
                 }
-                presentSuccess(res.message?.trim() || t('home.companyList.actions.deleteSuccess'));
+                presentSuccess({ title: res.message?.trim() || t('home.companyList.actions.deleteSuccess') });
                 if (selectedCompany?.id === company.id) {
                     await refreshProfileRole({ silent: true }).catch(() => {});
                 }
                 await loadFirst();
             } catch (e) {
-                presentError(
-                    e instanceof Error && e.message
+                presentError({
+                    title: e instanceof Error && e.message
                         ? e.message
                         : readApiError(e) || t('home.companyList.actions.deleteFailed'),
-                );
+                });
             } finally {
                 pendingDeleteRef.current = null;
             }

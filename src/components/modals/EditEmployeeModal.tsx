@@ -475,11 +475,11 @@ export function EditEmployeeModal({
 }: EditEmployeeModalProps) {
   const { t } = useTranslation();
   const colors = useThemeColors();
-  const { scheme } = useAppTheme();
+  const { resolvedScheme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(
-    () => buildStyles(colors, scheme),
-    [colors, scheme],
+    () => buildStyles(colors, resolvedScheme),
+    [colors, resolvedScheme],
   );
 
   const [form, setForm] = useState<EmployeeEditFormData | null>(null);

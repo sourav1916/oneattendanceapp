@@ -38,7 +38,6 @@ export type HomeStackParamList = {
   LeaveConfig: undefined;
   EmployeeList: undefined;
   FaceEnroll: undefined;
-  FaceAttendance: undefined;
   InvitePackages: undefined;
   CompanyInvites: undefined;
   PermissionManagement: undefined;
