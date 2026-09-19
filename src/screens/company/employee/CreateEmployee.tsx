@@ -136,6 +136,7 @@ export function CreateEmployeeScreen({ navigation }: Props) {
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [existingUser, setExistingUser] = useState(false);
   const [verifiedIdentifier, setVerifiedIdentifier] = useState('');
   const [resendLeft, setResendLeft] = useState(0);
   const [contactError, setContactError] = useState<string | null>(null);
@@ -385,6 +386,11 @@ export function CreateEmployeeScreen({ navigation }: Props) {
         );
         return false;
       }
+      const existingUserResponse = res.data?.existing_user === true;
+      setExistingUser(existingUserResponse);
+      if (existingUserResponse && res.data?.name) {
+        setForm(prev => ({ ...prev, name: res.data?.name || prev.name }));
+      }
       setOtpSent(true);
       setOtp('');
       setVerifiedIdentifier(contactDisplay);
@@ -413,6 +419,7 @@ export function CreateEmployeeScreen({ navigation }: Props) {
 
   const handleChangeContact = useCallback(() => {
     setOtpSent(false);
+    setExistingUser(false);
     setOtp('');
     setContactError(null);
     clearResendTimer();
@@ -1071,7 +1078,10 @@ export function CreateEmployeeScreen({ navigation }: Props) {
               <View style={styles.channelRow}>
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => setChannel('email')}
+                  onPress={() => {
+                    setExistingUser(false);
+                    setChannel('email');
+                  }}
                   style={[
                     styles.channelBtn,
                     channel === 'email' && styles.channelBtnActive,
@@ -1093,7 +1103,10 @@ export function CreateEmployeeScreen({ navigation }: Props) {
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => setChannel('phone')}
+                  onPress={() => {
+                    setExistingUser(false);
+                    setChannel('phone');
+                  }}
                   style={[
                     styles.channelBtn,
                     channel === 'phone' && styles.channelBtnActive,
@@ -1122,7 +1135,10 @@ export function CreateEmployeeScreen({ navigation }: Props) {
                   </Text>
                   <TextInput
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={value => {
+                      setExistingUser(false);
+                      setEmail(value);
+                    }}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -1153,9 +1169,10 @@ export function CreateEmployeeScreen({ navigation }: Props) {
                     </Pressable>
                     <TextInput
                       value={phoneNational}
-                      onChangeText={v =>
-                        setPhoneNational(v.replace(/\D/g, '').slice(0, 15))
-                      }
+                      onChangeText={v => {
+                        setExistingUser(false);
+                        setPhoneNational(v.replace(/\D/g, '').slice(0, 15));
+                      }}
                       keyboardType="phone-pad"
                       placeholder={t('home.createEmployee.phonePlaceholder')}
                       placeholderTextColor={colors.textMuted}
@@ -1255,10 +1272,17 @@ export function CreateEmployeeScreen({ navigation }: Props) {
               </Text>
               <TextInput
                 value={form.name}
-                onChangeText={v => setForm(f => ({ ...f, name: v }))}
+                editable={!existingUser}
+                onChangeText={v => {
+                  if (!existingUser) setForm(f => ({ ...f, name: v }));
+                }}
                 placeholder={t('home.createEmployee.namePlaceholder')}
                 placeholderTextColor={colors.textMuted}
-                style={[styles.input, formErrors.name && styles.inputError]}
+                style={[
+                  styles.input,
+                  formErrors.name && styles.inputError,
+                  existingUser && styles.inputDisabled,
+                ]}
               />
               {formErrors.name ? (
                 <Text style={styles.errorText}>{formErrors.name}</Text>
@@ -2285,6 +2309,10 @@ function buildStyles(colors: AppThemeColors, scheme: 'light' | 'dark') {
       fontSize: 15,
       color: colors.text,
       backgroundColor: colors.background,
+    },
+    inputDisabled: {
+      backgroundColor: colors.surface,
+      color: colors.textMuted,
     },
     inputError: {
       borderColor: colors.danger,

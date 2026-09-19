@@ -7,6 +7,10 @@ export type RequestCreateEmployeeOtpBody =
 export type RequestCreateEmployeeOtpResponse = {
   success: boolean;
   message?: string;
+  data?: {
+    existing_user: boolean;
+    name: string | null;
+  };
 };
 
 export type CreateEmployeeBody = {
